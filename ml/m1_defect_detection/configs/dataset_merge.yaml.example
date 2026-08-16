@@ -1,0 +1,27 @@
+# M1 dataset merge config — copy to dataset_merge.yaml and adjust per acquisition pass.
+# Sources are relative to M1_WORK_ROOT (~/safresale-ml/m1) unless absolute.
+# class_map: source-class -> core class (docs/08-ml-plan.md §3.1). Omit/blank to drop a class.
+# Only classes with >= min_instances boxes are kept in the final data.yaml.
+output_name: defects
+min_instances: 100
+
+sources:
+  - name: cardd
+    path: data/datasets/cardd
+    class_map:
+      dent: dent
+      scratch: scratch
+      crack: crack
+      glass_shatter: glass_damage
+      lamp_broken: ""        # category extension — not in core 14
+      tire_flat: ""          # category extension — not in core 14
+
+  - name: cracked_screen
+    path: data/datasets/cracked_screen
+    class_map:
+      # TODO: fill after first download; inspect the dataset's data.yaml / labels.
+      cracked: screen_damage
+      cracked_screen: screen_damage
+      screen_crack: screen_damage
+      scratch: scratch
+      crack: crack

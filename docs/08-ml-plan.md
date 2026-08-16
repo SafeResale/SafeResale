@@ -63,6 +63,24 @@ Rules:
 - If licensing blocks public data: build a small internal device-photo set; document annotation process.
 - Annotations: YOLO format (bounding boxes per class). Splits: 70/15/15 train/val/test; **frozen test set never used in training**.
 
+#### 3.1.1 Dataset shortlist (evaluated 2026-08)
+
+No single public set covers all 14 core classes → **merge 3–5 sets**, reconcile class names,
+then drop classes with <100 boxes. License must permit academic/FYP use; document each URL + license in the report.
+
+| # | Dataset | Source | Format | Classes → core mapping | License/notes |
+|---|---|---|---|---|---|
+| 1 | **CarDD** (Car Damage Detection, 4000 img / 8740 boxes) | Kaggle `gabrielfcarvalho/cardd-with-yolo-annotations-images-labels` | YOLO, train/val/test split | dent, scratch, crack, glass_shatter→glass_damage, lamp_broken→(ext), tire_flat→(ext) | Academic (PIC Lab USTC). Strongest detection set for cars |
+| 2 | **Cracked Mobile Screen** (~7000 img) | Kaggle `dataclusterlabs/cracked-screen-dataset` | COCO/VOC/YOLO | screen_damage, crack | DataCluster Labs; phones |
+| 3 | **Car Damages Kaggle** | Roboflow `ai-proyect/car-damages-kaggle` | YOLO (8 classes) | scratch, dent, corrosion, paint_damage, cracked, flaking, broken_part→(ext), missing_part→(ext) | mirrors CarDD-style classes |
+| 4 | **Rust Detection** (10072 img) | Roboflow `rust-detection/rust-detection-38s6e` | YOLO/seg | rust | Roboflow Universe |
+| 5 | **Corrosion YOLOv8** | Roboflow `corrosion-yolo-v8/corrosion-yolov8` | YOLO | corrosion | Roboflow Universe |
+| 6 | **Mobile Damage Diagnosis** | Roboflow `abhinavpoc/mobile-damage-diagnosis` | YOLO | scratch, screen_crack, dead_pixel→(skip) | phones |
+| 7 | **MVTec AD / AD 2** (5354 img, 15 categories) | mvtec.com (form) or HF `Voxel51/mvtec-ad` | masks → convert | scratch/crack/dent type defects, industrial textures | CC BY-NC-SA 4.0; **anomaly-detection paradigm**, needs mask→box conversion; use as auxiliary/pre-fine-tune only |
+| 8 | **Industrial Defect / Inspect-Anything** (HF) | HF `himanshu1257/industrial-defect-dataset`, `geonuk-kimmm/Inspect-Anything` | varies | generic industrial defects | verify license + format before use |
+
+Coverage vs core 14: scratch ✅ crack ✅ dent ✅ screen_damage ✅ glass_damage ✅ paint_damage ✅ rust ✅ corrosion ✅ (camera_damage, port_damage, casing_damage, body_deformation, chip, water_damage — **no large public set yet**; either source more per-class sets or drop/defer these from M1 v1).
+
 ### 3.2 Condition classification
 - Classes: Good, Moderate, Defective.
 - Labels derived from annotated defect evidence + expert labels; balance classes.
