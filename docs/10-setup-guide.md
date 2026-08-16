@@ -170,10 +170,61 @@ wsl -- bash -lc "export TMPDIR=~/safresale-ml/tmp; ~/safresale-ml/.venv/bin/pyth
 
 The backend's `VISION_PROVIDER=stub` keeps everything else running regardless of ML dependency availability.
 
-## 8. Optional Docker reference
+## 8. Docker (optional — teammates need NO local ML setup)
 
-`infra/docker-compose.yml` (mongo, redis, backend, ai-worker, admin-web) is provided as a reference for machines with
-Docker. This dev machine does not require it.
+Two Docker options exist:
+
+- **§8 infra stack** (mongo, redis, backend, ai-worker, admin-web) — reference compose for machines with Docker.
+- **§8.1–8.3 ML container** — the main one for the team: a ready-made torch+ultralytics+roboflow image, so
+  teammates never install Python/torch/CUDA. Trained weights ship via **GitHub Releases**, so teammates
+  don't download datasets either.
+
+### 8.1 Build the ML image + GPU requirement
+
+GPU needs NVIDIA container support:
+- **Docker Desktop (Windows/WSL2):** Settings → Resources → WSL Integration → enable GPU acceleration.
+- **Linux:** `sudo apt install nvidia-container-toolkit && sudo nvidia-ctk runtime configure --runtime=docker && sudo systemctl restart docker`
+
+```powershell
+docker compose -f ml/docker-compose.yml build
+docker compose -f ml/docker-compose.yml run --rm ml
+# prints: torch <ver> | cuda: True   (True = GPU inside container works)
+```
+
+### 8.2 Train / smoke / jupyter
+
+```powershell
+# 1-epoch smoke test on coco8 (verifies full pipeline inside container)
+docker compose -f ml/docker-compose.yml run --rm smoke
+
+# train M1 (baseline yolov8n + yolo11n), runs land in the `ml_data` volume
+docker compose -f ml/docker-compose.yml run --rm train
+
+# jupyter lab for experiments (http://localhost:8888)
+docker compose -f ml/docker-compose.yml up lab
+```
+
+Datasets/weights/runs persist in the named volume `ml_data` across container runs.
+
+### 8.3 Publish weights — so nobody downloads datasets
+
+After training, publish the model (weights are ~5 MB; datasets are not):
+
+```bash
+# 1) copy best weights out of the volume
+docker run --rm -v saferesale_ml_data:/ml/work -v "$PWD/dist:/out" saferesale/ml:latest \
+  bash -c "cp /ml/work/runs/improved-yolo11n/weights/best.pt /out/m1-defect-yolo11n.pt"
+gh release create m1-v0.1 dist/m1-defect-yolo11n.pt --repo SafeResale/SafeResale -t "M1 defect detection v0.1"
+```
+
+```bash
+# 2) teammate runs inference with ONLY the weights + image — no dataset, no training
+gh release download m1-v0.1 --repo SafeResale/SafeResale --pattern m1-defect-yolo11n.pt
+docker compose -f ml/docker-compose.yml run --rm ml scripts/infer.py \
+  --weights /ml/work/runs/improved-yolo11n/weights/best.pt \
+  --source /ml/data/m1/sample.jpg
+# (drop the image into ml/m1_defect_detection/data/m1/ — bind-mounted at /ml/data/m1)
+```
 
 ## 9. Common issues
 
@@ -185,3 +236,5 @@ Docker. This dev machine does not require it.
 | 3.14 wheels missing for ML | Use the 3.12 WSL venvs in §7 |
 | pip: `No space left on device` during ML install | `/tmp` is a RAM tmpfs; set `export TMPDIR=~/safresale-ml/tmp` first |
 | TF reports CPU-only | Check `nvidia-cudnn-cu12`/`nvidia-cublas-cu12` installed + `.bashrc` LD_LIBRARY_PATH fix (§7.3) |
+| `docker: cuda unavailable` | NVIDIA container toolkit not configured (§8.1); check Docker Desktop WSL GPU setting |
+| AutoBackend: weights not found on `/mnt/c/...` paths | Ultralytics corrupts paths with apostrophes; run from WSL home or Docker (see §7.4 note) |

@@ -47,6 +47,29 @@ export TMPDIR=~/safresale-ml/tmp   # /tmp is a small RAM tmpfs; pip needs real d
 
 TF venv + GPU lib fix: see `docs/10-setup-guide.md` §7.1–§7.3.
 
+## Docker (teammates need no local ML setup)
+
+A ready image (`saferesale/ml:latest`) ships torch+ultralytics+roboflow. Build once, run anywhere with Docker + GPU
+(WSL2 / nvidia-container-toolkit). Datasets and weights never enter the image — they persist in the `ml_data` volume
+and ship between teammates via **GitHub Releases**.
+
+```powershell
+docker compose -f ml/docker-compose.yml build
+docker compose -f ml/docker-compose.yml run --rm ml          # GPU check (cuda: True)
+docker compose -f ml/docker-compose.yml run --rm smoke       # 1-epoch coco8 smoke test
+docker compose -f ml/docker-compose.yml run --rm train       # M1 baseline+yolo11n training
+docker compose -f ml/docker-compose.yml up lab           # jupyter at :8888
+```
+
+Publish weights → teammates run inference without any dataset (docs/10-setup-guide.md §8.3):
+
+```bash
+gh release create m1-v0.1 <best.pt> --repo SafeResale/SafeResale
+# teammate:
+gh release download m1-v0.1 --repo SafeResale/SafeResale
+docker compose -f ml/docker-compose.yml run --rm ml scripts/infer.py --weights <best.pt> --source <image>
+```
+
 ## Rules
 
 - Data, weights and training runs are git-ignored (see root `.gitignore`).

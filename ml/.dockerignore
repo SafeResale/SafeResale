@@ -1,0 +1,15 @@
+# build context is repo root (../), so ignore heavy/local stuff
+**/.venv
+**/venv
+**/__pycache__
+**/*.pyc
+**/runs
+**/data/datasets
+**/data/images
+**/data/labels
+**/weights
+**/*.pt
+**/*.onnx
+**/.git
+ml/work/
+datasets/

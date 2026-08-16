@@ -1,0 +1,99 @@
+# SafeResale ML services — docker compose (docs/10-setup-guide.md §8.2)
+#
+# GPU: Docker Desktop with WSL2 + NVIDIA Container Toolkit, or Linux + nvidia-container-toolkit.
+#   Docker Desktop: Settings → Resources → WSL Integration → GPU acceleration.
+#   Linux: sudo apt install nvidia-container-toolkit && sudo nvidia-ctk runtime configure --runtime=docker
+#
+# Common commands:
+#   build image:            docker compose -f ml/docker-compose.yml build
+#   verify GPU in container:docker compose -f ml/docker-compose.yml run --rm ml smoke
+#   smoke test (1 epoch):   docker compose -f ml/docker-compose.yml run --rm ml train-smoke
+#   train M1:               docker compose -f ml/docker-compose.yml run --rm ml train
+#   jupyter lab:            docker compose -f ml/docker-compose.yml up lab  (open http://localhost:8888)
+#
+# Data/weights/runs persist in named volumes + a bind mount for downloads, so nothing big is baked into the image.
+
+services:
+  ml:
+    build:
+      context: ..
+      dockerfile: ml/Dockerfile
+    image: saferesale/ml:latest
+    working_dir: /ml/m1_defect_detection
+    environment:
+      # Code/data live at /ml (in image + volumes); work root for runs/datasets.
+      M1_WORK_ROOT: /ml/work
+      WANDB_MODE: disabled
+      YOLO_CONFIG_DIR: /ml/work
+    volumes:
+      - ml_data:/ml/work                       # datasets, weights, runs (persist between runs)
+      - ../ml/m1_defect_detection/data:/ml/data/m1  # optional bind for manual data drops
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    command: ["-c", "import torch; print('torch', torch.__version__, '| cuda:', torch.cuda.is_available())"]
+
+  smoke:
+    build:
+      context: ..
+      dockerfile: ml/Dockerfile
+    image: saferesale/ml:latest
+    working_dir: /ml/m1_defect_detection
+    environment:
+      M1_WORK_ROOT: /ml/work
+      WANDB_MODE: disabled
+      YOLO_CONFIG_DIR: /ml/work
+    volumes:
+      - ml_data:/ml/work
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    command: ["scripts/smoke_test.py"]
+
+  train:
+    build:
+      context: ..
+      dockerfile: ml/Dockerfile
+    image: saferesale/ml:latest
+    working_dir: /ml/m1_defect_detection
+    environment:
+      M1_WORK_ROOT: /ml/work
+      WANDB_MODE: disabled
+      YOLO_CONFIG_DIR: /ml/work
+    volumes:
+      - ml_data:/ml/work
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    command: ["scripts/train.py", "--yaml", "configs/m1.yaml", "--epochs", "50"]
+
+  lab:
+    build:
+      context: ..
+      dockerfile: ml/Dockerfile
+    image: saferesale/ml:latest
+    working_dir: /ml/m1_defect_detection
+    environment:
+      M1_WORK_ROOT: /ml/work
+      WANDB_MODE: disabled
+      YOLO_CONFIG_DIR: /ml/work
+    volumes:
+      - ml_data:/ml/work
+    ports:
+      - "8888:8888"
+    command: ["-m", "jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--allow-root", "--no-browser"]
+
+volumes:
+  ml_data:
