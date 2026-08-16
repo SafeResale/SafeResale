@@ -1,0 +1,10 @@
+# CUDA build of torch is installed SEPARATELY first (see ml/README.md §Environment):
+#   pip install torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cu124
+ultralytics>=8.3.0
+opencv-python>=4.10
+roboflow>=1.1.39
+imagehash>=4.3
+numpy<2
+pandas
+matplotlib
+tqdm

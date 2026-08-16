@@ -10,7 +10,9 @@ Version 1.0 • August 2026
 | Android Studio | ✅ installed | Bundled JBR at `C:\Program Files\Android\Android Studio\jbr` (Java 25) |
 | Android SDK | ✅ installed | `%LOCALAPPDATA%\Android\Sdk`, platforms 31→37, build-tools, emulator, system-images |
 | Node.js | ✅ v24 + npm | For admin web (Next.js) |
-| Python | ✅ 3.14 | ML heavy deps may need 3.12 venv (see §7) |
+| Python | ✅ 3.14 (system) + 3.12 | ML heavy deps need 3.12 venv (see §7) |
+| WSL | ✅ Ubuntu, python3.12, GPU passthrough | ML runs in WSL (see §7) |
+| NVIDIA GPU | ✅ RTX 4050 (6 GB), driver 610.74 | CUDA training via WSL |
 | Docker | ❌ not installed | Optional reference compose only — dev does not require it |
 
 ## 2. Directory layout (target)
@@ -96,14 +98,74 @@ cd android-app
 .\gradlew.bat testDebugUnitTest # unit tests
 ```
 
-## 7. Python version note for ML
+## 7. ML environment (WSL — recommended)
 
-System Python is 3.14. `torch`, `ultralytics`, and TensorFlow may lack 3.14 wheels. For the ML/`ai-worker` track:
+**Why WSL?** TensorFlow has no GPU pip wheels for native Windows (CPU-only since TF 2.11), and torch/ultralytics/tensorflow
+need Python 3.12 (system Python is 3.14). WSL2 gives a Linux environment with GPU passthrough via the Windows NVIDIA driver.
+
+The team's confirmed layout:
+
+| Venv | Python | Stack | Owner models |
+|---|---|---|---|
+| `~/safresale-ml/.venv` (WSL) | 3.12 | torch 2.6.0+cu124, ultralytics, roboflow | **M1** defect detection |
+| `~/ml312` (WSL) | 3.12 | TensorFlow 2.21 + Keras 3 | **M2** condition, **M3** AI-image |
+
+Repo code stays on Windows (`C:\...\SafeResale`); data/weights/runs live inside WSL (`~/safresale-ml/`) to avoid slow
+`/mnt/c` I/O. Scripts are invoked through WSL.
+
+### 7.1 One-time setup
+
+```bash
+# 0) Windows: install Python 3.12 (once)
+winget install Python.Python.3.12
+
+# 1) Open WSL (Ubuntu 24.04). Check python3.12 exists and GPU passes through:
+wsl
+python3.12 --version
+nvidia-smi
+
+# 2) M1 venv (torch + YOLO). NOTE: TMPDIR must point at real disk — /tmp is a small RAM tmpfs (~4 GB).
+mkdir -p ~/safresale-ml/tmp
+python3.12 -m venv ~/safresale-ml/.venv
+export TMPDIR=~/safresale-ml/tmp
+~/safresale-ml/.venv/bin/pip install torch==2.6.0 torchvision==0.21.0 \
+  --index-url https://download.pytorch.org/whl/cu124
+~/safresale-ml/.venv/bin/pip install ultralytics opencv-python roboflow imagehash \
+  'numpy<2' pandas matplotlib tqdm
+
+# 3) TF venv (reuse existing ~/ml312 or create a copy)
+python3.12 -m venv ~/ml312
+~/ml312/bin/pip install tensorflow keras
+# GPU libs: TF 2.21 needs exact CUDA libs (already added to ~/ml312):
+~/ml312/bin/pip install nvidia-cudnn-cu12 nvidia-cublas-cu12
+```
+
+### 7.2 Verify GPU
+
+```bash
+~/safresale-ml/.venv/bin/python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+# True NVIDIA GeForce RTX 4050 Laptop GPU
+
+~/ml312/bin/python -c "import tensorflow as tf; print(tf.config.list_physical_devices('GPU'))"
+# [PhysicalDevice(name='/physical_device:GPU:0', device_type='GPU')]
+```
+
+### 7.3 TF GPU fix (persistent)
+
+TF's loader doesn't always find CUDA libs from site-packages. The fix was appended to `~/.bashrc`:
+
+```bash
+if [ -d "$HOME/ml312/lib/python3.12/site-packages/nvidia" ]; then
+  export LD_LIBRARY_PATH="$(echo $HOME/ml312/lib/python3.12/site-packages/nvidia/*/lib | tr ' ' ':'):$LD_LIBRARY_PATH"
+fi
+```
+
+Reload: `source ~/.bashrc`, then re-run the TF GPU check.
+
+### 7.4 Running M1 scripts from Windows PowerShell
 
 ```powershell
-py -3.12 -m venv ml\.venv312    # requires Python 3.12 installed (winget install Python.Python.3.12)
-ml\.venv312\Scripts\Activate.ps1
-pip install -r ml\requirements.txt
+wsl -- bash -lc "export TMPDIR=~/safresale-ml/tmp; ~/safresale-ml/.venv/bin/python ml/m1_defect_detection/scripts/train.py --yaml configs/m1.yaml"
 ```
 
 The backend's `VISION_PROVIDER=stub` keeps everything else running regardless of ML dependency availability.
@@ -120,4 +182,6 @@ Docker. This dev machine does not require it.
 | `java` not on PATH | Use Android Studio JBR: `$env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"` |
 | App can't reach backend | Use `10.0.2.2` for emulator or `adb reverse tcp:8000 tcp:8000` |
 | Mongo connection refused | Start the local MongoDB service (Services → MongoDB) |
-| 3.14 wheels missing for ML | Use the 3.12 venv in §7 |
+| 3.14 wheels missing for ML | Use the 3.12 WSL venvs in §7 |
+| pip: `No space left on device` during ML install | `/tmp` is a RAM tmpfs; set `export TMPDIR=~/safresale-ml/tmp` first |
+| TF reports CPU-only | Check `nvidia-cudnn-cu12`/`nvidia-cublas-cu12` installed + `.bashrc` LD_LIBRARY_PATH fix (§7.3) |

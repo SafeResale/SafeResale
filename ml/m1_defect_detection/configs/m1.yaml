@@ -1,0 +1,17 @@
+# M1 defect detection — YOLO data config
+# Point at your prepared dataset dir (YOLO layout: train/images, val/images + labels).
+# This file is generated/overwritten by download_dataset.py — edit only for manual datasets.
+path: data/datasets/defects   # relative to the m1_defect_detection dir
+train: train/images
+val: val/images
+test: test/images
+
+# Classes (from docs/08-ml-plan.md §3.1) — rename to match your dataset's actual classes.
+names:
+  0: scratch
+  1: crack
+  2: dent
+  3: screen_damage
+  4: port_damage
+  5: camera_damage
+  6: body_deformation

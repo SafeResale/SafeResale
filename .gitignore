@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ML artifacts (weights + datasets are too large for git)
+ml/**/data/
+ml/**/runs/
+ml/**/weights/
+ml/**/datasets/
+datasets/
+*.pt
+*.onnx
+*.torchscript
+
+# Environment
+.env
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+.next/
