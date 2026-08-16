@@ -102,8 +102,10 @@ def from_roboflow(args) -> None:
     dest = DATASETS_ROOT / args.name
     dest.mkdir(parents=True, exist_ok=True)
     print(f"Downloading {args.workspace}/{args.project}/v{args.version} -> {dest}")
-    # "folder" = classification layout: train/valid/test/<class>/... (Roboflow)
-    version.download("folder", location=str(dest))
+    # "folder" = classification layout: train/valid/test/<class>/... (Roboflow).
+    # SDK 1.4+ short-circuits (returns without downloading) if `location` already
+    # exists and overwrite=False - we pre-create dest, so force overwrite=True.
+    version.download("folder", location=str(dest), overwrite=True)
     _flatten_nested(dest)
     _print_dataset_layout(dest)
 
