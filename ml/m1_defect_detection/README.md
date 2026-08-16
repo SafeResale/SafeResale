@@ -2,9 +2,11 @@
 
 **Owner:** rahulpandiyan + veereshkp · GitHub issue #1 · docs/08-ml-plan.md §2/M1, §3.1, §4
 
-Detect localized defects in product photos: scratch, crack, dent, screen damage, port damage,
-camera damage, body deformation. Outputs feed the physical-risk component of the risk engine
-via the `VisionProvider` (`VISION_PROVIDER=real`).
+Detect localized defects in product photos. M1 v1 targets the **core 14 classes** (docs/08-ml-plan.md §3.1):
+scratch, crack, dent, screen_damage, glass_damage, camera_damage, port_damage, casing_damage,
+body_deformation, paint_damage, chip, rust, corrosion, water_damage — across 8 categories (phones,
+laptops, consumer electronics, cars, bikes, home appliances, gaming devices, cameras).
+Outputs feed the physical-risk component of the risk engine via the `VisionProvider` (`VISION_PROVIDER=real`).
 
 ## Env
 
@@ -17,7 +19,9 @@ Runs in WSL venv `~/safresale-ml/.venv` (torch 2.6.0+cu124). See `docs/10-setup-
 
 ## Dataset (docs/08-ml-plan.md §3.1)
 
-1. Pick a license-permitted public defect set (Roboflow Universe: crack/scratch/dent; document licensing + URL).
+1. Pick license-permitted public defect sets (Roboflow Universe, Kaggle, MVTec AD/2, Hugging Face,
+   Crack-Seg — see docs/08-ml-plan.md §3.1). **Only train classes with ≥100 annotated instances.**
+   Document licensing + URL for every dataset.
 2. Download to YOLO format:
    ```bash
    export ROBOFLOW_API_KEY=your_key

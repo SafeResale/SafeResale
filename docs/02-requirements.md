@@ -63,7 +63,7 @@ Each requirement has an acceptance criterion so it can be objectively verified. 
 |---|---|---|---|
 | R-VISION-01 | M | Vision runs behind a pluggable provider interface. | Switching provider via config changes results without code changes. |
 | R-VISION-02 | M | Stub provider returns deterministic, clearly-labeled outputs. | `run-vision` returns valid structured output; `simulated: true` flag set. |
-| R-VISION-03 | S | Real provider (YOLO11) returns boxes for classes: scratch, crack, dent, screen damage, port damage, camera damage, body deformation. | Provider returns `{class, bbox, confidence, severity, angle}` per detection. |
+| R-VISION-03 | S | Real provider (YOLO11) returns boxes for the core defect classes (14: scratch, crack, dent, screen_damage, glass_damage, camera_damage, port_damage, casing_damage, body_deformation, paint_damage, chip, rust, corrosion, water_damage — see docs/08-ml-plan.md §3.1). | Provider returns `{class, bbox, confidence, severity, angle}` per detection. |
 | R-VISION-04 | S | Condition classifier returns Good/Moderate/Defective with probabilities. | `condition_predictions` doc stores class probabilities + model version. |
 | R-VISION-05 | M | Detections merged across the eight views (duplicate/overlap suppression). | Same physical defect appearing in multiple angles yields one merged entry. |
 | R-VISION-06 | M | Annotated evidence (boxes overlaid) stored for admin review. | Admin listing detail renders annotations. |

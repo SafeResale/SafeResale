@@ -10,8 +10,10 @@ Downloads into ~/safresale-ml/m1/data/datasets/<name> (WSL home, not /mnt/c) so 
 reads fast and paths stay clean. Override root with M1_WORK_ROOT.
 
 Public defect datasets to consider (from docs/08-ml-plan.md §3.1):
-  - Roboflow Universe: "surface-crack-detection", "crack-detection", "scratch-detection"
-  - Phone/device specific damage sets (document licensing + URL in the report).
+  - Roboflow Universe: "surface-crack-detection", "crack-detection", "scratch-detection",
+    phone-screen-damage, car-damage sets
+  - Kaggle / Hugging Face / MVTec AD(2) / Crack-Seg — see docs/08-ml-plan.md §3.1
+  - Only train classes with >=100 annotated instances; document licensing + URL per dataset.
 """
 import argparse
 import os

@@ -111,7 +111,7 @@ YOLO boxes (provider output), merged across views.
 | `_id` | ObjectId | |
 | `listing_id` | ObjectId | indexed |
 | `image_id` | ObjectId? | source image (raw) |
-| `class` | string | scratch/crack/dent/screen_damage/port_damage/camera_damage/body_deformation |
+| `class` | string | core defect class (docs/08-ml-plan.md §3.1): scratch/crack/dent/screen_damage/glass_damage/camera_damage/port_damage/casing_damage/body_deformation/paint_damage/chip/rust/corrosion/water_damage |
 | `bbox` | [number×4] | xywh, normalized |
 | `confidence` | number | |
 | `severity` | string | low \| medium \| high |

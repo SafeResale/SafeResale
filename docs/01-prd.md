@@ -166,7 +166,7 @@ Detailed component view: `03-architecture.md`.
 - Quality score retained as evidence.
 
 ### 10.2 Defect Detection (pluggable provider)
-- Primary classes: scratch, crack, dent, screen damage, port damage, camera damage, body deformation.
+- Core classes: scratch, crack, dent, screen damage, glass damage, camera damage, port damage, casing damage, body deformation, paint damage, chip, rust, corrosion, water damage (full vocabulary + category extensions in docs/08-ml-plan.md §3.1).
 - Inference over all eight views; bounding boxes, confidence, severity, capture angle.
 - Merge repeated detections across views.
 - Store annotated evidence for admin review.

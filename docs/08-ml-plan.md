@@ -40,10 +40,27 @@ Coordination rules:
 ## 3. Dataset Plan
 
 ### 3.1 Defect detection
-- Primary classes: scratch, crack, dent, screen damage, port damage, camera damage, body deformation.
-- Sources (license-permitting): public damage/defect datasets (e.g., Roboflow Universe crack/scratch/dent sets),
-  public car/mobile damage datasets. Document licensing + URL in the report.
-- If licensing blocks public data: build a small internal dataset from phone/device photos; document annotation process.
+
+**Product scope (8 categories):** mobile/smartphone, laptop/computer, consumer electronics, cars,
+bikes/motorcycles, home appliances, gaming devices, cameras.
+
+**Shared defect vocabulary (29 classes).**
+- **Core — M1 target (14 classes):** box-localizable, cross-category, best public-data support:
+  scratch, crack, dent, screen_damage, glass_damage, camera_damage, port_damage, casing_damage,
+  body_deformation, paint_damage, chip, rust, corrosion, water_damage.
+- **Extensions — category-specific or data-gated (15 classes):** stain, discoloration, wear,
+  broken_part, missing_part, button_damage, keyboard_damage, hinge_damage, cable_damage,
+  connector_damage, tire_damage, wheel_damage, mirror_damage, light_damage, bumper_damage.
+
+Rules:
+- Train only classes with enough annotated instances (**target ≥100 boxes/class**; drop or defer otherwise).
+  Never claim support for the full vocabulary without data backing each class.
+- stain / discoloration / wear are area-level → prefer M2 condition classification over box detection.
+- Sources (license-permitting): Roboflow Universe (defect/damage sets), Kaggle (camera damage/defects),
+  MVTec AD + MVTec AD 2 (industrial anomalies), Hugging Face (synthetic-mvtec-ad,
+  industrial-defect-dataset, Inspect-Anything, defect/crack-detection sets), Crack-Seg (segment/crack),
+  Papers With Code, Google Dataset Search. Document URL + license per dataset in the report.
+- If licensing blocks public data: build a small internal device-photo set; document annotation process.
 - Annotations: YOLO format (bounding boxes per class). Splits: 70/15/15 train/val/test; **frozen test set never used in training**.
 
 ### 3.2 Condition classification

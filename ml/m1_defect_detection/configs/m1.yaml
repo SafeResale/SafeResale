@@ -6,12 +6,24 @@ train: train/images
 val: val/images
 test: test/images
 
-# Classes (from docs/08-ml-plan.md §3.1) — rename to match your dataset's actual classes.
+# Classes — core set (14, from docs/08-ml-plan.md §3.1). Cross-category + box-localizable.
+# Train ONLY classes with ≥100 annotated instances. Category-specific extensions (15) are
+# excluded from M1 v1: stain, discoloration, wear, broken_part, missing_part, button_damage,
+# keyboard_damage, hinge_damage, cable_damage, connector_damage, tire_damage, wheel_damage,
+# mirror_damage, light_damage, bumper_damage.
+# Rename to match your dataset's actual classes (keep order consistent with labels/*.txt).
 names:
   0: scratch
   1: crack
   2: dent
   3: screen_damage
-  4: port_damage
+  4: glass_damage
   5: camera_damage
-  6: body_deformation
+  6: port_damage
+  7: casing_damage
+  8: body_deformation
+  9: paint_damage
+  10: chip
+  11: rust
+  12: corrosion
+  13: water_damage
