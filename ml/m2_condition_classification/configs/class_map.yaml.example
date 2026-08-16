@@ -1,0 +1,24 @@
+# M2 class remap for scripts/prepare_dataset.py — copy to class_map.yaml and edit.
+# Maps source labels found in a downloaded dataset -> the 3 target classes
+# (docs/08-ml-plan.md §3.2). Source labels not listed anywhere are dropped.
+# Source names are matched case-insensitively (spaces -> underscores ignored).
+#
+# Typical source labels: like_new, good, fair, used, damaged, broken, cracked_screen, ...
+# TODO: fill with the actual class names of your chosen dataset (inspect its folder names).
+good:
+  - like_new
+  - good
+  - undamaged
+
+moderate:
+  - fair
+  - moderate
+  - used
+  - minor_damage
+
+defective:
+  - defective
+  - damaged
+  - broken
+  - cracked_screen
+  - severely_damaged

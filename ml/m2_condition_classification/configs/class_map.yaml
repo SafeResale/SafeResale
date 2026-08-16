@@ -1,0 +1,17 @@
+# M2 condition dataset (docs/08-ml-plan.md §3.2) - two combined sources mapped to
+# good / moderate / defective. Unmapped source labels are dropped by prepare_dataset.py.
+#
+# 1) good + defective: "Damaged vs good packages"
+#    https://universe.roboflow.com/aadhavs-first-workspace/damaged-vs-good-packages
+#    Classification, v1, 581 images, classes damaged / intact
+#    License: CC BY 4.0 (commercial OK - cite: dataset BibTeX on the Roboflow page)
+#
+# 2) moderate: "Cracked Mobile Screen Dataset"
+#    https://www.kaggle.com/datasets/dataclusterlabs/cracked-screen-dataset
+#    Single class: cracked screens (download with --as-class cracked-screen)
+#    License: CC0 (Public Domain) - commercial OK
+#
+# Source labels are normalized (lowercase, spaces -> underscores) before lookup.
+good: [intact]
+moderate: [cracked-screen]
+defective: [damaged]

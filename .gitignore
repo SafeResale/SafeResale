@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
 
 # ML artifacts (weights + datasets are too large for git)
 ml/**/data/
@@ -13,6 +16,10 @@ datasets/
 *.pt
 *.onnx
 *.torchscript
+*.h5
+*.keras
+*.tflite
+*.safetensors
 
 # Environment
 .env

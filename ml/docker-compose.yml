@@ -95,5 +95,71 @@ services:
       - "8888:8888"
     command: ["-m", "jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--allow-root", "--no-browser"]
 
+  # ---- M2 condition classification (TensorFlow / Keras 3) ----
+  # Image is built from ml/Dockerfile.m2 (official tensorflow/tensorflow:2.21.0-gpu).
+  # Data/weights/runs persist in ml_data_m2 (never baked into the image).
+
+  m2:
+    build:
+      context: ..
+      dockerfile: ml/Dockerfile.m2
+    image: saferesale/ml-m2:latest
+    working_dir: /ml/m2_condition_classification
+    environment:
+      M2_WORK_ROOT: /ml/work
+      WANDB_MODE: disabled
+    volumes:
+      - ml_data_m2:/ml/work                       # datasets, weights, runs (persist between runs)
+      - ../ml/m2_condition_classification/data:/ml/data/m2  # optional bind for manual data drops
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    command: ["-c", "import tensorflow as tf; gpus = tf.config.list_physical_devices('GPU'); print('tensorflow', tf.__version__, '| gpu:', len(gpus) > 0, '|', [g.name for g in gpus])"]
+
+  m2-smoke:
+    build:
+      context: ..
+      dockerfile: ml/Dockerfile.m2
+    image: saferesale/ml-m2:latest
+    working_dir: /ml/m2_condition_classification
+    environment:
+      M2_WORK_ROOT: /ml/work
+      WANDB_MODE: disabled
+    volumes:
+      - ml_data_m2:/ml/work
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    command: ["scripts/smoke_test.py"]
+
+  m2-train:
+    build:
+      context: ..
+      dockerfile: ml/Dockerfile.m2
+    image: saferesale/ml-m2:latest
+    working_dir: /ml/m2_condition_classification
+    environment:
+      M2_WORK_ROOT: /ml/work
+      WANDB_MODE: disabled
+    volumes:
+      - ml_data_m2:/ml/work
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    command: ["scripts/train.py", "--yaml", "configs/m2.yaml", "--epochs", "50"]
+
 volumes:
   ml_data:
+  ml_data_m2:

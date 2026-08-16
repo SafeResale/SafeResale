@@ -1,0 +1,29 @@
+# M2 condition classification — Keras 3 / TensorFlow config (docs/08-ml-plan.md §5)
+#
+# `dataset` names the prepared manifest: $M2_WORK_ROOT/data/condition/<dataset>/splits.json
+# (produced by scripts/prepare_dataset.py). Set it to the name you used with --out.
+dataset: my_condition_set   # TODO: point at your prepared manifest (e.g. condition_phones)
+
+# Classes (docs/01-prd.md §10.3 / docs/08-ml-plan.md §3.2). Order = index order.
+classes: [good, moderate, defective]
+
+# Model version stamped into every checkpoint + metrics (persisted per docs/05-data-model.md §2.7).
+version: v0.1
+
+# Data / training
+image_size: 224
+batch_size: 32
+epochs: 50
+seed: 42
+learning_rate: 0.001        # head training on frozen base
+finetune_lr: 0.0001         # full fine-tune
+freeze_epochs: 2            # head-only epochs before unfreezing the base
+patience: 10                # early stopping on val_accuracy
+
+# Baseline vs improved — SAME splits/augmentation/seed for both (docs/08-ml-plan.md §5).
+# Lightweight = MobileNetV3-Small, stronger = EfficientNetV2-S.
+models:
+  - backbone: mobilenetv3small
+    tag: baseline-m3small
+  - backbone: efficientnetv2s
+    tag: improved-effv2s
