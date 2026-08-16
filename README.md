@@ -8,6 +8,9 @@ and a verification badge.
 
 **Status:** Requirements phase (v1.0, August 2026). No production code yet.
 
+**Repo:** `SafeResale/SafeResale` (GitHub org `SafeResale`) · **Team:** `SafeResale/models`
+(rahulpandiyan + veereshkp → M1–M3 · kavya280229 + thanv → M4–M6 · M7/M8 if time permits — see `docs/08-ml-plan.md` §2.1).
+
 ## What this repo contains
 
 | Path | Purpose |

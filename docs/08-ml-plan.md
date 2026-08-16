@@ -11,15 +11,31 @@ Version 1.0 • August 2026
 
 ## 2. Components
 
-| Component | Approach | Status in MVP |
+| ID | Component | Approach | Status in MVP |
+|---|---|---|---|
+| M1 | Defect detection | Ultralytics YOLO11 (+ YOLOv8 baseline) | Pluggable — stub default |
+| M2 | Condition classification | Keras 3 / TensorFlow, EfficientNetV2 or MobileNetV3 | Pluggable — stub default |
+| M3 | AI-generated-image detection | authenticity provider (fine-tuned classifier) | Pluggable — stub default |
+| M4 | Price anomaly | category/brand/model median + deviation ratio | **Real, from day 1** |
+| M5 | Seller anomaly | scikit-learn Isolation Forest | **Real, from day 1** |
+| M6 | Image quality | OpenCV (Laplacian variance, mean luminance, saturated-pixel ratio, perceptual hash) | **Real, from day 1** |
+| M7 | Duplicate images | perceptual hash (imagehash) | **Real, from day 1** |
+| M8 | Repeated descriptions | TF-IDF + cosine similarity (or sentence embeddings) | **Real, from day 1** |
+
+### 2.1 Model ownership (GitHub team `SafeResale/models`)
+
+| Models | Owners | Notes |
 |---|---|---|
-| Image quality | OpenCV (Laplacian variance, mean luminance, saturated-pixel ratio, perceptual hash) | **Real, from day 1** |
-| Defect detection | Ultralytics YOLO11 (+ YOLOv8 baseline) | Pluggable — stub default |
-| Condition classification | Keras 3 / TensorFlow, EfficientNetV2 or MobileNetV3 | Pluggable — stub default |
-| Seller anomaly | scikit-learn Isolation Forest | **Real, from day 1** |
-| Duplicate images | perceptual hash (imagehash) | **Real, from day 1** |
-| Repeated descriptions | TF-IDF + cosine similarity (or sentence embeddings) | **Real, from day 1** |
-| Price anomaly | category/brand/model median + deviation ratio | **Real, from day 1** |
+| M1, M2, M3 | rahulpandiyan + veereshkp | The three pluggable deep-learning models (defect detection, condition classification, AI-image detection) |
+| M4, M5, M6 | kavya280229 + thanv (pending join) | Price anomaly, seller anomaly, image quality |
+| M7, M8 | Anyone — if time permits | Duplicate images, repeated descriptions |
+
+Coordination rules:
+- Every model owner works on a **branch** of `SafeResale/SafeResale` (single repo, one source of truth).
+- Every pluggable model keeps the **stub implementation green** until its real weights are swapped via
+  `VISION_PROVIDER` / `AUTHENTICITY_PROVIDER` config — never a blocker for the app pipeline.
+- Results land in `model_metrics`; only **measured** numbers are reported (academic-integrity rule).
+- M2 (condition) labels derive from M1 (defect) annotations — M2 owner bootstraps with a public dataset meanwhile.
 
 ## 3. Dataset Plan
 
