@@ -6,8 +6,8 @@
 #
 # Common commands:
 #   build image:            docker compose -f ml/docker-compose.yml build
-#   verify GPU in container:docker compose -f ml/docker-compose.yml run --rm ml smoke
-#   smoke test (1 epoch):   docker compose -f ml/docker-compose.yml run --rm ml train-smoke
+#   verify GPU in container:docker compose -f ml/docker-compose.yml run --rm ml
+#   smoke test (1 epoch):   docker compose -f ml/docker-compose.yml run --rm smoke
 #   train M1:               docker compose -f ml/docker-compose.yml run --rm ml train
 #   jupyter lab:            docker compose -f ml/docker-compose.yml up lab  (open http://localhost:8888)
 #

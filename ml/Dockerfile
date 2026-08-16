@@ -16,8 +16,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     ML_HOME=/ml
 
 # opencv/ultralytics runtime libs
+# NOTE: libgl1-mesa-glx is not available on Debian bookworm (python:3.12-slim); libgl1 is the modern equivalent.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        libgl1 libglib2.0-0 libgomp1 libgl1-mesa-glx \
+        libgl1 libglib2.0-0 libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /ml
