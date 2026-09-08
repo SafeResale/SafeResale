@@ -1,9 +1,19 @@
 """Merge multiple downloaded defect datasets into one YOLO set aligned to the core-14 names.
 
-Reads each source's YOLO layout (train/val/test + images/labels) and a per-source class map
-(source class name -> core class name, or empty/null to skip). Rewrites label class ids,
-copies images, reports per-class instance counts, and writes a merged data.yaml that lists
-only classes with >= min_instances boxes (core-14 from docs/08-ml-plan.md §3.1).
+Reads each source's layout (YOLO train/val/test + images/labels, or Pascal VOC XML) and a
+per-source class map (source class name -> core class name, or empty/null to skip). Rewrites
+label class ids, copies images, reports per-class instance counts, and writes a merged
+data.yaml that lists only classes with >= min_instances boxes (core-14 from §3.1).
+
+Config keys per source:
+  name            short name for logging
+  path            dir under M1_WORK_ROOT unless absolute
+  format          "yolo" (default) | "voc"
+  images_dir      for voc: dir of images (relative to path)
+  annotations_dir for voc: dir of Pascal VOC .xml files (relative to path)
+  class_map       source class name -> core class name ("" to drop)
+
+VOC sources have no split folders, so images are split 70/15/15 deterministically by filename.
 
 Usage:
   python scripts/prepare_dataset.py [--config configs/dataset_merge.yaml]
@@ -11,8 +21,10 @@ Usage:
 The config is generated/edited per acquisition pass (see configs/dataset_merge.yaml.example).
 """
 import argparse
+import hashlib
 import shutil
 import sys
+import xml.etree.ElementTree as ET
 from collections import Counter
 from pathlib import Path
 
@@ -31,6 +43,71 @@ MIN_INSTANCES = 100
 
 def normalize(name: str) -> str:
     return name.strip().lower().replace(" ", "_").replace("-", "_")
+
+
+def voc_split(img_stem: str) -> str:
+    """Deterministic 70/15/15 split from filename hash (voc sources have no splits)."""
+    bucket = int(hashlib.sha256(img_stem.encode()).hexdigest(), 16) % 100
+    if bucket < 70:
+        return "train"
+    if bucket < 85:
+        return "val"
+    return "test"
+
+
+def merge_voc_source(src_dir: Path, images_dir: str, ann_dir: str,
+                     class_map: dict[str, str], out_dir: Path, stats: Counter) -> None:
+    """Convert Pascal VOC XML + images into YOLO labels under out_dir/<split>/."""
+    img_dir = src_dir / images_dir
+    xml_dir = src_dir / ann_dir
+    for xml_path in sorted(xml_dir.glob("*.xml")):
+        root = ET.parse(xml_path).getroot()
+        size = root.find("size")
+        if size is None:
+            continue
+        width = float(size.find("width").text)
+        height = float(size.find("height").text)
+        if width <= 0 or height <= 0:
+            continue
+        img_stem = xml_path.stem
+        img_path = img_dir / f"{img_stem}.jpg"
+        if not img_path.exists():
+            img_path = img_dir / f"{img_stem}.JPG"
+        if not img_path.exists():
+            print(f"  [voc] missing image for {xml_path.name} — skipped")
+            continue
+        split = voc_split(img_stem)
+        out_img = out_dir / split / "images" / img_path.name
+        shutil.copy2(img_path, out_img)
+        kept = []
+        for obj in root.findall("object"):
+            name = obj.find("name")
+            bb = obj.find("bndbox")
+            if name is None or bb is None:
+                continue
+            src_cls = name.text
+            target = class_map.get(normalize(src_cls), class_map.get(src_cls))
+            if not target:
+                continue
+            xmin = float(bb.find("xmin").text)
+            ymin = float(bb.find("ymin").text)
+            xmax = float(bb.find("xmax").text)
+            ymax = float(bb.find("ymax").text)
+            if xmax <= xmin or ymax <= ymin:
+                continue
+            xc = ((xmin + xmax) / 2) / width
+            yc = ((ymin + ymax) / 2) / height
+            bw = (xmax - xmin) / width
+            bh = (ymax - ymin) / height
+            if not (0 <= xc <= 1 and 0 <= yc <= 1):
+                continue
+            target_id = CORE_CLASSES.index(target)
+            stats[target] += 1
+            kept.append(f"{target_id} {xc:.6f} {yc:.6f} {bw:.6f} {bh:.6f}\n")
+        if kept:
+            out_lab = out_dir / split / "labels" / f"{img_path.stem}.txt"
+            with open(out_lab, "w") as f:
+                f.writelines(kept)
 
 
 def load_source_names(data_yaml: Path | None) -> dict[int, str]:
@@ -102,8 +179,15 @@ def main() -> None:
         src_dir = Path(src["path"])
         if not src_dir.is_absolute():
             src_dir = WORK_ROOT / src_dir
-        src_names = load_source_names(src_dir / "data.yaml")
         class_map = {normalize(k): v for k, v in (src.get("class_map") or {}).items()}
+        fmt = (src.get("format") or "yolo").lower()
+        if fmt == "voc":
+            images_dir = src.get("images_dir") or "images"
+            ann_dir = src.get("annotations_dir") or "annotations"
+            print(f"[{src['name']}] Pascal VOC source -> {images_dir} + {ann_dir}")
+            merge_voc_source(src_dir, images_dir, ann_dir, class_map, out_dir, stats)
+            continue
+        src_names = load_source_names(src_dir / "data.yaml")
         if not src_names:
             print(f"[{src['name']}] no data.yaml — using raw class ids {sorted(class_map)}")
         else:

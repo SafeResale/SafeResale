@@ -1,0 +1,10 @@
+path: /home/irahu/safresale-ml/m1/data/datasets/defects
+train: train/images
+val: val/images
+test: test/images
+names:
+  0: scratch
+  1: crack
+  2: dent
+  3: screen_damage
+  4: glass_damage

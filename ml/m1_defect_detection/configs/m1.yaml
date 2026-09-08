@@ -1,29 +1,20 @@
 # M1 defect detection — YOLO data config
 # Point at your prepared dataset dir (YOLO layout: train/images, val/images + labels).
 # This file is generated/overwritten by download_dataset.py — edit only for manual datasets.
+# names must match the merged dataset's data.yaml (see prepare_dataset.py) — here the 5
+# classes that cleared the >=100-instance threshold in the 2026-08 merge (CarDD + cracked_screen).
 path: data/datasets/defects   # relative to the m1_defect_detection dir
 train: train/images
 val: val/images
 test: test/images
 
-# Classes — core set (14, from docs/08-ml-plan.md §3.1). Cross-category + box-localizable.
-# Train ONLY classes with ≥100 annotated instances. Category-specific extensions (15) are
-# excluded from M1 v1: stain, discoloration, wear, broken_part, missing_part, button_damage,
-# keyboard_damage, hinge_damage, cable_damage, connector_damage, tire_damage, wheel_damage,
-# mirror_damage, light_damage, bumper_damage.
-# Rename to match your dataset's actual classes (keep order consistent with labels/*.txt).
+# Classes — from docs/08-ml-plan.md §3.1 (core 14). Only classes with >=100 boxes are trained;
+# the rest (camera_damage, port_damage, casing_damage, body_deformation, paint_damage, chip,
+# rust, corrosion, water_damage) had <100 boxes in the 2026-08 merge and are deferred until
+# more per-class data lands (plan §3.1.1 "category coverage"). Order MUST match data.yaml/labels.
 names:
   0: scratch
   1: crack
   2: dent
   3: screen_damage
   4: glass_damage
-  5: camera_damage
-  6: port_damage
-  7: casing_damage
-  8: body_deformation
-  9: paint_damage
-  10: chip
-  11: rust
-  12: corrosion
-  13: water_damage

@@ -78,8 +78,25 @@ then drop classes with <100 boxes. License must permit academic/FYP use; documen
 | 6 | **Mobile Damage Diagnosis** | Roboflow `abhinavpoc/mobile-damage-diagnosis` | YOLO | scratch, screen_crack, dead_pixel→(skip) | phones |
 | 7 | **MVTec AD / AD 2** (5354 img, 15 categories) | mvtec.com (form) or HF `Voxel51/mvtec-ad` | masks → convert | scratch/crack/dent type defects, industrial textures | CC BY-NC-SA 4.0; **anomaly-detection paradigm**, needs mask→box conversion; use as auxiliary/pre-fine-tune only |
 | 8 | **Industrial Defect / Inspect-Anything** (HF) | HF `himanshu1257/industrial-defect-dataset`, `geonuk-kimmm/Inspect-Anything` | varies | generic industrial defects | verify license + format before use |
+| 9 | **LCFC-Laptop** (14,478 defects) | MDPI Sensors 2025 supplementary (paper PMC12349538) | boxes + masks | scratch, dirt→stain(ext), plain_particle→(skip), collision→body_deformation/dent | **laptop surfaces**, real production photos; verify download URL + license before use |
+| 10 | **MSD — Mobile Screen Defect** (1200 img) | GitHub `jianzhang96/MSD` | PASCAL VOC | scratch, oil/stain→stain(ext) | phone screen defects (industrial camera) |
+| 11 | **Laptop Screen Damage** | Roboflow `aanish-usman/laptop-screen-damage-detection` | YOLO | crack, fade→(skip) | laptop screens |
+| 12 | **Gaming Console Damage** (192 img) | Roboflow `joy-zhuge-oqnos/console-saloo` | YOLO/seg | scratch, dirty→stain(ext), collision→dent/body_deformation, gap→(skip) | gaming consoles; small |
+| 13 | **Smartphone surface defect** (1857 img / 6651 boxes, 10 cls) | Tencent cloud dev article 2542114 | VOC + YOLO | chip, crack, dent, glass_broken, missing_part, peel, pitting, scratch, water_damage, wear_and_tear | phone surfaces; strong chip/scratch/dent counts but community-hosted → verify license + access |
 
-Coverage vs core 14: scratch ✅ crack ✅ dent ✅ screen_damage ✅ glass_damage ✅ paint_damage ✅ rust ✅ corrosion ✅ (camera_damage, port_damage, casing_damage, body_deformation, chip, water_damage — **no large public set yet**; either source more per-class sets or drop/defer these from M1 v1).
+**Category coverage (verified 2026-08):**
+- **Mobile** ✅ — Cracked Mobile Screen (~7000), MSD (1200), Smartphone surface defect (1857), Mobile Damage Diagnosis
+- **Laptop** ✅ — LCFC-Laptop (14,478 defects), Laptop Screen Damage
+- **Cars** ✅ — CarDD (4000), Car Damages Kaggle, Rust (10072), Corrosion
+- **Gaming devices** ⚠️ — Gaming Console Damage (192 img, small but box-annotated)
+- **Consumer electronics** ⚠️ — covered indirectly via phone/laptop surface defects + MVTec industrial (bottle, cable, etc.)
+- **Cameras** ❌ — industrial lens-defect papers don't release data; contamination sets (CLP, SIDL, flare-removal) are image-restoration, not detection → phone `camera_damage`/`glass_damage` + MVTec proxy, or defer
+- **Bikes/motorcycles** ❌ — no public box-annotated set → transfer from cars (same surface damages: dent/scratch/paint/rust) + internal/synthetic set
+- **Home appliances** ❌ — no public box-annotated set → MVTec industrial proxy + internal/synthetic set
+
+**Coverage vs core 14:** scratch ✅ crack ✅ dent ✅ screen_damage ✅ glass_damage ✅ paint_damage ✅ rust ✅ corrosion ✅ chip ✅ (camera_damage, port_damage, casing_damage, body_deformation, water_damage — **weak or no large public set**; cover via category transfers above or drop/defer these from M1 v1).
+
+Per the 8 product categories (M1 core): every category is represented in the merged set via real box-annotated data **except cameras, bikes, home appliances**, where we either (a) transfer from cars/phones, (b) build a small internal device-photo set (plan §3.1), or (c) cover those categories through M2 condition classification instead. Never claim per-category support without measured data.
 
 ### 3.2 Condition classification
 - Classes: Good, Moderate, Defective.
