@@ -103,6 +103,18 @@ Per the 8 product categories (M1 core): every category is represented in the mer
 - Labels derived from annotated defect evidence + expert labels; balance classes.
 - Augmentation: flip, rotate, brightness/contrast, blur, JPEG noise (no fabrication of labels).
 
+#### 3.2.1 Datasets (M2 training)
+
+| # | Dataset | Source | Classes Used | License |
+|---|---------|--------|-------------|---------|
+| 1 | damaged-vs-good-packages | Roboflow `digital-imaging/damaged-vs-good-packages` | `intact` → good, `damaged` → defective | CC BY 4.0 (581 images) |
+| 2 | cracked-screen-dataset | Kaggle `dataclusterlabs/cracked-screen-dataset` | `cracked-screen` → moderate | CC0 Public Domain (~900 MB) |
+| 3 | car-damages-kaggle | Roboflow `ai-proyect/car-damages-kaggle` | `scratch`, `dent`, `corrosion`, `paint_damage` | Roboflow Universe license (YOLO format, 8 classes) |
+
+**Combination strategy:** `scripts/combine_datasets.py` merges multiple Roboflow/Kaggle downloads into one class-folder dataset (`data/combined/`). `scripts/prepare_dataset.py` applies `configs/class_map.yaml` to map source classes to the 3 target classes (good/moderate/defective) and splits 70/15/15 with stratification.
+
+**Known limitation:** Training data consists of packaged goods (cardboard, boxes) and cracked phone screens. Real marketplace product photos (actual phones, laptops, etc.) differ significantly. Production accuracy requires fine-tuning on 100–200 domain-specific images per class.
+
 ### 3.3 Image quality set
 - Manually labeled set: blurry / over-exposed / under-exposed / glare / good → measure reject/accept accuracy.
 
