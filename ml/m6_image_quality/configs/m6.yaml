@@ -1,0 +1,10 @@
+# M6 image quality thresholds.
+# Loaded by scripts/common.py; fallback defaults are baked in when this file is missing.
+# DO NOT change these values without re-running the tests — test_quality.py asserts exact
+# scores derived from them (see ml/README.md academic-integrity rule).
+quality:
+  blur_threshold: 250.0
+  underexposed_luminance: 85
+  overexposed_luminance: 160
+  glare_ratio_threshold: 0.059
+  duplicate_hash_distance_threshold: 8
