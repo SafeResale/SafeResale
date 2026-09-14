@@ -1,0 +1,19 @@
+services:
+  mongo:
+    image: mongo:7
+    ports: ["27017:27017"]
+    volumes: [mongo_data:/data/db]
+  backend:
+    build: ../backend
+    ports: ["8000:8000"]
+    env_file: ../backend/.env
+    depends_on: [mongo]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+  admin:
+    build: ../web/admin
+    ports: ["3000:3000"]
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+    depends_on: [backend]
+volumes:
+  mongo_data:

@@ -1,0 +1,83 @@
+{
+  "device": {
+    "model": "Samsung Tab A8",
+    "os_version": "Android 12",
+    "sdk": 31
+  },
+  "category": "tablet",
+  "skipped": false,
+  "tests": [
+    {
+      "id": "battery",
+      "status": "passed",
+      "value": 82,
+      "unit": "%",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    },
+    {
+      "id": "display",
+      "status": "passed",
+      "value": 1,
+      "unit": "ok",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    },
+    {
+      "id": "camera",
+      "status": "passed",
+      "value": 1,
+      "unit": "ok",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    },
+    {
+      "id": "microphone",
+      "status": "passed",
+      "value": 0.5,
+      "unit": "V",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    },
+    {
+      "id": "speaker",
+      "status": "passed",
+      "value": 1,
+      "unit": "ok",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    },
+    {
+      "id": "touch",
+      "status": "passed",
+      "value": 240,
+      "unit": "cells",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    },
+    {
+      "id": "wifi",
+      "status": "passed",
+      "value": 1,
+      "unit": "connected",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    },
+    {
+      "id": "bluetooth",
+      "status": "passed",
+      "value": 1,
+      "unit": "connected",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    },
+    {
+      "id": "gps",
+      "status": "passed",
+      "value": 1,
+      "unit": "locked",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    }
+  ]
+}

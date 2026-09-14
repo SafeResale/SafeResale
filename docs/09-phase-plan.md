@@ -89,6 +89,17 @@ ML work is a parallel track (Phase ML) — it never blocks the app pipeline beca
 - Full E2E: seller captures → verification → admin reviews/blocks → buyer sees badge/report.
 - Playwright admin flows pass.
 
+## 7b. Phase 6b — Marketplace Polish (v1.1, from eClassify)
+
+**Deliverables**
+- Favorites/wishlist (offline queue, sync on login).
+- Listing-tied chat + price offers + block/unblock.
+- Full-text search + filters (category/sub-category, price, posted_since, radius/lat/lng, custom fields) + map view.
+- Notifications (in-app + FCM on chat/offer/verification), verified-transaction reviews (gate escrow=released), report listing, lite seller verification docs, generic Category→Sub-category→Custom Fields, free-tier limits.
+
+**Done when**
+- Buyer can favorite → chat → offer → block; search filters and map work; reviews/reports gated correctly; admin manages categories/custom fields.
+
 ## 8. Phase 7 — Hardening & Release
 
 **Deliverables**

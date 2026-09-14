@@ -1,0 +1,91 @@
+{
+  "device": {
+    "model": "Dell Inspiron 15",
+    "os_version": "Windows 11",
+    "sdk": ""
+  },
+  "category": "laptop",
+  "skipped": false,
+  "tests": [
+    {
+      "id": "battery",
+      "status": "passed",
+      "value": 82,
+      "unit": "%",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    },
+    {
+      "id": "display",
+      "status": "passed",
+      "value": 1,
+      "unit": "ok",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    },
+    {
+      "id": "keyboard",
+      "status": "passed",
+      "value": 86,
+      "unit": "keys",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    },
+    {
+      "id": "trackpad",
+      "status": "passed",
+      "value": 1,
+      "unit": "ok",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    },
+    {
+      "id": "camera",
+      "status": "passed",
+      "value": 1,
+      "unit": "ok",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    },
+    {
+      "id": "microphone",
+      "status": "passed",
+      "value": 0.5,
+      "unit": "V",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    },
+    {
+      "id": "speaker",
+      "status": "passed",
+      "value": 1,
+      "unit": "ok",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    },
+    {
+      "id": "wifi",
+      "status": "passed",
+      "value": 1,
+      "unit": "connected",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    },
+    {
+      "id": "bluetooth",
+      "status": "passed",
+      "value": 1,
+      "unit": "connected",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    },
+    {
+      "id": "ports",
+      "status": "passed",
+      "value": 3,
+      "unit": "ok",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    }
+  ]
+}

@@ -34,3 +34,23 @@ Thumbs.db
 # Node
 node_modules/
 .next/
+_refs/
+
+# Logs
+*.log
+backend_uvicorn*.log
+
+# Temp / scratch files at repo root
+1
+best
+
+# Android build artifacts
+android-app/.gradle/
+android-app/.kotlin/
+android-app/app/build/
+android-app/build/
+android-app/*.hprof
+android-app/local.properties
+
+# Web build output
+web/*/dist/

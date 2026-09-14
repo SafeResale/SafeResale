@@ -1,0 +1,51 @@
+{
+  "device": {
+    "model": "Sony PS5 Controller",
+    "os_version": "",
+    "sdk": ""
+  },
+  "category": "generic",
+  "skipped": false,
+  "tests": [
+    {
+      "id": "power",
+      "status": "passed",
+      "value": 1,
+      "unit": "ok",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    },
+    {
+      "id": "connectivity",
+      "status": "passed",
+      "value": 1,
+      "unit": "ok",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    },
+    {
+      "id": "inputs",
+      "status": "passed",
+      "value": 1,
+      "unit": "ok",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    },
+    {
+      "id": "outputs",
+      "status": "passed",
+      "value": 1,
+      "unit": "ok",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    },
+    {
+      "id": "camera",
+      "status": "passed",
+      "value": 1,
+      "unit": "ok",
+      "simulated": false,
+      "measured_at": "2026-09-08T10:00:00Z"
+    }
+  ]
+}

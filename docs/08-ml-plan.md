@@ -63,10 +63,25 @@ Rules:
 - If licensing blocks public data: build a small internal device-photo set; document annotation process.
 - Annotations: YOLO format (bounding boxes per class). Splits: 70/15/15 train/val/test; **frozen test set never used in training**.
 
-#### 3.1.1 Dataset shortlist (evaluated 2026-08)
+#### 3.1.1 Dataset shortlist (evaluated 2026-08; merged 2026-09)
 
 No single public set covers all 14 core classes → **merge 3–5 sets**, reconcile class names,
 then drop classes with <100 boxes. License must permit academic/FYP use; document each URL + license in the report.
+
+**2026-09 merge — sources actually consumed** (`configs/dataset_merge.yaml`, `scripts/prepare_dataset.py`):
+
+| # | Dataset | Source | Format | Classes → core mapping | License/notes |
+|---|---|---|---|---|---|
+| 1 | **CarDD** (4000 img / 8740 boxes) | Kaggle `gabrielfcarvalho/cardd-with-yolo-annotations-images-labels` | YOLO, train/val/test split | dent, scratch, crack, glass_shatter→glass_damage; lamp_broken/tire_flat→(ext) | Academic (PIC Lab USTC). Strongest detection set for cars |
+| 2 | **Cracked Mobile Screen** (Kaggle) | Kaggle `dataclusterlabs/cracked-screen-dataset` | VOC | cracked_screen→screen_damage; good/damaged→(ext, dropped) | DataCluster Labs; phones |
+| 3 | **Mobile Damage Diagnosis** | Roboflow `abhinavpoc/mobile-damage-diagnosis` | YOLO (`train`+`valid`) | scratch, screen_crack→screen_damage; dead_pixel→(skip) | phones |
+| 4 | **Corrosion YOLOv8** (3324 img) | Roboflow `corrosion-yolo-v8/corrosion-yolov8` v1 | YOLO | corrosion→corrosion | CC BY 4.0 |
+| 5 | **Water Damage Finder** | Roboflow `jonathan-lewis-8tb5o/water-damage-finder` v2 | YOLO | Water-Damage→water_damage | CC BY 4.0 |
+| 6 | **Rust / Corrosion Detection** (8354 img) | Roboflow `averkios/rust-corrosion-detection` v16 | YOLO (4 cls) | rust→rust; corrosion, moderate corrosion, severe corrosion→corrosion | CC BY 4.0. `rust` class appears only in the train split (~356 boxes) |
+| 7 | **New V Laptop Broken** | Roboflow `provod1337/new-v-laptop-broken` v1 | YOLO (5 cls) | Scratch→scratch (capped 3000), Damaged screen→screen_damage; adhesive_residue*, button_is_missing→(skip) | CC BY 4.0. laptop surfaces |
+| 8 | **Laptop Screen Damage Detection** | Roboflow `project-twow0/laptop-screen-damage-detection-dukgh` v1 | YOLO (6 cls) | crack→crack, lines→scratch; normal/fade/spot/undefined→(skip) | CC BY 4.0. laptop screens |
+| 9 | **MVTec AD** (5354 img, 15 cat) | HF `box0602/mvtec-ad` (FiftyOne export) | masks → YOLO (`scripts/convert_mvtec.py`) | scratch→scratch, crack→crack, dent→dent (bent→dent, damaged_case→dent mapped) | CC BY-NC-SA 4.0; **anomaly-detection paradigm**, mask→box conversion; used as auxiliary (industrial textures) |
+| 10 | **Negatives kaggle** (39 img) | manual (preserved from prior FP-train) | YOLO (no labels) | background negatives | clean phones for FP suppression |
 
 | # | Dataset | Source | Format | Classes → core mapping | License/notes |
 |---|---|---|---|---|---|
@@ -84,17 +99,20 @@ then drop classes with <100 boxes. License must permit academic/FYP use; documen
 | 12 | **Gaming Console Damage** (192 img) | Roboflow `joy-zhuge-oqnos/console-saloo` | YOLO/seg | scratch, dirty→stain(ext), collision→dent/body_deformation, gap→(skip) | gaming consoles; small |
 | 13 | **Smartphone surface defect** (1857 img / 6651 boxes, 10 cls) | Tencent cloud dev article 2542114 | VOC + YOLO | chip, crack, dent, glass_broken, missing_part, peel, pitting, scratch, water_damage, wear_and_tear | phone surfaces; strong chip/scratch/dent counts but community-hosted → verify license + access |
 
-**Category coverage (verified 2026-08):**
-- **Mobile** ✅ — Cracked Mobile Screen (~7000), MSD (1200), Smartphone surface defect (1857), Mobile Damage Diagnosis
-- **Laptop** ✅ — LCFC-Laptop (14,478 defects), Laptop Screen Damage
-- **Cars** ✅ — CarDD (4000), Car Damages Kaggle, Rust (10072), Corrosion
-- **Gaming devices** ⚠️ — Gaming Console Damage (192 img, small but box-annotated)
-- **Consumer electronics** ⚠️ — covered indirectly via phone/laptop surface defects + MVTec industrial (bottle, cable, etc.)
-- **Cameras** ❌ — industrial lens-defect papers don't release data; contamination sets (CLP, SIDL, flare-removal) are image-restoration, not detection → phone `camera_damage`/`glass_damage` + MVTec proxy, or defer
-- **Bikes/motorcycles** ❌ — no public box-annotated set → transfer from cars (same surface damages: dent/scratch/paint/rust) + internal/synthetic set
+**Category coverage (verified 2026-09):**
+- **Mobile** ✅ — Cracked Mobile Screen, Mobile Damage Diagnosis + 39 clean negatives
+- **Laptop** ✅ — New V Laptop Broken, Laptop Screen Damage Detection (real box-annotated laptop sets, no LCFC needed)
+- **Cars** ✅ — CarDD, Corrosion YOLOv8, Rust/Corrosion (4755 car surface boxes)
+- **Consumer electronics** ✅ — MVTec AD (bottle, cable, capsule, transistor, metal nut, etc.; 222 converted images in the 2026-09 merge)
+- **Gaming devices** ⚠️ — Gaming Console Damage (192 img, small but box-annotated) — not merged
+- **Cameras** ❌ — no public box-annotated set → phone `camera_damage`/`glass_damage` + MVTec/Datacluster proxy; documented unsupported v1
+- **Bikes/motorcycles** ❌ — no public box-annotated set → transfer from cars + internal/synthetic set
 - **Home appliances** ❌ — no public box-annotated set → MVTec industrial proxy + internal/synthetic set
 
-**Coverage vs core 14:** scratch ✅ crack ✅ dent ✅ screen_damage ✅ glass_damage ✅ paint_damage ✅ rust ✅ corrosion ✅ chip ✅ (camera_damage, port_damage, casing_damage, body_deformation, water_damage — **weak or no large public set**; cover via category transfers above or drop/defer these from M1 v1).
+**Coverage vs core 14 (2026-09 trained set = 8 classes):** scratch ✅ crack ✅ dent ✅ screen_damage ✅
+glass_damage ✅ rust ✅ corrosion ✅ water_damage ✅ (camera_damage, port_damage, casing_damage,
+body_deformation, paint_damage, chip — still <100 boxes in the merged set; deferred per above,
+documented in m1.yaml).
 
 Per the 8 product categories (M1 core): every category is represented in the merged set via real box-annotated data **except cameras, bikes, home appliances**, where we either (a) transfer from cars/phones, (b) build a small internal device-photo set (plan §3.1), or (c) cover those categories through M2 condition classification instead. Never claim per-category support without measured data.
 
