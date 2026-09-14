@@ -9,7 +9,7 @@ import com.saferesale.app.data.ApiClient
 import kotlinx.coroutines.launch
 
 @Composable
-fun HomeScreen(onCapture: () -> Unit, token: String?) {
+fun HomeScreen(onStartCheck: () -> Unit, onBench: () -> Unit = {}, token: String?) {
     var health by remember { mutableStateOf("loading...") }
     val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
@@ -24,15 +24,17 @@ fun HomeScreen(onCapture: () -> Unit, token: String?) {
                 Text("8-Angle Capture", style = MaterialTheme.typography.titleMedium)
                 Text("Front, back, left, right, top, bottom, 45° front/back — CameraX + blur/luminance/hash on-device", style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(8.dp))
-                Button(onClick = onCapture, enabled = token != null) { Text("Start Capture → Diagnostics") }
+                Button(onClick = onStartCheck, enabled = token != null) { Text("Start device check →") }
                 if (token == null) Text("Login first", color = MaterialTheme.colorScheme.error)
             }
         }
         Card(Modifier.fillMaxWidth().padding(top = 12.dp)) {
             Column(Modifier.padding(16.dp)) {
-                Text("Device Diagnostics", style = MaterialTheme.typography.titleMedium)
-                Text("Battery, Wi-Fi, Bluetooth, GPS, Camera, Mic (waveform), Speaker, Touch-grid 9/9, Accelerometer/Gyro/Proximity — real measurements, permission-aware (R-DIAG-01..07)", style = MaterialTheme.typography.bodySmall)
+                Text("Device Diagnostics (CoreV bench)", style = MaterialTheme.typography.titleMedium)
+                Text("Walks the 18-module CoreV bench — battery mA/mV/°C, CPU/RAM/storage, 40+ sensors, network, camera, audio, GPS, benchmark — then syncs the results as the device score (R-DIAG-01..07)", style = MaterialTheme.typography.bodySmall)
                 Text("Skipping adds risk penalty (R-DIAG-08); unsupported sensors are not penalized.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(8.dp))
+                Button(onClick = onBench) { Text("Open Hardware Bench (18 modules)") }
             }
         }
         Spacer(Modifier.height(16.dp))

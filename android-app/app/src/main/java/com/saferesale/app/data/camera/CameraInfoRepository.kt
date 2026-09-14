@@ -7,9 +7,13 @@ import android.hardware.camera2.CameraManager
 import android.util.Size
 import com.saferesale.app.domain.model.CameraDetail
 import com.saferesale.app.domain.model.CameraInfo
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class CameraInfoRepository constructor(
-    private val context: Context
+@Singleton
+class CameraInfoRepository @Inject constructor(
+    @ApplicationContext private val context: Context
 ) {
     private val cameraManager by lazy {
         context.getSystemService(Context.CAMERA_SERVICE) as CameraManager

@@ -6,9 +6,13 @@ import android.media.AudioFormat
 import android.media.AudioManager
 import com.saferesale.app.domain.model.AudioDeviceDetail
 import com.saferesale.app.domain.model.AudioInfo
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class AudioInfoRepository constructor(
-    private val context: Context
+@Singleton
+class AudioInfoRepository @Inject constructor(
+    @ApplicationContext private val context: Context
 ) {
     private val audioManager by lazy {
         context.getSystemService(Context.AUDIO_SERVICE) as AudioManager

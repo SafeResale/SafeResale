@@ -7,10 +7,14 @@ import android.os.StatFs
 import android.os.storage.StorageManager
 import com.saferesale.app.domain.model.StorageInfo
 import com.saferesale.app.domain.model.StoragePartition
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class StorageInfoRepository constructor(
-    private val context: Context
+@Singleton
+class StorageInfoRepository @Inject constructor(
+    @ApplicationContext private val context: Context
 ) {
     fun getStorageInfo(): StorageInfo {
         val internalStat = StatFs(Environment.getDataDirectory().path)

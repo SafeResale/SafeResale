@@ -6,10 +6,14 @@ import android.hardware.biometrics.BiometricManager
 import android.os.Build
 import android.provider.Settings
 import com.saferesale.app.domain.model.SecurityInfo
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class SecurityInfoRepository constructor(
-    private val context: Context
+@Singleton
+class SecurityInfoRepository @Inject constructor(
+    @ApplicationContext private val context: Context
 ) {
     private val biometricManager by lazy {
         context.getSystemService(BiometricManager::class.java)

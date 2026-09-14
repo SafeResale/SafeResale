@@ -21,8 +21,12 @@ datasets/
 *.tflite
 *.safetensors
 
-# Environment
+# Environment (local secrets — templates like .env.example stay tracked)
 .env
+.env.local
+
+# Backend runtime uploads (created by upload-token/PUT flow)
+backend/uploads/
 
 # IDE / OS
 .idea/

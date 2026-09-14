@@ -9,9 +9,12 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.net.InetAddress
 import java.util.concurrent.TimeUnit
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.math.roundToLong
 
-class NetworkToolsRepository constructor() {
+@Singleton
+class NetworkToolsRepository @Inject constructor() {
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)

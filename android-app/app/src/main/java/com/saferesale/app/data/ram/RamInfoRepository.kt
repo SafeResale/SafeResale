@@ -3,15 +3,19 @@ package com.saferesale.app.data.ram
 import android.app.ActivityManager
 import android.content.Context
 import com.saferesale.app.domain.model.RamInfo
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import java.io.File
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class RamInfoRepository constructor(
-    private val context: Context
+@Singleton
+class RamInfoRepository @Inject constructor(
+    @ApplicationContext private val context: Context
 ) {
     private val activityManager by lazy {
         context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager

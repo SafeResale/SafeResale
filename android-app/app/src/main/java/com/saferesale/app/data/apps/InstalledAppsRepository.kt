@@ -6,11 +6,15 @@ import android.content.pm.PackageManager
 import android.os.Build
 import com.saferesale.app.domain.model.AppInfo
 import com.saferesale.app.domain.model.AppPermission
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class InstalledAppsRepository constructor(
-    private val context: Context
+@Singleton
+class InstalledAppsRepository @Inject constructor(
+    @ApplicationContext private val context: Context
 ) {
     private val pm: PackageManager = context.packageManager
 

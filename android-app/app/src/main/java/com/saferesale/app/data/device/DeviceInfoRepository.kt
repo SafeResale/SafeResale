@@ -5,10 +5,14 @@ import android.os.Build
 import android.util.DisplayMetrics
 import android.view.WindowManager
 import com.saferesale.app.domain.model.DeviceInfo
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class DeviceInfoRepository constructor(
-    private val context: Context
+@Singleton
+class DeviceInfoRepository @Inject constructor(
+    @ApplicationContext private val context: Context
 ) {
     fun getDeviceInfo(): DeviceInfo {
         val wm = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager

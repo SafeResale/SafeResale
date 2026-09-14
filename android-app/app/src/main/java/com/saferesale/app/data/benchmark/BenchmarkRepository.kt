@@ -5,9 +5,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import java.io.File
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.math.sqrt
 
-class BenchmarkRepository constructor() {
+@Singleton
+class BenchmarkRepository @Inject constructor() {
 
     fun runBenchmark(cacheDir: File): Flow<BenchmarkProgress> = flow {
         emit(BenchmarkProgress(task = "CPU Single-Core", progress = 0f))
@@ -126,3 +129,4 @@ data class BenchmarkProgress(
     val overallScore: Int = 0,
     val isDone: Boolean = false,
 )
+

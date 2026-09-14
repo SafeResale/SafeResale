@@ -32,13 +32,17 @@ def diagnostic_risk(diagnostics: dict | None) -> Dict[str, Any]:
     tests = diagnostics.get("tests", [])
     if not tests:
         return {"score": 25, "confidence": 0.6, "basis": ["no_tests"]}
-    failed = [t for t in tests if not t.get("passed")]
+    # unsupported/unavailable capabilities never applied -> not penalized (R-DIAG-02)
+    testable = [t for t in tests if t.get("status", "passed" if t.get("passed") else "failed") not in ("unsupported", "unavailable")]
+    if not testable:
+        return {"score": 10, "confidence": 0.4, "basis": ["unsupported_only"], "missing_penalty": diagnostics.get("missing_penalty", 0)}
+    failed = [t for t in testable if not t.get("passed")]
     score = min(100, len(failed) * 22)
     # battery health special
-    for t in tests:
+    for t in testable:
         if t.get("id") in ("battery_health", "battery_level") and not t.get("passed"):
             score = min(100, score + 10)
-    return {"score": score, "confidence": 0.7 if len(tests) >= 6 else 0.5, "basis": [t["id"] for t in failed[:3]]}
+    return {"score": score, "confidence": 0.7 if len(testable) >= 6 else 0.5, "basis": [t["id"] for t in failed[:3]], "missing_penalty": diagnostics.get("missing_penalty", 0)}
 
 def behavioral_risk(signals: list[dict] | None, price_anomaly: dict | None = None) -> Dict[str, Any]:
     if not signals:

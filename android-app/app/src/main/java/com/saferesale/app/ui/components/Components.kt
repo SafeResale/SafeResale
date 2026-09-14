@@ -11,7 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.res.painterResource
-// import removed - R not ported
+import com.saferesale.app.R
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -26,7 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-// import removed DarkOutline
+import com.saferesale.app.ui.theme.DarkOutline
 
 // ── Glass Card ─────────────────────────────────────────────────────────────────
 @Composable
@@ -303,7 +303,7 @@ fun CoreVLoadingIndicator(
                 )
             }
             Image(
-                painter = painterResource(android.R.drawable.sym_def_app_icon),
+                painter = painterResource(R.drawable.app_icon_round),
                 contentDescription = "Loading",
                 modifier = Modifier
                     .size(size * 0.72f)

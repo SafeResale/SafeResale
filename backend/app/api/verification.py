@@ -11,6 +11,46 @@ import time
 
 router = APIRouter(prefix="/listings", tags=["verification"])
 
+DIAG_STATUSES = ("passed", "failed", "permission_required", "unsupported", "unavailable", "skipped")
+
+
+def _normalize_diag_tests(tests) -> list:
+    """Shape producer tests to the diagnostics data model (05-data-model.md 2.8):
+    {id, status, passed, value, unit, simulated, measured_at, meta}.
+    The stored `passed` flag is what the risk engine scores on."""
+    out = []
+    for t in tests or []:
+        if not isinstance(t, dict):
+            continue
+        status = str(t.get("status", "skipped"))
+        if status not in DIAG_STATUSES:
+            status = "skipped"
+        out.append({
+            "id": str(t.get("id", "")),
+            "status": status,
+            "passed": status == "passed",
+            "value": t.get("value"),
+            "unit": t.get("unit"),
+            "simulated": bool(t.get("simulated", False)),
+            "measured_at": t.get("measured_at"),
+            "meta": t.get("meta"),
+        })
+    return out
+
+
+def _oid_str(doc):
+    if isinstance(doc, dict):
+        return {k: _oid_str(v) for k, v in doc.items()}
+    if isinstance(doc, list):
+        return [_oid_str(v) for v in doc]
+    try:
+        from bson import ObjectId
+        if isinstance(doc, ObjectId):
+            return str(doc)
+    except Exception:
+        pass
+    return doc
+
 @router.post("/{listing_id}/run-quality")
 async def run_quality(listing_id: str, request: Request, user=Depends(get_current_user)):
     db = get_db()
@@ -48,19 +88,51 @@ async def run_diagnostics(listing_id: str, request: Request, user=Depends(get_cu
         scored = compute_diagnostics(body if isinstance(body, dict) else {})
         score = int(scored.get("score", 0))
         # enrich with scored metadata
+        tests = _normalize_diag_tests(body.get("tests", []) if isinstance(body, dict) else [])
         doc = {"listing_id": ObjectId(listing_id), "device": body.get("device",{}), "category": body.get("category","mobile"),
-               "tests": body.get("tests", []), "skipped": body.get("skipped", False),
+               "tests": tests, "skipped": body.get("skipped", False),
                "score": score, "basis": scored.get("basis"), "missing_penalty": scored.get("missing_penalty"),
                "metrics": scored.get("metrics"), "report_version": scored.get("report_version"),
                "created_at": time.time()}
     except Exception as e:
-        # fallback: simple failed count
-        tests = body.get("tests", []) if isinstance(body, dict) else []
-        score = min(100, len([t for t in tests if not t.get("passed")])*22) if tests else 0
-        doc = {"listing_id": ObjectId(listing_id), "device": body.get("device",{}), "tests": body.get("tests", []), "skipped": body.get("skipped", False), "score": score, "created_at": time.time(), "error": str(e)}
+        # fallback: simple failed count over normalized, testable tests
+        tests = _normalize_diag_tests(body.get("tests", []) if isinstance(body, dict) else [])
+        testable = [t for t in tests if t["status"] not in ("unsupported", "unavailable")]
+        score = min(100, len([t for t in testable if not t["passed"]])*22) if testable else 0
+        doc = {"listing_id": ObjectId(listing_id), "device": body.get("device",{}), "tests": tests, "skipped": body.get("skipped", False), "score": score, "created_at": time.time(), "error": str(e)}
     await db.diagnostics.insert_one(doc)
     await audit_log(actor_id=ObjectId(user["sub"]), actor_role=user.get("role"), action="verification.run_diagnostics", target_type="listing", target_id=ObjectId(listing_id), detail={"score": score, "skipped": doc.get("skipped")}, ip=request.client.host if request.client else None, request_id=request.headers.get("X-Request-ID"))
-    return {"diagnostics_report": doc, "diagnostic_score": score, "scored": doc}
+    out = _oid_str(doc)
+    return {"diagnostics_report": out, "diagnostic_score": score, "scored": out}
+
+@router.get("/{listing_id}/latest-scores")
+async def latest_scores(listing_id: str, user=Depends(get_current_user)):
+    """Latest diagnostics + risk + decision + image coverage for a listing (Score screen)."""
+    db = get_db()
+    try:
+        oid = ObjectId(listing_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail={"code": "not_found", "message": "Listing not found"})
+    listing = await db.listings.find_one({"_id": oid})
+    if not listing:
+        raise HTTPException(status_code=404, detail={"code": "not_found", "message": "Listing not found"})
+    if listing.get("status") not in ("published", "approved") and str(listing.get("seller_id")) != user["sub"] and user.get("role") not in ("admin", "inspector"):
+        raise HTTPException(status_code=403, detail={"code": "forbidden", "message": "Not authorized"})
+    diag = await db.diagnostics.find_one({"listing_id": oid}, sort=[("created_at", -1)])
+    risk = await db.risk_scores.find_one({"listing_id": oid}, sort=[("created_at", -1)])
+    decision = await db.decisions.find_one({"listing_id": oid}, sort=[("created_at", -1)])
+    cond = await db.condition_predictions.find_one({"listing_id": oid}, sort=[("created_at", -1)])
+    images = await db.listing_images.find({"listing_id": oid}).to_list(100)
+    angles = sorted({img.get("angle") for img in images if img.get("angle")})
+    return {
+        "listing_id": listing_id,
+        "diagnostics": _oid_str(diag),
+        "diagnostic_score": (diag or {}).get("score"),
+        "risk": _oid_str(risk),
+        "decision": _oid_str(decision),
+        "condition": _oid_str(cond),
+        "images": {"count": len(images), "angles": angles, "required": 8},
+    }
 
 @router.post("/{listing_id}/run-anomaly")
 async def run_anomaly(listing_id: str, request: Request, user=Depends(get_current_user)):

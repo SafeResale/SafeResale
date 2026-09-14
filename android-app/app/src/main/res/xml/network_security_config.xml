@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <!-- Emulator loopback + local dev: cleartext HTTP only for these hosts.
+         NOTE: each domain must appear exactly once in the whole file, or
+         the OS throws "has already been specified" at startup. -->
     <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">10.0.2.2</domain>
-        <domain includeSubdomains="true">localhost</domain>
-        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain>10.0.2.2</domain>
+        <domain>localhost</domain>
+        <domain>127.0.0.1</domain>
     </domain-config>
     <base-config cleartextTrafficPermitted="false">
         <trust-anchors>

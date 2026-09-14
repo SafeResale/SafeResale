@@ -9,12 +9,16 @@ import android.os.Build
 import android.os.Looper
 import com.saferesale.app.domain.model.GpsInfo
 import com.saferesale.app.domain.model.SatelliteInfo
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class GpsRepository constructor(
-    private val context: Context
+@Singleton
+class GpsRepository @Inject constructor(
+    @ApplicationContext private val context: Context
 ) {
     private val locationManager by lazy {
         context.getSystemService(Context.LOCATION_SERVICE) as LocationManager

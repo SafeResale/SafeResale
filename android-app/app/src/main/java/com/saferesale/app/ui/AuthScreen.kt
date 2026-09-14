@@ -35,6 +35,6 @@ fun AuthScreen(onAuthed: (String) -> Unit) {
             }
         }, modifier = Modifier.fillMaxWidth()) { Text("Login") }
         if (msg.isNotEmpty()) Text(msg, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 12.dp))
-        Text("Backend: via 10.0.2.2:8001 (emulator) — see 10-setup-guide.md", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 24.dp))
+        Text("Backend: via 10.0.2.2:8000 (emulator) — see 10-setup-guide.md", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 24.dp))
     }
 }

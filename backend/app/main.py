@@ -27,8 +27,9 @@ try:
 except Exception:
     pass
 try:
-    from app.api.uploads import router as uploads_router  # type: ignore
+    from app.api.uploads import router as uploads_router, bytes_router as upload_bytes_router  # type: ignore
     app.include_router(uploads_router)
+    app.include_router(upload_bytes_router)
 except Exception:
     pass
 try:

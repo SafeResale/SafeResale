@@ -1,0 +1,17 @@
+{
+  "name": "SafeResale Laptop Diagnostics",
+  "short_name": "SafeResale",
+  "description": "Private browser-based hardware diagnostics for SafeResale listings.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F1118",
+  "theme_color": "#0F8B8D",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

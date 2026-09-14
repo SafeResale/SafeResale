@@ -21,7 +21,12 @@ const testMeta: Record<string, { num: string; label: string; title: string }> = 
 
 const contractIdMap: Record<string, string> = {
   mouse: 'trackpad',
+  network: 'wifi',
 };
+
+// Laptop contract expects 10 ids; browser cannot probe bluetooth/ports, so
+// report them as unsupported (not penalized). Sensors have no laptop id and
+// are omitted (backend ignores unknown ids).
 
 const STATUS_CONFIG = {
   working:     { label: 'PASS',     color: 'var(--color-status-pass)', ledColor: 'var(--color-status-pass)' },
@@ -80,15 +85,30 @@ export function ResultsSummary() {
 
   const sync = async () => {
     if (!listingId) { setSyncError('Enter listing ID first (from seller draft)'); return; }
-    const apiBase = (import.meta.env as any).VITE_API_BASE || 'http://localhost:8001';
+    const apiBase = (import.meta.env as any).VITE_API_BASE || 'http://localhost:8000';
     setSyncing(true);
     setSyncError(null);
     setSyncResult(null);
     try {
-      const tests = Object.entries(results).map(([id, status]): { id: string; status: string; value: any; unit: any; simulated: boolean; meta: any } => {
+      const now = new Date().toISOString();
+      const tests: { id: string; status: string; value: any; unit: any; simulated: boolean; meta: any }[] = [];
+      for (const [id, status] of Object.entries(results)) {
+        if (id === 'sensors') continue; // no laptop contract id; backend would ignore
+        const mapped = contractIdMap[id] ?? id;
+        // camera/mic denied by user -> permission_required (not failed)
+        let outStatus = syncStatus(status as TestStatus);
+        if ((mapped === 'camera' || mapped === 'microphone') && status === 'issue') {
+          outStatus = 'permission_required';
+        }
         const value = status === 'working' ? 'verified' : status === 'issue' ? 'failed' : status === 'unsupported' ? 'unsupported' : null;
-        return { id: contractIdMap[id] ?? id, status: syncStatus(status), value, unit: null, simulated: false, meta: {} };
-      });
+        tests.push({ id: mapped, status: outStatus, value, unit: null, simulated: false, meta: { measured_at: now } });
+      }
+      // bluetooth/ports cannot be probed from a browser tab -> unsupported (not penalized)
+      for (const extra of ['bluetooth', 'ports']) {
+        if (!tests.some((t) => t.id === extra)) {
+          tests.push({ id: extra, status: 'unsupported', value: 'unsupported', unit: null, simulated: false, meta: { reason: 'not testable from browser' } });
+        }
+      }
       const body = {
         device: { model: navigator.userAgent.slice(0, 60), os_version: navigator.platform, sdk: 0 },
         category: 'laptop',
@@ -102,7 +122,7 @@ export function ResultsSummary() {
       });
       if (!res.ok) { setSyncError(`Server ${res.status}: ${res.statusText}`); return; }
       const j = await res.json();
-      setSyncResult({ score: (j.diagnostic_score ?? 0) * 100 / 100 });
+      setSyncResult({ score: Math.round(j.diagnostic_score ?? j.scored?.score ?? 0) });
       localStorage.setItem('saferesale-listing-id', listingId);
     } catch (err: any) {
       setSyncError(err?.message ?? 'Sync failed');
