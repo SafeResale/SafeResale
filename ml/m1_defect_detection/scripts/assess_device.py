@@ -30,6 +30,23 @@ import cv2
 
 from ultralytics import YOLO
 
+# Optional AI fallback — never required for the core pipeline
+try:
+    from clip_fallback import CLIPFallback  # type: ignore
+
+    HAS_CLIP = True
+except Exception:  # pragma: no cover
+    CLIPFallback = None  # type: ignore
+    HAS_CLIP = False
+
+try:
+    from describe import Describer  # type: ignore
+
+    HAS_DESCRIBE = True
+except Exception:  # pragma: no cover
+    Describer = None  # type: ignore
+    HAS_DESCRIBE = False
+
 WORK_ROOT = Path(os.environ.get("M1_WORK_ROOT", Path.home() / "safresale-ml" / "m1"))
 
 # Severity weight per core class (0..1) used to turn detections into deductions.
@@ -98,6 +115,11 @@ def main() -> None:
     parser.add_argument("--unconfirmed-weight", type=float, default=0.3,
                         help="Score weight multiplier for unconfirmed claims")
     parser.add_argument("--severity-json", help="Optional JSON overriding SEVERITY weights")
+    parser.add_argument("--clip-fallback", action="store_true",
+                        help="Enable local CLIP zero-shot second opinion when YOLO is silent/weak (never decides, advisory only)")
+    parser.add_argument("--describe", choices=["auto", "nim", "template", "off"], default="off",
+                        help="Add a one-sentence damage description per image: auto (NIM if key present else template), nim (require NIM), template (local only), off (default)")
+    parser.add_argument("--device", default="0", help="cuda device for YOLO/CLIP (0, cpu, etc.)")
     args = parser.parse_args()
 
     severity = dict(SEVERITY)
@@ -118,6 +140,34 @@ def main() -> None:
     if not images:
         sys.exit(f"no .jpg/.jpeg/.png images in {src}")
 
+    # optional AI helpers (lazy)
+    clip = None
+    if args.clip_fallback:
+        if not HAS_CLIP:
+            print("warning: --clip-fallback requested but clip_fallback not available (install transformers)", file=sys.stderr)
+        else:
+            try:
+                clip = CLIPFallback(device="cuda:0" if args.device != "cpu" else "cpu")
+            except Exception as e:
+                print(f"warning: CLIP init failed: {e}", file=sys.stderr)
+                clip = None
+
+    describer = None
+    if args.describe != "off":
+        if not HAS_DESCRIBE:
+            print("warning: --describe requested but describe.py not available", file=sys.stderr)
+        else:
+            try:
+                if args.describe == "template":
+                    describer = Describer(api_key="")  # force template
+                else:
+                    describer = Describer()
+                    if args.describe == "nim" and not describer.available:
+                        sys.exit("describe=nim requires NVAPI_KEY / NVIDIA_API_KEY in env or ml/m1_defect_detection/.env")
+            except Exception as e:
+                print(f"warning: describer init failed: {e}", file=sys.stderr)
+                describer = None
+
     # ---- pass 1: detect + verify each image -------------------------------
     results = []
     for p in images:
@@ -130,7 +180,25 @@ def main() -> None:
                 conf = float(box.conf[0])
                 dets.append({"class": name, "conf": conf})
         blurry = bool(is_blurry(p, args.blur_threshold))
-        results.append({"image": p.name, "blurry": blurry, "detections": dets})
+        entry: dict = {"image": p.name, "blurry": blurry, "detections": dets}
+        # CLIP second opinion — only when YOLO is silent or max conf is weak
+        if clip is not None:
+            try:
+                max_conf = max((d["conf"] for d in dets), default=0.0)
+                if not dets or max_conf < 0.35:
+                    if clip.model is None:
+                        clip.load()
+                    entry["clip"] = clip.predict(str(p))
+            except Exception as e:
+                entry["clip_error"] = str(e)
+        # one-sentence description (never decides)
+        if describer is not None:
+            try:
+                text, source = describer.describe(str(p), detections=dets)
+                entry["description"] = {"text": text, "source": source}
+            except Exception as e:
+                entry["description_error"] = str(e)
+        results.append(entry)
 
     # ---- pass 2: corroboration across views -------------------------------
     high_risk_views = {}  # class -> number of distinct views claiming it
@@ -204,7 +272,14 @@ def main() -> None:
         det = ", ".join(
             f"{d['class']}@{d['conf']:.2f}{'' if d['confirmed'] else '?'}"
             for d in r["detections"]) or "clean"
-        print(f"  -{r['score']:5.1f}  [{tag}] {r['image']:<40} {det}")
+        extra = ""
+        if "clip" in r:
+            c = r["clip"]
+            extra += f"  [CLIP:{c['verdict']} {c['score']:.2f} best={c['best_damage_class']}]"
+        if "description" in r:
+            dsc = r["description"]
+            extra += f"  \"{dsc['text']}\" [{dsc['source']}]"
+        print(f"  -{r['score']:5.1f}  [{tag}] {r['image']:<40} {det}{extra}")
     print("-" * 70)
     per_class = {}
     for r in results:
@@ -213,6 +288,14 @@ def main() -> None:
             per_class[key] = per_class.get(key, 0) + 1
     print("defect totals:", ", ".join(f"{k} x{v}" for k, v in sorted(per_class.items()))
           or "none")
+    # advisory tallies (never affect score)
+    clip_hits = sum(1 for r in results if r.get("clip", {}).get("verdict") == "damaged")
+    if any("clip" in r for r in results):
+        print(f"CLIP second-opinion: {clip_hits}/{n} images flagged as damaged (advisory only)")
+    nim_count = sum(1 for r in results if r.get("description", {}).get("source") == "nvidia-nim-vlm")
+    tmpl_count = sum(1 for r in results if r.get("description", {}).get("source") == "template")
+    if nim_count or tmpl_count:
+        print(f"descriptions: {nim_count} via NIM, {tmpl_count} via template")
 
     # ---- json report --------------------------------------------------------
     if args.json:
@@ -240,6 +323,8 @@ def main() -> None:
                             "deduction": d["deduction"],
                         } for d in r["detections"]
                     ],
+                    **({"clip": r["clip"]} if "clip" in r else {}),
+                    **({"description": r["description"]} if "description" in r else {}),
                 } for r in results
             ],
         }
