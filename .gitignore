@@ -58,3 +58,16 @@ android-app/local.properties
 
 # Web build output
 web/*/dist/
+
+# Firebase service-account (secret - never commit)
+backend/config/firebase-service-account.json
+backend/config/
+backend/.credentials/
+
+# Local generated documents and build metadata
+*.docx
+~$*.docx
+*.tsbuildinfo
+
+# Local runtime output
+logs/

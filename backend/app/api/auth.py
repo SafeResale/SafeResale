@@ -28,6 +28,13 @@ class LoginIn(BaseModel):
 class RefreshIn(BaseModel):
     refresh_token: str
 
+class FirebaseIn(BaseModel):
+    id_token: str
+
+class ChangePasswordIn(BaseModel):
+    current_password: str
+    new_password: str
+
 class ResetRequestIn(BaseModel):
     email: EmailStr
 
@@ -151,3 +158,67 @@ async def patch_me(body: dict, user=Depends(get_current_user), request: Request 
     await db.users.update_one({"_id": ObjectId(user["sub"])}, {"$set": {**patch, "updated_at": time.time()}})
     doc = await db.users.find_one({"_id": ObjectId(user["sub"])})
     return {"user": {"id": str(doc["_id"]), "email": doc["email"], "name": doc["name"], "role": doc.get("role","seller")}}
+from app.services.firebase import verify_id_token
+
+class FirebaseIn(BaseModel):
+    id_token: str
+
+@router.post("/change-password")
+async def change_password(body: ChangePasswordIn, request: Request, user=Depends(get_current_user)):
+    await check_rate_limit(request, "auth", key=user["sub"])
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=422, detail={"code": "weak_password", "message": "New password must be at least 8 characters"})
+    db = get_db()
+    doc = await db.users.find_one({"_id": ObjectId(user["sub"])})
+    if not doc:
+        raise HTTPException(status_code=404, detail={"code": "not_found", "message": "User not found"})
+    if not doc.get("password_hash"):
+        raise HTTPException(status_code=409, detail={"code": "no_password", "message": "Account uses Firebase sign-in; reset via Firebase instead"})
+    if not verify_password(body.current_password, doc["password_hash"]):
+        raise HTTPException(status_code=401, detail={"code": "invalid_password", "message": "Current password is incorrect"})
+    await db.users.update_one({"_id": doc["_id"]}, {"$set": {"password_hash": hash_password(body.new_password), "updated_at": time.time()}})
+    await db.refresh_tokens.delete_many({"user_id": doc["_id"]})
+    await audit_log(actor_id=user["sub"], actor_role=user.get("role"), action="auth.change_password", target_type="user", target_id=doc["_id"],
+                    ip=request.client.host if request.client else None, request_id=request.headers.get("X-Request-ID"))
+    return {"message": "Password updated. Please sign in again."}
+
+
+@router.post("/firebase")
+async def firebase_login(body: FirebaseIn, request: Request):
+    await check_rate_limit(request, "auth", key=request.client.host if request.client else "unknown")
+    db = get_db()
+    try:
+        claims = await verify_id_token(body.id_token)
+    except Exception as e:
+        raise HTTPException(status_code=401, detail={"code": "invalid_firebase_token", "message": str(e)})
+    email = (claims.get("email") or "").lower()
+    if not email:
+        raise HTTPException(status_code=400, detail={"code": "missing_email", "message": "No email in token"})
+    firebase_uid = claims.get("sub") or claims.get("user_id") or claims.get("uid")
+    now = time.time()
+    user = await db.users.find_one({"firebase_uid": firebase_uid}) if firebase_uid else None
+    if user is None:
+        user = await db.users.find_one({"email": email})
+        if user is not None:
+            await db.users.update_one({"_id": user["_id"]}, {"$set": {"firebase_uid": firebase_uid, "provider": "firebase", "verified": True, "updated_at": now}})
+        else:
+            res = await db.users.insert_one({
+                "name": claims.get("name") or email.split("@")[0],
+                "email": email,
+                "firebase_uid": firebase_uid,
+                "password_hash": None,
+                "phone": None,
+                "role": "seller",
+                "verified": bool(claims.get("email_verified", False)),
+                "provider": "firebase",
+                "created_at": now,
+                "updated_at": now,
+            })
+            user = {"_id": res.inserted_id, "email": email, "name": claims.get("name") or email.split("@")[0], "role": "seller", "verified": bool(claims.get("email_verified", False))}
+    access = create_access_token(str(user["_id"]), user.get("role", "seller"))
+    raw_refresh = create_refresh_token()
+    from hashlib import sha256
+    h = sha256(raw_refresh.encode()).hexdigest()
+    await db.refresh_tokens.insert_one({"user_id": user["_id"], "token_hash": h, "created_at": now})
+    await audit_log(action="auth.firebase_login", target_type="user", target_id=user["_id"], actor_id=user["_id"], actor_role=user.get("role"), ip=request.client.host if request.client else None, request_id=request.headers.get("X-Request-ID"))
+    return {"access_token": access, "refresh_token": raw_refresh, "user": {"id": str(user["_id"]), "email": user["email"], "name": user["name"], "role": user.get("role", "seller")}}

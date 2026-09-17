@@ -100,6 +100,34 @@ async def confirm_upload(listing_id: str, body: ConfirmReq, request: Request, us
     await audit_log(actor_id=ObjectId(user["sub"]), actor_role=user.get("role"), action="upload.confirm", target_type="listing", target_id=ObjectId(listing_id), detail={"angle": body.angle, "sha256": sha, "quality_passed": (merged_quality or {}).get("passed")}, ip=request.client.host if request.client else None, request_id=request.headers.get("X-Request-ID"))
     return {"listing_image": img_doc}
 
+def _detect_media_type(data: bytes) -> str:
+    """Sniff image magic bytes (files are stored without extensions)."""
+    if data[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    return "application/octet-stream"
+
+
+@bytes_router.get("/{key:path}")
+async def get_bytes(key: str, request: Request):
+    """Serve stored verification images.
+
+    Read-only public surface (photos are shown to buyers/sellers like any
+    marketplace). Path traversal is blocked; missing files return 404.
+    """
+    from fastapi.responses import Response
+    if not _is_safe_key(key):
+        raise HTTPException(status_code=400, detail={"code": "invalid_key", "message": "Invalid storage key"})
+    p = Path(storage.base) / key
+    if not (Path(storage.base).resolve() in p.resolve().parents and p.is_file()):
+        raise HTTPException(status_code=404, detail={"code": "not_found", "message": "Image not found"})
+    body = p.read_bytes()
+    return Response(content=body, media_type=_detect_media_type(body))
+
+
 @bytes_router.put("/{key:path}")
 async def put_bytes(key: str, request: Request, user=Depends(get_current_user)):
     """Receive raw image bytes for a previously issued upload token (local driver)."""

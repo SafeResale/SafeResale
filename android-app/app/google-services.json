@@ -12,7 +12,20 @@
           "package_name": "com.saferesale.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1050260939410-114phonbukpbodsmk10e0tckmon4qvu1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.saferesale.app",
+            "certificate_hash": "41a96911c71e22f3844822f7e4adc39ec4098039"
+          }
+        },
+        {
+          "client_id": "1050260939410-4q4ugv8p13lbc7egus36p19cd1c0i6qo.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyARgMqv91EP_EPtAozOUQd8jRlp1IJy9Vo"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1050260939410-4q4ugv8p13lbc7egus36p19cd1c0i6qo.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

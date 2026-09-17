@@ -43,7 +43,42 @@ try:
 except Exception:
     pass
 try:
+    from app.api.escrow import router as escrow_router  # type: ignore
+    app.include_router(escrow_router)
+except Exception:
+    pass
+try:
     from app.api.reports import router as reports_router  # type: ignore
     app.include_router(reports_router)
+except Exception:
+    pass
+try:
+    from app.api.admin_users import router as admin_users_router  # type: ignore
+    app.include_router(admin_users_router)
+except Exception:
+    pass
+try:
+    from app.api.admin_catalog import router as admin_catalog_router  # type: ignore
+    app.include_router(admin_catalog_router)
+except Exception:
+    pass
+try:
+    from app.api.admin_content import router as admin_content_router  # type: ignore
+    app.include_router(admin_content_router)
+except Exception:
+    pass
+try:
+    from app.api.admin_support import router as admin_support_router  # type: ignore
+    app.include_router(admin_support_router)
+except Exception:
+    pass
+try:
+    from app.api.admin_settings import router as admin_settings_router  # type: ignore
+    app.include_router(admin_settings_router)
+except Exception:
+    pass
+try:
+    from app.api.public_support import router as public_support_router  # type: ignore
+    app.include_router(public_support_router)
 except Exception:
     pass

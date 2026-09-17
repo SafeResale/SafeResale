@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     vision_provider: str = "stub"
     ml_weights_dir: str = ""
     dev_verify_enabled: bool = True
+    firebase_project_id: str = ""
+    firebase_admin_emails: str = ""
+    firebase_service_account_file: str = ""
     log_level: str = "info"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")

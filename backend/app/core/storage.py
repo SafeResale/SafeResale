@@ -18,4 +18,15 @@ class LocalStorage:
         if p.exists():
             p.unlink()
 
+
+async def ping_storage() -> bool:
+    """Cheap writability probe used by the admin System status surface."""
+    try:
+        probe = "ping"
+        url = storage.create_upload_url(probe, "text/plain").get("upload_url")
+        return bool(url)
+    except Exception:
+        return False
+
+
 storage = LocalStorage()
