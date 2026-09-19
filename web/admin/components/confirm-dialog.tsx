@@ -1,27 +1,17 @@
-'use client';
+"use client"
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { buttonVariants } from "@/components/ui/button";
+import { AlertDialog, Button, Label } from "@heroui/react"
 
 interface ConfirmDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  title: string;
-  description?: string;
-  confirmLabel?: string;
-  cancelLabel?: string;
-  destructive?: boolean;
-  pending?: boolean;
-  onConfirm: () => void;
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  title: string
+  description?: string
+  confirmLabel?: string
+  cancelLabel?: string
+  destructive?: boolean
+  pending?: boolean
+  onConfirm: () => void
 }
 
 export function ConfirmDialog({
@@ -36,31 +26,34 @@ export function ConfirmDialog({
   onConfirm,
 }: ConfirmDialogProps) {
   return (
-    <AlertDialog
-      open={open}
-      onOpenChange={(v) => {
-        if (!pending) onOpenChange(v);
-      }}
-    >
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          {description && <AlertDialogDescription>{description}</AlertDialogDescription>}
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={pending}>{cancelLabel}</AlertDialogCancel>
-          <AlertDialogAction
-            disabled={pending}
-            className={destructive ? buttonVariants({ variant: "destructive" }) : undefined}
-            onClick={(e) => {
-              e.preventDefault();
-              onConfirm();
-            }}
-          >
-            {pending ? "Working…" : confirmLabel}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
+    <AlertDialog isOpen={open} onOpenChange={(v) => { if (!pending) onOpenChange(v) }}>
+      <AlertDialog.Backdrop />
+      <AlertDialog.Container>
+        <AlertDialog.Dialog>
+          <AlertDialog.Header>
+            <AlertDialog.Icon />
+            <AlertDialog.Heading>{title}</AlertDialog.Heading>
+          </AlertDialog.Header>
+          {description && (
+            <AlertDialog.Body>
+              <Label>{description}</Label>
+            </AlertDialog.Body>
+          )}
+          <AlertDialog.Footer>
+            <AlertDialog.CloseTrigger>
+              <Button variant="ghost" isDisabled={pending}>{cancelLabel}</Button>
+            </AlertDialog.CloseTrigger>
+            <Button
+              variant={destructive ? "danger" : "primary"}
+              isDisabled={pending}
+              onPress={onConfirm}
+            >
+              {pending ? "Working…" : confirmLabel}
+            </Button>
+          </AlertDialog.Footer>
+          <AlertDialog.CloseTrigger />
+        </AlertDialog.Dialog>
+      </AlertDialog.Container>
     </AlertDialog>
-  );
+  )
 }

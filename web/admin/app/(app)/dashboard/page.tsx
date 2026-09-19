@@ -1,7 +1,7 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import Link from "next/link"
+import { useEffect, useState } from "react"
 import {
   Activity,
   AlertTriangle,
@@ -17,27 +17,28 @@ import {
   TrendingUp,
   Sparkles,
   ShieldCheck as VerifiedIcon,
-} from "lucide-react";
-import { Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { useFetch } from "@/lib/use-fetch";
-import type { DashboardData } from "@/lib/types";
-import { fmtDate, fmtNumber, money, riskLabel, timeAgo } from "@/lib/format";
-import { Card, Chip, Button, Skeleton } from "@heroui/react";
+  RefreshCw,
+} from "lucide-react"
+import { Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import { useFetch } from "@/lib/use-fetch"
+import type { DashboardData } from "@/lib/types"
+import { fmtDate, fmtNumber, money, riskLabel, timeAgo } from "@/lib/format"
+import { Card, Chip, Button, Skeleton } from "@heroui/react"
 
-const RISK_COLORS: Record<string, string> = { low: "#C6F135", medium: "#f59e0b", high: "#ef4444" };
+const RISK_COLORS: Record<string, string> = { low: "#C6F135", medium: "#f59e0b", high: "#ef4444" }
 const STATUS_STYLE: Record<string, string> = {
   approved: "#C6F135", published: "#C6F135", review: "#f59e0b", verifying: "#f59e0b", submitted: "#f59e0b",
   blocked: "#ef4444", draft: "#9ca3af", capturing: "#9ca3af", restricted: "#a78bfa", inspection_pending: "#0ea5e9",
-};
+}
 
 function GreetingHeader({ onRefresh }: { onRefresh: () => void }) {
-  const [greeting, setGreeting] = useState("Good morning");
+  const [greeting, setGreeting] = useState("Good morning")
   useEffect(() => {
-    const h = new Date().getHours();
-    if (h < 12) setGreeting("Good morning");
-    else if (h < 17) setGreeting("Good afternoon");
-    else setGreeting("Good evening");
-  }, []);
+    const h = new Date().getHours()
+    if (h < 12) setGreeting("Good morning")
+    else if (h < 17) setGreeting("Good afternoon")
+    else setGreeting("Good evening")
+  }, [])
   return (
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div>
@@ -51,7 +52,7 @@ function GreetingHeader({ onRefresh }: { onRefresh: () => void }) {
       </div>
       <div className="flex items-center gap-2">
         <Button variant="secondary" size="sm" onPress={onRefresh} className="rounded-full">
-          Refresh
+          <RefreshCw className="size-3.5" /> Refresh
         </Button>
         <Link href="/queue">
           <Button variant="primary" size="sm" className="rounded-full">
@@ -60,20 +61,20 @@ function GreetingHeader({ onRefresh }: { onRefresh: () => void }) {
         </Link>
       </div>
     </div>
-  );
+  )
 }
 
 function KpiCard({ label, value, sub, icon: Icon, tone = "default" }: { label: string; value: React.ReactNode; sub?: string; icon: any; tone?: "lime" | "danger" | "info" | "default" | "success" | "warning" }) {
-  const toneMap: Record<string,string> = {
+  const toneMap: Record<string, string> = {
     lime: "bg-accent text-accent-foreground",
     success: "bg-success text-success-foreground",
     danger: "bg-danger text-danger-foreground",
     warning: "bg-warning text-warning-foreground",
-    info: "bg-accent text-accent-foreground",
+    info: "bg-info text-info-foreground",
     default: "bg-default text-default-foreground",
-  };
+  }
   return (
-    <Card className="relative overflow-hidden border-0 shadow-sm ring-1 ring-black/5 dark:ring-white/10 rounded-2xl">
+    <Card className="relative overflow-hidden border-0 shadow-sm ring-1 ring-black/5 dark:ring-white/10 rounded-2xl hover:shadow-md transition-shadow">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-black/5 to-transparent dark:via-white/10" />
       <Card.Header className="pb-2">
         <div className="flex items-start justify-between">
@@ -88,11 +89,11 @@ function KpiCard({ label, value, sub, icon: Icon, tone = "default" }: { label: s
         {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
       </Card.Content>
     </Card>
-  );
+  )
 }
 
 export default function DashboardPage() {
-  const { data, loading, error, reload } = useFetch<DashboardData>("/admin/dashboard");
+  const { data, loading, error, reload } = useFetch<DashboardData>("/admin/dashboard")
 
   if (error) {
     return (
@@ -100,7 +101,7 @@ export default function DashboardPage() {
         <GreetingHeader onRefresh={reload} />
         <Card className="p-8 text-center"><p className="text-sm text-muted-foreground">{error.message}</p><Button onPress={reload} variant="secondary" className="mt-3">Retry</Button></Card>
       </div>
-    );
+    )
   }
 
   if (loading || !data) {
@@ -113,14 +114,14 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
-    );
+    )
   }
 
-  const k = data.kpis;
-  const trend = data.trend.map((t) => ({ day: fmtDate(t.date, { month: "short", day: "numeric" }), count: t.count }));
-  const statusRows = Object.entries(data.status_distribution).sort((a, b) => b[1] - a[1]);
-  const riskRows = Object.entries(data.risk_distribution) as [string, number][];
-  const totalStatuses = statusRows.reduce((a, [, n]) => a + n, 0);
+  const k = data.kpis
+  const trend = data.trend.map((t) => ({ day: fmtDate(t.date, { month: "short", day: "numeric" }), count: t.count }))
+  const statusRows = Object.entries(data.status_distribution).sort((a, b) => b[1] - a[1])
+  const riskRows = Object.entries(data.risk_distribution) as [string, number][]
+  const totalStatuses = statusRows.reduce((a, [, n]) => a + n, 0)
 
   return (
     <div className="space-y-6">
@@ -244,7 +245,7 @@ export default function DashboardPage() {
             ) : (
               <div className="divide-y">
                 {data.recent_flagged.map((it: any, idx: number) => {
-                  const label = riskLabel(it.risk?.adjusted_score);
+                  const label = riskLabel(it.risk?.adjusted_score)
                   return (
                     <Link key={`${it.listing?._id}-${it.decision?._id || it.risk?._id || idx}`} href={`/listings/${it.listing?._id}`} className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors">
                       <div className="size-9 rounded-xl bg-accent text-accent-foreground grid place-items-center shrink-0 font-bold text-xs">{(it.listing?.title || "?")[0]}</div>
@@ -254,7 +255,7 @@ export default function DashboardPage() {
                       </div>
                       <Chip size="sm" variant="soft" color={(label.band === "high" ? "danger" : label.band === "medium" ? "warning" : "success") as any}>{label.label}</Chip>
                     </Link>
-                  );
+                  )
                 })}
               </div>
             )}
@@ -266,7 +267,7 @@ export default function DashboardPage() {
       <Card className="rounded-2xl">
         <Card.Header className="border-b">
           <Card.Title className="text-[15px] font-semibold flex items-center gap-2"><ScrollText className="size-4" /> Recent activity</Card.Title>
-          <Card.Description>Latest admin audit events • {fmtDate(Date.now()/1000)}</Card.Description>
+          <Card.Description>Latest admin audit events • {fmtDate(Date.now() / 1000)}</Card.Description>
         </Card.Header>
         <Card.Content className="pt-4">
           {data.recent_activity.length === 0 ? (
@@ -288,5 +289,5 @@ export default function DashboardPage() {
         </Card.Content>
       </Card>
     </div>
-  );
+  )
 }

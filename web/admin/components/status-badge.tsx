@@ -1,17 +1,16 @@
-import { cn } from "@/lib/utils";
-import { Badge, badgeVariants } from "@/components/ui/badge";
+import { Chip } from "@heroui/react"
 
-type Tone = "success" | "warning" | "danger" | "neutral" | "lime" | "outline" | "info";
+type Tone = "success" | "warning" | "danger" | "neutral" | "lime" | "outline" | "info"
 
-const TONE_CLASS: Record<Tone, string> = {
-  success: "border-transparent bg-success/15 text-success",
-  warning: "border-transparent bg-warning/15 text-warning",
-  danger: "border-transparent bg-danger/15 text-danger",
-  info: "border-transparent bg-info/15 text-info",
-  neutral: "border-transparent bg-muted text-muted-foreground",
-  lime: "border-transparent bg-accent text-accent-foreground",
-  outline: "",
-};
+const TONE_COLOR: Record<Tone, string> = {
+  success: "success",
+  warning: "warning",
+  danger: "danger",
+  info: "info",
+  neutral: "default",
+  lime: "accent",
+  outline: "default",
+}
 
 export function StatusBadge({
   tone = "neutral",
@@ -19,21 +18,20 @@ export function StatusBadge({
   className,
   dot,
 }: {
-  tone?: Tone;
-  label?: React.ReactNode;
-  className?: string;
-  dot?: boolean;
+  tone?: Tone
+  label?: React.ReactNode
+  className?: string
+  dot?: boolean
 }) {
   return (
-    <Badge variant="outline" className={cn(TONE_CLASS[tone], "font-medium", className)}>
+    <Chip size="sm" variant="soft" color={TONE_COLOR[tone] as any} className={className}>
       {dot && <span className="mr-1 size-1.5 rounded-full bg-current" />}
       {label ?? "—"}
-    </Badge>
-  );
+    </Chip>
+  )
 }
 
 export const statusTone: Record<string, Tone> = {
-  // PRD 13-marketplace-v2 §4 tokens: success=approved/live, warning=review-needed, danger=blocked, info=verified/info
   active: "success",
   approved: "success",
   published: "success",
@@ -70,12 +68,10 @@ export const statusTone: Record<string, Tone> = {
   rejected: "danger",
   disputed: "danger",
   read: "info",
-};
+}
 
 export const riskTone: Record<string, Tone> = {
   low: "success",
   medium: "warning",
   high: "danger",
-};
-
-export { badgeVariants };
+}
