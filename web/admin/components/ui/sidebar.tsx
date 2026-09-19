@@ -205,9 +205,9 @@ export function SidebarMenuButton({
   )
 
   return (
-    <button className={classes} data-active={isActive} {...props}>
+    <div className={classes} data-active={isActive} {...(props as any)}>
       {children}
-    </button>
+    </div>
   )
 }
 
