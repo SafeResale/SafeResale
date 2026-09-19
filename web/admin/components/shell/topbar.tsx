@@ -34,30 +34,33 @@ export function Topbar() {
   const item = findItem(seg)
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-14">
+    <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border/50 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-14 backdrop-blur-sm bg-background/80">
       <div className="flex w-full items-center gap-1 px-4 py-3 lg:gap-2 lg:px-6">
         <SidebarTrigger className="-ml-1" />
 
-        <div className="mx-2 h-4 w-px bg-border" />
+        <div className="mx-1.5 h-4 w-px bg-border/60" />
 
         <div className="flex min-w-0 flex-col">
-          <span className="truncate text-sm font-semibold">{item?.label ?? "SafeResale Admin"}</span>
-          <span className="hidden text-xs text-muted-foreground sm:block">Verification Trust Engine</span>
+          <span className="truncate text-sm font-semibold tracking-tight">{item?.label ?? "SafeResale Admin"}</span>
+          <span className="hidden text-[11px] text-muted-foreground/70 sm:block">Verification Trust Engine</span>
         </div>
 
-        <div className="ml-auto flex items-center gap-2">
-          <div className="hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs sm:flex" title="Backend health">
-            <span className={cn("size-2 rounded-full", health === "ok" ? "bg-success" : health === "down" ? "bg-danger" : "bg-warning")} />
-            <span className="text-muted-foreground">{health === "ok" ? "API online" : health === "down" ? "API offline" : "…"}</span>
+        <div className="ml-auto flex items-center gap-1.5">
+          <div
+            className="hidden items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-xs sm:flex"
+            title="Backend health"
+          >
+            <span className={cn("size-1.5 rounded-full", health === "ok" ? "bg-success" : health === "down" ? "bg-danger" : "bg-warning")} />
+            <span className="text-muted-foreground/80">{health === "ok" ? "API online" : health === "down" ? "API offline" : "…"}</span>
           </div>
 
           <ThemeToggle />
 
           <Dropdown>
             <Dropdown.Trigger>
-              <Button variant="ghost" className="h-9 gap-2 px-2">
+              <Button variant="ghost" className="h-9 gap-2 px-2 rounded-lg">
                 <Avatar className="size-7">
-                  <Avatar.Fallback className="bg-primary text-[10px] font-bold text-primary-foreground">
+                  <Avatar.Fallback className="bg-gradient-to-br from-accent to-accent/70 text-[10px] font-bold text-accent-foreground shadow-sm">
                     {((user?.name || user?.email || "A")[0] || "A").toUpperCase()}
                   </Avatar.Fallback>
                 </Avatar>
@@ -67,17 +70,17 @@ export function Topbar() {
             <Dropdown.Popover>
               <Dropdown.Menu>
                 <Dropdown.Item id="profile" textValue="Your profile">
-                  <Link href="/profile" className="flex items-center gap-2">
-                    <UserCircle className="size-4" /> Your profile
+                  <Link href="/profile" className="flex items-center gap-2.5">
+                    <UserCircle className="size-4 text-muted-foreground" /> Your profile
                   </Link>
                 </Dropdown.Item>
                 <Dropdown.Item id="settings" textValue="Admin settings">
-                  <Link href="/settings" className="flex items-center gap-2">
-                    <ShieldCheck className="size-4" /> Admin settings
+                  <Link href="/settings" className="flex items-center gap-2.5">
+                    <ShieldCheck className="size-4 text-muted-foreground" /> Admin settings
                   </Link>
                 </Dropdown.Item>
                 <Dropdown.Item id="signout" textValue="Sign out" variant="danger" onPress={() => clearSession()}>
-                  <Label className="flex items-center gap-2 text-danger">
+                  <Label className="flex items-center gap-2.5 text-danger">
                     <LogOut className="size-4" /> Sign out
                   </Label>
                 </Dropdown.Item>

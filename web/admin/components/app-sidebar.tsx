@@ -3,9 +3,9 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
-import { EllipsisVertical, LogOut, Settings, ShieldCheck, UserCircle } from "lucide-react"
+import { EllipsisVertical, LogOut, Settings, ShieldCheck, UserCircle, ChevronsUpDown } from "lucide-react"
 import { clearSession, getSessionUser } from "@/lib/api"
-import { Avatar, Button, Dropdown, Label, Separator } from "@heroui/react"
+import { Avatar, Dropdown, Label } from "@heroui/react"
 import { NAV_GROUPS } from "@/components/shell/nav"
 import {
   Sidebar,
@@ -17,6 +17,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar"
 
@@ -37,21 +38,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar {...props}>
-      <SidebarHeader className="border-b">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" className="h-auto py-3 cursor-pointer">
-              <Link href="/dashboard" className="gap-0 flex items-center">
-                <img src="/logo.svg" alt="SafeResale" className="h-[52px] w-auto max-w-[190px] object-contain" />
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarHeader>
+        <Link href="/dashboard" className="flex items-center gap-0 px-1 pt-1 pb-0.5">
+          <img src="/logo.svg" alt="SafeResale" className="h-[44px] w-auto max-w-[180px] object-contain" />
+        </Link>
       </SidebarHeader>
 
+      <SidebarSeparator />
+
       <SidebarContent>
-        {NAV_GROUPS.map((group) => (
+        {NAV_GROUPS.map((group, gi) => (
           <SidebarGroup key={group.title}>
+            {gi > 0 && <SidebarSeparator className="my-1" />}
             <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
             <SidebarMenu>
               {group.items.map((item) => {
@@ -60,8 +58,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton isActive={active} className="cursor-pointer">
-                      <Link href={item.href} className="flex items-center gap-2 w-full">
-                        <Icon />
+                      <Link href={item.href} className="flex items-center gap-2.5 w-full">
+                        <Icon className="size-4 shrink-0" />
                         <span>{item.label}</span>
                       </Link>
                     </SidebarMenuButton>
@@ -73,6 +71,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ))}
       </SidebarContent>
 
+      <SidebarSeparator />
+
       <SidebarFooter>
         <NavUser user={user} />
       </SidebarFooter>
@@ -81,7 +81,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 }
 
 function NavUser({ user }: { user: any }) {
-  const { isMobile } = useSidebar()
   const name = user?.name || "Admin"
   const email = user?.email || "signed in"
   const initial = (name || email || "A")[0]?.toUpperCase() ?? "A"
@@ -91,33 +90,33 @@ function NavUser({ user }: { user: any }) {
       <SidebarMenuItem>
         <Dropdown>
           <Dropdown.Trigger>
-            <SidebarMenuButton size="lg" className="cursor-pointer data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
-              <Avatar className="size-8 rounded-lg">
-                <Avatar.Fallback className="rounded-lg bg-primary text-xs font-bold text-primary-foreground">
+            <SidebarMenuButton size="lg" className="cursor-pointer data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground gap-3 py-2.5">
+              <Avatar className="size-8 rounded-lg shrink-0">
+                <Avatar.Fallback className="rounded-lg bg-gradient-to-br from-accent to-accent/70 text-[11px] font-bold text-accent-foreground shadow-sm">
                   {initial}
                 </Avatar.Fallback>
               </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{name}</span>
-                <span className="truncate text-xs text-muted-foreground">{email}</span>
+              <div className="grid flex-1 text-left text-sm leading-tight min-w-0">
+                <span className="truncate font-medium text-sidebar-foreground">{name}</span>
+                <span className="truncate text-[11px] text-sidebar-foreground/50">{email}</span>
               </div>
-              <EllipsisVertical className="ml-auto size-4" />
+              <ChevronsUpDown className="ml-auto size-3.5 text-sidebar-foreground/40 shrink-0" />
             </SidebarMenuButton>
           </Dropdown.Trigger>
           <Dropdown.Popover>
             <Dropdown.Menu>
               <Dropdown.Item id="profile" textValue="Profile">
-                <Link href="/profile" className="flex items-center gap-2">
-                  <UserCircle className="size-4" /> Profile
+                <Link href="/profile" className="flex items-center gap-2.5">
+                  <UserCircle className="size-4 text-sidebar-foreground/60" /> Profile
                 </Link>
               </Dropdown.Item>
               <Dropdown.Item id="settings" textValue="Settings">
-                <Link href="/settings" className="flex items-center gap-2">
-                  <Settings className="size-4" /> Settings
+                <Link href="/settings" className="flex items-center gap-2.5">
+                  <Settings className="size-4 text-sidebar-foreground/60" /> Settings
                 </Link>
               </Dropdown.Item>
               <Dropdown.Item id="signout" textValue="Sign out" variant="danger" onPress={() => clearSession()}>
-                <Label className="flex items-center gap-2">
+                <Label className="flex items-center gap-2.5">
                   <LogOut className="size-4" /> Sign out
                 </Label>
               </Dropdown.Item>
