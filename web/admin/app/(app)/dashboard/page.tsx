@@ -78,7 +78,7 @@ function KpiCard({ label, value, sub, icon: Icon, tone = "default" }: { label: s
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-black/5 to-transparent dark:via-white/10" />
       <Card.Header className="pb-2">
         <div className="flex items-start justify-between">
-          <Card.Description className="text-[11px] font-semibold uppercase tracking-widest">{label}</Card.Description>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</p>
           <span className={`inline-flex size-9 items-center justify-center rounded-xl text-xs ${toneMap[tone]}`}>
             <Icon className="size-4" />
           </span>
