@@ -8,17 +8,8 @@ import type { Category } from "@/lib/types";
 import { fmtShort } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { PageError, EmptyState } from "@/components/error-state";
-import { StatusBadge } from "@/components/status-badge";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
+import { Button, Card, Chip, Input, Label, Modal, Skeleton, Switch, TextArea } from "@heroui/react";
 
 interface FormState {
   name: string;
@@ -62,7 +53,10 @@ export default function CategoriesPage() {
       name: form.name,
       description: form.description,
       icon: form.icon,
-      fields: form.fields.split(",").map((s) => s.trim()).filter(Boolean),
+      fields: form.fields
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
       sort: Number(form.sort) || 0,
       active: form.active,
     };
@@ -87,7 +81,9 @@ export default function CategoriesPage() {
   }
 
   async function toggleActive(c: Category) {
-    const ok = await runMutation(() => patch(`/admin/categories/${c._id}`, { active: !c.active }), { success: `Category ${c.active ? "deactivated" : "activated"}` });
+    const ok = await runMutation(() => patch(`/admin/categories/${c._id}`, { active: !c.active }), {
+      success: `Category ${c.active ? "deactivated" : "activated"}`,
+    });
     if (ok) reload();
   }
 
@@ -97,51 +93,99 @@ export default function CategoriesPage() {
         title="Categories"
         description="Marketplace taxonomy — slugs power the verification pipeline"
         actions={
-          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
-            <DialogTrigger asChild>
-              <Button onClick={() => setEditing(null)}><FolderPlus className="size-4" /> Add category</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{editing ? `Edit — ${editing.name}` : "Add category"}</DialogTitle>
-                <DialogDescription>{editing ? `Slug "${editing.slug}" stays stable while the trust engine uses it.` : "Slug is generated from the name."}</DialogDescription>
-              </DialogHeader>
-              <form onSubmit={save} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="c-name">Name</Label>
-                  <Input id="c-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="c-desc">Description</Label>
-                  <Textarea id="c-desc" rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="c-icon">Icon</Label>
-                    <Input id="c-icon" value={form.icon} onChange={(e) => setForm({ ...form, icon: e.target.value })} placeholder="smartphone" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="c-sort">Sort order</Label>
-                    <Input id="c-sort" type="number" value={form.sort} onChange={(e) => setForm({ ...form, sort: e.target.value })} />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="c-fields">Seller form fields (comma separated)</Label>
-                  <Input id="c-fields" value={form.fields} onChange={(e) => setForm({ ...form, fields: e.target.value })} placeholder="price, year, brand, model, condition" />
-                </div>
-                <div className="flex items-center justify-between rounded-lg border bg-card px-3 py-2.5">
-                  <div>
-                    <p className="text-sm font-medium">Active</p>
-                    <p className="text-xs text-muted-foreground">Inactive categories are hidden from new listings.</p>
-                  </div>
-                  <Switch checked={form.active} onCheckedChange={(v) => setForm({ ...form, active: v })} />
-                </div>
-                <DialogFooter>
-                  <Button type="submit" className="w-full" disabled={saving}>{saving ? "Saving…" : editing ? "Save changes" : "Create category"}</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <>
+            <Button
+              variant="primary"
+              className="bg-accent text-accent-foreground hover:bg-accent/90"
+              onPress={() => {
+                setEditing(null);
+                setOpen(true);
+              }}
+            >
+              <FolderPlus className="size-4" /> Add category
+            </Button>
+            <Modal.Backdrop isOpen={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
+              <Modal.Container>
+                <Modal.Dialog className="sm:max-w-lg">
+                  <Modal.CloseTrigger />
+                  <Modal.Header>
+                    <Modal.Heading>{editing ? `Edit — ${editing.name}` : "Add category"}</Modal.Heading>
+                    <p className="text-sm text-muted-foreground">
+                      {editing
+                        ? `Slug "${editing.slug}" stays stable while the trust engine uses it.`
+                        : "Slug is generated from the name."}
+                    </p>
+                  </Modal.Header>
+                  <Modal.Body>
+                    <form onSubmit={save} className="space-y-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="c-name">Name</Label>
+                        <Input id="c-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="c-desc">Description</Label>
+                        <TextArea
+                          id="c-desc"
+                          rows={2}
+                          value={form.description}
+                          onChange={(e) => setForm({ ...form, description: e.target.value })}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="c-icon">Icon</Label>
+                          <Input
+                            id="c-icon"
+                            value={form.icon}
+                            onChange={(e) => setForm({ ...form, icon: e.target.value })}
+                            placeholder="smartphone"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="c-sort">Sort order</Label>
+                          <Input
+                            id="c-sort"
+                            type="number"
+                            value={form.sort}
+                            onChange={(e) => setForm({ ...form, sort: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="c-fields">Seller form fields (comma separated)</Label>
+                        <Input
+                          id="c-fields"
+                          value={form.fields}
+                          onChange={(e) => setForm({ ...form, fields: e.target.value })}
+                          placeholder="price, year, brand, model, condition"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between rounded-xl border bg-card px-3 py-2.5">
+                        <div>
+                          <p className="text-sm font-medium">Active</p>
+                          <p className="text-xs text-muted-foreground">Inactive categories are hidden from new listings.</p>
+                        </div>
+                        <Switch isSelected={form.active} onChange={(v) => setForm({ ...form, active: v })} aria-label="Active">
+                          <Switch.Control>
+                            <Switch.Thumb />
+                          </Switch.Control>
+                        </Switch>
+                      </div>
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+                        isDisabled={saving}
+                        isPending={saving}
+                      >
+                        {saving ? "Saving…" : editing ? "Save changes" : "Create category"}
+                      </Button>
+                    </form>
+                  </Modal.Body>
+                </Modal.Dialog>
+              </Modal.Container>
+            </Modal.Backdrop>
+          </>
         }
       />
 
@@ -149,7 +193,9 @@ export default function CategoriesPage() {
 
       {loading && !data && (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-44 rounded-2xl" />
+          ))}
         </div>
       )}
 
@@ -160,41 +206,72 @@ export default function CategoriesPage() {
       {data && data.items.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {data.items.map((c) => (
-            <Card key={c._id} className="flex flex-col">
-              <CardHeader className="pb-2">
+            <Card key={c._id} className="flex flex-col rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
+              <Card.Header className="pb-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    {c.icon && <span className="flex size-8 items-center justify-center rounded-lg bg-muted text-sm font-semibold capitalize">{c.icon.slice(0, 2)}</span>}
+                    {c.icon && (
+                      <span className="flex size-8 items-center justify-center rounded-lg bg-muted text-sm font-semibold capitalize">
+                        {c.icon.slice(0, 2)}
+                      </span>
+                    )}
                     <div>
-                      <CardTitle className="text-base">{c.name}</CardTitle>
-                      <CardDescription className="font-mono text-xs">{c.slug}</CardDescription>
+                      <Card.Title className="text-base">{c.name}</Card.Title>
+                      <Card.Description className="font-mono text-xs">{c.slug}</Card.Description>
                     </div>
                   </div>
-                  <StatusBadge tone={c.active ? "success" : "neutral"} label={c.active ? "active" : "off"} />
+                  <Chip color={c.active ? "success" : "default"} variant="soft" size="sm">
+                    {c.active ? "active" : "off"}
+                  </Chip>
                 </div>
-              </CardHeader>
-              <CardContent className="flex flex-1 flex-col gap-3">
+              </Card.Header>
+              <Card.Content className="flex flex-1 flex-col gap-3">
                 <p className="min-h-8 text-sm text-muted-foreground">{c.description || "No description"}</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {(c.fields || []).map((f) => <Badge key={f} variant="secondary">{f}</Badge>)}
+                  {(c.fields || []).map((f) => (
+                    <Chip key={f} color="accent" variant="soft" size="sm">
+                      {f}
+                    </Chip>
+                  ))}
                 </div>
                 <div className="mt-auto flex items-center justify-between border-t pt-3">
                   <span className="text-xs text-muted-foreground">
                     {c.listing_count ?? 0} listings · sort {c.sort ?? 0} · updated {fmtShort(c.updated_at)}
                   </span>
                   <div className="flex gap-1.5">
-                    <Button variant="outline" size="icon" className="size-8" onClick={() => toggleActive(c)} aria-label="Toggle active">
+                    <Button
+                      variant="secondary"
+                      isIconOnly
+                      aria-label="Toggle active"
+                      className="size-8"
+                      onPress={() => toggleActive(c)}
+                    >
                       <span className={`size-2.5 rounded-full ${c.active ? "bg-success" : "bg-muted-foreground/50"}`} />
                     </Button>
-                    <Button variant="outline" size="icon" className="size-8" onClick={() => { setEditing(c); setOpen(true); }} aria-label="Edit">
+                    <Button
+                      variant="secondary"
+                      isIconOnly
+                      aria-label="Edit"
+                      className="size-8"
+                      onPress={() => {
+                        setEditing(c);
+                        setOpen(true);
+                      }}
+                    >
                       <Pencil className="size-3.5" />
                     </Button>
-                    <Button variant="outline" size="icon" className="size-8 text-destructive hover:text-destructive" onClick={() => setConfirmDel(c)} aria-label="Delete">
+                    <Button
+                      variant="secondary"
+                      isIconOnly
+                      aria-label="Delete"
+                      className="size-8 text-danger"
+                      onPress={() => setConfirmDel(c)}
+                    >
                       <Trash2 className="size-3.5" />
                     </Button>
                   </div>
                 </div>
-              </CardContent>
+              </Card.Content>
             </Card>
           ))}
         </div>

@@ -9,7 +9,7 @@ const TONE_CLASS: Record<Tone, string> = {
   danger: "border-transparent bg-danger/15 text-danger",
   info: "border-transparent bg-info/15 text-info",
   neutral: "border-transparent bg-muted text-muted-foreground",
-  lime: "border-transparent bg-primary text-primary-foreground",
+  lime: "border-transparent bg-accent text-accent-foreground",
   outline: "",
 };
 

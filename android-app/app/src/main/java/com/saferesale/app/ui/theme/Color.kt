@@ -20,13 +20,23 @@ val DarkOnSurface     = Color(0xFFE2E2F0)
 val DarkOutline       = Color(0xFF3A3A5C)
 val DarkOutlineVar    = Color(0xFF2A2A48)
 
+// ├── eclassify reference palette ───────────────────────────────────────────
+val TerritoryAccent  = Color(0xFF00B2CA) // eclassify territoryColor_
+val ForthAccent      = Color(0xFFFA6E53) // eclassify forthColor_
+val LightTextAccent  = Color(0x80000000) // black @ 50% (eclassify lightTextColor)
+val WidgetsBorder    = Color(0xFFEEEEEE) // eclassify widgetsBorderColorLight
+val PendingBlue      = Color(0xFF0C5D9C)
+val SoldOutAmber     = Color(0xFFFFBB33)
+val DeactivateRed    = Color(0xFFFE0000)
+val ActivateGreen    = Color(0xFF02AD11)
+
 // ── Light Theme ────────────────────────────────────────────────────────────────
-val LightBackground   = Color(0xFFF5F5FF)
+val LightBackground   = Color(0xFFF6F5FA)  // eclassify primaryColor_ (light)
 val LightSurface      = Color(0xFFFFFFFF)
-val LightSurfaceVar   = Color(0xFFEEEEFF)
-val LightOnSurface    = Color(0xFF1A1A2E)
-val LightOutline      = Color(0xFFCCCCE0)
-val LightOutlineVar   = Color(0xFFDDDDF0)
+val LightSurfaceVar   = Color(0xFFF0F0F5)
+val LightOnSurface    = Color(0xFF000000)
+val LightOutline      = Color(0xFFE5E5EA)
+val LightOutlineVar   = Color(0xFFEEEEEE)
 
 // ── Status Colors ──────────────────────────────────────────────────────────────
 val StatusGood        = Color(0xFF4CAF50)

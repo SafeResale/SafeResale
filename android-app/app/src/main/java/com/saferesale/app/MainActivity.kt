@@ -37,12 +37,19 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.saferesale.app.data.ApiClient
 import com.saferesale.app.data.DiagReportReq
+import com.saferesale.app.data.TokenStore
+import com.saferesale.app.data.marketplace.MyListingsStore
 import com.saferesale.app.diagnostics.CoreVScoreReport
 import com.saferesale.app.ui.AuthScreen
 import com.saferesale.app.ui.CaptureScreen
-import com.saferesale.app.ui.HomeScreen
+import com.saferesale.app.ui.InspectionRequestScreen
 import com.saferesale.app.ui.NewCheckScreen
 import com.saferesale.app.ui.ScoreScreen
+import com.saferesale.app.ui.market.ContactScreen
+import com.saferesale.app.ui.market.ExploreScreen
+import com.saferesale.app.ui.market.ListingDetailScreen
+import com.saferesale.app.ui.market.MarketMainScreen
+import com.saferesale.app.ui.market.ReportScreen
 import com.saferesale.app.ui.navigation.CoreVNavGraph
 import com.saferesale.app.ui.navigation.Screen
 import com.saferesale.app.ui.theme.CoreVTheme
@@ -55,23 +62,100 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        ApiClient.init(applicationContext)
         setContent {
-            var darkTheme by remember { mutableStateOf(true) }
+            var darkTheme by remember { mutableStateOf(false) }
             CoreVTheme(darkTheme = darkTheme) {
                 val nav = rememberNavController()
-                var token by remember { mutableStateOf<String?>(null) }
-                NavHost(navController = nav, startDestination = "auth") {
+                val context = LocalContext.current
+                var token by remember { mutableStateOf(TokenStore.access(context)) }
+
+                // Observe forced logout (refresh token invalid)
+                LaunchedEffect(Unit) {
+                    ApiClient.onSessionCleared {
+                        token = null
+                    }
+                }
+
+                // Navigate to auth when token is cleared externally
+                LaunchedEffect(token) {
+                    if (token == null && nav.currentDestination?.route != "auth") {
+                        nav.navigate("auth") { popUpTo(0) { inclusive = true } }
+                    }
+                }
+
+                NavHost(
+                    navController = nav,
+                    startDestination = if (token != null) "main" else "auth",
+                ) {
                     composable("auth") {
                         AuthScreen(onAuthed = { t ->
                             token = t
-                            nav.navigate("home") { popUpTo("auth") { inclusive = true } }
+                            nav.navigate("main") { popUpTo("auth") { inclusive = true } }
                         })
                     }
-                    composable("home") {
-                        HomeScreen(
+                    composable("main") {
+                        MarketMainScreen(
+                            token = token,
                             onStartCheck = { nav.navigate("newcheck") },
-                            onBench = { nav.navigate("bench") },
-                            token = token
+                            onOpenListing = { id -> nav.navigate("listing/$id") },
+                            onExplore = { cat ->
+                                nav.navigate(if (cat == null) "explore" else "explore?cat=$cat") {
+                                    launchSingleTop = true
+                                }
+                            },
+                            onLogout = {
+                                token = null
+                                nav.navigate("auth") { popUpTo(0) { inclusive = true } }
+                            },
+                            initialCategory = null,
+                        )
+                    }
+                    composable(
+                        "explore?cat={cat}",
+                        arguments = listOf(navArgument("cat") { type = NavType.StringType; defaultValue = "" }),
+                    ) { back ->
+                        val cat = back.arguments?.getString("cat")
+                        ExploreScreen(
+                            token = token,
+                            initialCategory = cat?.ifBlank { null },
+                            onBack = { nav.popBackStack() },
+                            onOpenListing = { id -> nav.navigate("listing/$id") },
+                        )
+                    }
+                    composable("listing/{lid}") { back ->
+                        val lid = back.arguments?.getString("lid")
+                        ListingDetailScreen(
+                            token = token,
+                            listingId = lid.orEmpty(),
+                            onBack = { nav.popBackStack() },
+                            onReport = { id -> nav.navigate("report/$id") },
+                            onContact = { id -> nav.navigate("contact/$id") },
+                            onBookInspection = { id -> nav.navigate("inspection/$id") },
+                        )
+                    }
+                    composable("inspection/{lid}") { back ->
+                        val lid = back.arguments?.getString("lid")
+                        InspectionRequestScreen(
+                            token = token,
+                            listingId = lid.orEmpty(),
+                            onBack = { nav.popBackStack() },
+                        )
+                    }
+                    composable("report/{lid}") { back ->
+                        val lid = back.arguments?.getString("lid")
+                        ReportScreen(
+                            token = token,
+                            listingId = lid.orEmpty(),
+                            onBack = { nav.popBackStack() },
+                        )
+                    }
+                    composable("contact/{lid}") { back ->
+                        val lid = back.arguments?.getString("lid")
+                        ContactScreen(
+                            token = token,
+                            listingId = lid.orEmpty(),
+                            onBack = { nav.popBackStack() },
                         )
                     }
                     // Guided check flow: draft -> 8 photos -> diagnostics -> score.
@@ -79,6 +163,7 @@ class MainActivity : ComponentActivity() {
                     // so uploads + diagnostics + scores all land on the same listing.
                     composable("newcheck") {
                         NewCheckScreen(token = token, onCreated = { lid ->
+                            MyListingsStore.add(context, lid)
                             nav.navigate("capture/$lid")
                         })
                     }
@@ -111,7 +196,7 @@ class MainActivity : ComponentActivity() {
                     ) { back ->
                         val lid = back.arguments?.getString("lid")
                         ScoreScreen(token = token, listingId = lid, onDone = {
-                            nav.navigate("home") { popUpTo("home") { inclusive = false } }
+                            nav.navigate("main") { popUpTo("main") { inclusive = false } }
                         })
                     }
                     composable("bench") {
@@ -340,7 +425,7 @@ fun BenchDrawer(onNavigate: (String) -> Unit) {
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(
-                    painter = painterResource(R.drawable.app_icon_round),
+                    painter = painterResource(R.mipmap.ic_launcher_round),
                     contentDescription = "SafeResale bench icon",
                     modifier = Modifier
                         .size(48.dp)

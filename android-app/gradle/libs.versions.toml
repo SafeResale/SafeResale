@@ -1,13 +1,13 @@
 [versions]
-agp = "8.5.2"
-kotlin = "2.0.20"
-ksp = "2.0.20-1.0.25"
+agp = "9.4.0"
+kotlin = "2.2.10"
+ksp = "2.3.6"
 coreKtx = "1.13.1"
 lifecycleRuntimeKtx = "2.8.6"
 activityCompose = "1.9.2"
 composeBom = "2024.09.03"
 navigationCompose = "2.8.2"
-hilt = "2.52"
+hilt = "2.60.1"
 hiltNavigationCompose = "1.2.0"
 room = "2.6.1"
 workManager = "2.9.1"
@@ -21,6 +21,11 @@ splashscreen = "1.0.1"
 datastore = "1.1.1"
 coroutines = "1.9.0"
 coil = "2.7.0"
+firebaseBoM = "33.7.0"
+playServicesAuth = "21.2.0"
+playServicesLocation = "21.3.0"
+googleServices = "4.4.2"
+osmdroid = "6.1.20"
 junit = "4.13.2"
 junitAndroid = "1.2.1"
 espresso = "3.6.1"
@@ -71,9 +76,19 @@ kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 
 # Coroutines
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "coroutines" }
 
 # Image loading
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+
+# Firebase
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBoM" }
+firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
+play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "playServicesAuth" }
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+
+# Maps
+osmdroid = { group = "org.osmdroid", name = "osmdroid-android", version.ref = "osmdroid" }
 
 # PDF
 itext7-core = { group = "com.itextpdf", name = "itext7-core", version.ref = "itext7" }
@@ -96,3 +111,4 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 room = { id = "androidx.room", version.ref = "room" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }

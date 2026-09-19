@@ -2,6 +2,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Spinner } from "@/components/ui/spinner";
+import { startAuthWatch } from "@/lib/api";
 
 const PUBLIC_PATHS = ["/login"];
 
@@ -12,6 +13,9 @@ export default function RequireAuth({ children }: { children: ReactNode }) {
   const pub = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
   useEffect(() => {
+    // Start the proactive refresh timer (JWT expiry-based)
+    startAuthWatch();
+
     const tok = localStorage.getItem("access_token");
     if (pub) {
       setReady(true);

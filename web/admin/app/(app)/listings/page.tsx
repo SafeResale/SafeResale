@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import Link from "next/link";
-import { Image as ImageIcon, Package, RefreshCw, Search } from "lucide-react";
+import { Image as ImageIcon, Package, RefreshCw } from "lucide-react";
 import { queryString } from "@/lib/api";
 import { useFetch } from "@/lib/use-fetch";
 import type { ListingItem, PageResult } from "@/lib/types";
@@ -10,13 +10,77 @@ import { fmtNumber, fmtShort, money, riskLabel, timeAgo } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { PageError, EmptyState } from "@/components/error-state";
 import { Pager } from "@/components/pager";
-import { StatusBadge, riskTone, statusTone } from "@/components/status-badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, Chip, Button, Table, Select, ListBox, SearchField, Skeleton } from "@heroui/react";
+
+// Map old Tone/statusBadge tones to HeroUI Chip color
+type ChipColor = "default" | "accent" | "success" | "warning" | "danger";
+
+const toneToChipColor: Record<string, ChipColor> = {
+  success: "success",
+  warning: "warning",
+  danger: "danger",
+  lime: "accent",
+  info: "accent",
+  neutral: "default",
+  outline: "default",
+  accent: "accent",
+};
+
+const statusToneMap: Record<string, string> = {
+  active: "success",
+  approved: "success",
+  published: "success",
+  released: "success",
+  verified: "success",
+  resolved: "success",
+  ok: "success",
+  live: "success",
+  review_passed: "warning",
+  warn: "warning",
+  held: "info",
+  pending: "warning",
+  review: "warning",
+  in_review: "warning",
+  verifying: "warning",
+  submitted: "warning",
+  new: "warning",
+  inspection_pending: "info",
+  capturing: "neutral",
+  draft: "neutral",
+  expired: "neutral",
+  archived: "neutral",
+  dismissed: "neutral",
+  refunded: "neutral",
+  deactivated: "neutral",
+  sold: "info",
+  paid: "info",
+  shipped: "info",
+  delivered: "info",
+  unverified: "neutral",
+  suspended: "danger",
+  blocked: "danger",
+  restricted: "danger",
+  rejected: "danger",
+  disputed: "danger",
+  read: "info",
+};
+
+const riskToneMap: Record<string, string> = {
+  low: "success",
+  medium: "warning",
+  high: "danger",
+};
+
+function chipColorForStatus(status?: string): ChipColor {
+  const tone = status ? statusToneMap[status] || "neutral" : "neutral";
+  return toneToChipColor[tone] || "default";
+}
+
+function chipColorForRiskBand(band: string | null): ChipColor {
+  if (!band) return "default";
+  const tone = riskToneMap[band] || "neutral";
+  return toneToChipColor[tone] || "default";
+}
 
 export default function ListingsPage() {
   const [q, setQ] = useState("");
@@ -44,46 +108,104 @@ export default function ListingsPage() {
       <PageHeader title="Listings" description="Full marketplace catalog with enrichment — risk, decisions, evidence counts" />
 
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative flex-1 sm:max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="pl-8"
-            placeholder="Search title or description…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && commit()}
-          />
-        </div>
-        <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
-          <SelectTrigger className="w-40"><SelectValue placeholder="Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            {(data?.statuses || ["draft", "capturing", "submitted", "verifying", "approved", "review", "blocked", "published", "restricted", "inspection_pending"]).map((s) => (
-              <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>
-            ))}
-          </SelectContent>
+        <SearchField
+          aria-label="Search listings"
+          className="flex-1 sm:max-w-xs"
+          value={q}
+          onChange={setQ}
+          onSubmit={commit}
+          onClear={() => {
+            setQ("");
+            setSearch("");
+            setPage(1);
+          }}
+        >
+          <SearchField.Group>
+            <SearchField.SearchIcon />
+            <SearchField.Input placeholder="Search title or description…" />
+            <SearchField.ClearButton />
+          </SearchField.Group>
+        </SearchField>
+        <Select
+          className="w-40"
+          placeholder="Status"
+          aria-label="Filter by status"
+          value={status}
+          onChange={(v) => {
+            setStatus((v as string) || "all");
+            setPage(1);
+          }}
+        >
+          <Select.Trigger>
+            <Select.Value />
+            <Select.Indicator />
+          </Select.Trigger>
+          <Select.Popover>
+            <ListBox>
+              <ListBox.Item id="all" textValue="All statuses">
+                All statuses
+                <ListBox.ItemIndicator />
+              </ListBox.Item>
+              {(data?.statuses || ["draft", "capturing", "submitted", "verifying", "approved", "review", "blocked", "published", "restricted", "inspection_pending"]).map((s) => (
+                <ListBox.Item key={s} id={s} textValue={s}>
+                  {s.replace(/_/g, " ")}
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+              ))}
+            </ListBox>
+          </Select.Popover>
         </Select>
-        <Select value={risk} onValueChange={(v) => { setRisk(v); setPage(1); }}>
-          <SelectTrigger className="w-40"><SelectValue placeholder="Risk" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All risk levels</SelectItem>
-            <SelectItem value="low">Low</SelectItem>
-            <SelectItem value="medium">Medium</SelectItem>
-            <SelectItem value="high">High</SelectItem>
-          </SelectContent>
+        <Select
+          className="w-40"
+          placeholder="Risk"
+          aria-label="Filter by risk"
+          value={risk}
+          onChange={(v) => {
+            setRisk((v as string) || "all");
+            setPage(1);
+          }}
+        >
+          <Select.Trigger>
+            <Select.Value />
+            <Select.Indicator />
+          </Select.Trigger>
+          <Select.Popover>
+            <ListBox>
+              <ListBox.Item id="all" textValue="All risk levels">
+                All risk levels
+                <ListBox.ItemIndicator />
+              </ListBox.Item>
+              <ListBox.Item id="low" textValue="Low">
+                Low
+                <ListBox.ItemIndicator />
+              </ListBox.Item>
+              <ListBox.Item id="medium" textValue="Medium">
+                Medium
+                <ListBox.ItemIndicator />
+              </ListBox.Item>
+              <ListBox.Item id="high" textValue="High">
+                High
+                <ListBox.ItemIndicator />
+              </ListBox.Item>
+            </ListBox>
+          </Select.Popover>
         </Select>
-        <Button variant="outline" size="icon" onClick={reload} aria-label="Refresh"><RefreshCw className="size-4" /></Button>
+        <Button variant="secondary" isIconOnly aria-label="Refresh" onPress={reload}>
+          <RefreshCw className="size-4" />
+        </Button>
       </div>
 
       {error && <PageError message={error.message} onRetry={reload} />}
 
       {loading && !data && (
-        <Card className="p-4">
-          <div className="space-y-3">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-12" />
-            ))}
-          </div>
+        <Card variant="default" className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
+          <Card.Content className="p-4">
+            <div className="space-y-3">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 rounded-xl" />
+              ))}
+            </div>
+          </Card.Content>
         </Card>
       )}
 
@@ -93,54 +215,62 @@ export default function ListingsPage() {
 
       {data && data.items.length > 0 && (
         <>
-          <div className="overflow-hidden rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Listing</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead>Risk</TableHead>
-                  <TableHead>Decision</TableHead>
-                  <TableHead>Seller</TableHead>
-                  <TableHead className="text-right">Created</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.items.map((it) => {
-                  const risk = riskLabel(it.risk?.adjusted_score);
-                  return (
-                    <TableRow key={it.listing._id}>
-                      <TableCell>
-                        <Link href={`/listings/${it.listing._id}`} className="group">
-                          <p className="max-w-56 truncate font-medium transition-colors group-hover:text-primary">{it.listing.title || "Untitled listing"}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {it.listing.category} · {fmtNumber(it.image_count)} <ImageIcon className="inline size-3" /> · {timeAgo(it.listing.created_at)}
-                          </p>
-                        </Link>
-                      </TableCell>
-                      <TableCell className="tabular-nums">{money(it.listing.price, it.listing.currency)}</TableCell>
-                      <TableCell>
-                        {risk.band ? (
-                          <StatusBadge tone={riskTone[risk.band]} label={it.risk?.badge ? `${it.risk.badge} · ${risk.label}` : `${risk.label}`} />
-                        ) : (
-                          <span className="text-xs text-muted-foreground">no score</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge tone={statusTone[it.listing.status] || "neutral"} label={it.listing.status || "—"} />
-                        {it.decision && it.decision.reason && <p className="mt-0.5 max-w-40 truncate text-xs text-muted-foreground">{it.decision.reason}</p>}
-                      </TableCell>
-                      <TableCell className="max-w-40">
-                        <span className="block truncate text-sm">{it.seller?.name || "—"}</span>
-                        <span className="block max-w-40 truncate text-xs text-muted-foreground">{it.seller?.email}</span>
-                      </TableCell>
-                      <TableCell className="text-right text-xs text-muted-foreground">{fmtShort(it.listing.created_at)}</TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+          <Card variant="default" className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
+            <Card.Content className="p-0">
+              <Table>
+                <Table.ScrollContainer>
+                  <Table.Content aria-label="Listings" className="min-w-[720px]">
+                    <Table.Header>
+                      <Table.Column isRowHeader>Listing</Table.Column>
+                      <Table.Column>Price</Table.Column>
+                      <Table.Column>Risk</Table.Column>
+                      <Table.Column>Decision</Table.Column>
+                      <Table.Column>Seller</Table.Column>
+                      <Table.Column className="text-right">Created</Table.Column>
+                    </Table.Header>
+                    <Table.Body>
+                      {data.items.map((it) => {
+                        const riskInfo = riskLabel(it.risk?.adjusted_score);
+                        return (
+                          <Table.Row key={it.listing._id} id={it.listing._id}>
+                            <Table.Cell>
+                              <Link href={`/listings/${it.listing._id}`} className="group">
+                                <p className="max-w-56 truncate font-medium transition-colors group-hover:text-primary">{it.listing.title || "Untitled listing"}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {it.listing.category} · {fmtNumber(it.image_count)} <ImageIcon className="inline size-3" /> · {timeAgo(it.listing.created_at)}
+                                </p>
+                              </Link>
+                            </Table.Cell>
+                            <Table.Cell className="tabular-nums">{money(it.listing.price, it.listing.currency)}</Table.Cell>
+                            <Table.Cell>
+                              {riskInfo.band ? (
+                                <Chip color={chipColorForRiskBand(riskInfo.band)} variant="soft" size="sm">
+                                  {it.risk?.badge ? `${it.risk.badge} · ${riskInfo.label}` : riskInfo.label}
+                                </Chip>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">no score</span>
+                              )}
+                            </Table.Cell>
+                            <Table.Cell>
+                              <Chip color={chipColorForStatus(it.listing.status)} variant="soft" size="sm">
+                                {it.listing.status || "—"}
+                              </Chip>
+                              {it.decision && it.decision.reason && <p className="mt-0.5 max-w-40 truncate text-xs text-muted-foreground">{it.decision.reason}</p>}
+                            </Table.Cell>
+                            <Table.Cell className="max-w-40">
+                              <span className="block truncate text-sm">{it.seller?.name || "—"}</span>
+                              <span className="block max-w-40 truncate text-xs text-muted-foreground">{it.seller?.email}</span>
+                            </Table.Cell>
+                            <Table.Cell className="text-right text-xs text-muted-foreground">{fmtShort(it.listing.created_at)}</Table.Cell>
+                          </Table.Row>
+                        );
+                      })}
+                    </Table.Body>
+                  </Table.Content>
+                </Table.ScrollContainer>
+              </Table>
+            </Card.Content>
+          </Card>
           <Pager page={data.page} pageSize={data.page_size} total={data.total} onPage={setPage} />
         </>
       )}

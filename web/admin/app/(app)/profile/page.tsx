@@ -8,12 +8,7 @@ import type { AuditEntry, PageResult } from "@/lib/types";
 import { fmtDate } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { PageError } from "@/components/error-state";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button, Card, Chip, Input, Label, Skeleton, Table } from "@heroui/react";
 
 export default function ProfilePage() {
   const me = getSessionUser();
@@ -41,33 +36,33 @@ export default function ProfilePage() {
       <PageHeader title="My account" description="Your admin profile and security" />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base"><CircleUser className="size-4" /> Profile</CardTitle>
-            <CardDescription>Details attached to your session</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
+        <Card className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
+          <Card.Header>
+            <Card.Title className="flex items-center gap-2 text-base"><CircleUser className="size-4" /> Profile</Card.Title>
+            <Card.Description>Details attached to your session</Card.Description>
+          </Card.Header>
+          <Card.Content className="space-y-3 text-sm">
             <div className="flex gap-2"><dt className="w-24 shrink-0 text-muted-foreground">Name</dt><dd className="font-medium">{me?.name || "—"}</dd></div>
             <div className="flex gap-2"><dt className="w-24 shrink-0 text-muted-foreground">Email</dt><dd className="font-medium">{me?.email || "—"}</dd></div>
-            <div className="flex gap-2"><dt className="w-24 shrink-0 text-muted-foreground">Role</dt><dd><span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{me?.role || "admin"}</span></dd></div>
+            <div className="flex gap-2 items-center"><dt className="w-24 shrink-0 text-muted-foreground">Role</dt><dd><Chip color="accent" variant="soft" size="sm" className="capitalize">{me?.role || "admin"}</Chip></dd></div>
             <div className="flex gap-2 items-center justify-between border-t pt-3">
               <div>
                 <dt className="text-muted-foreground">Sign out</dt>
                 <dd className="text-xs text-muted-foreground">Clears the session and returns to the login screen</dd>
               </div>
-              <Button variant="outline" onClick={() => { clearSession(); window.location.href = "/login"; }}>
+              <Button variant="secondary" onPress={() => { clearSession(); window.location.href = "/login"; }}>
                 <LogOut className="size-4" /> Sign out
               </Button>
             </div>
-          </CardContent>
+          </Card.Content>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base"><KeyRound className="size-4" /> Change password</CardTitle>
-            <CardDescription>Choose at least 8 characters. Active sessions will be signed out.</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <Card className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
+          <Card.Header>
+            <Card.Title className="flex items-center gap-2 text-base"><KeyRound className="size-4" /> Change password</Card.Title>
+            <Card.Description>Choose at least 8 characters. Active sessions will be signed out.</Card.Description>
+          </Card.Header>
+          <Card.Content>
             <form onSubmit={changePassword} className="space-y-3">
               <div className="space-y-1.5">
                 <Label htmlFor="cur">Current password</Label>
@@ -82,42 +77,46 @@ export default function ProfilePage() {
                 <Input id="confirm" type="password" required value={pw.confirm} onChange={(e) => setPw({ ...pw, confirm: e.target.value })} />
               </div>
               {pwdError && <p className="text-xs text-destructive">{pwdError}</p>}
-              <Button type="submit" className="w-full" disabled={saving}>{saving ? "Updating…" : "Update password"}</Button>
+              <Button type="submit" variant="primary" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" isDisabled={saving} isPending={saving}>
+                {saving ? "Updating…" : "Update password"}
+              </Button>
             </form>
-          </CardContent>
+          </Card.Content>
         </Card>
       </div>
 
-      <Card className="mt-4">
-        <CardHeader>
-          <CardTitle className="text-base">Recent activity</CardTitle>
-          <CardDescription>Your latest actions from the audit trail</CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          {loading && <div className="space-y-2 p-4">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10" />)}</div>}
+      <Card className="mt-4 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
+        <Card.Header>
+          <Card.Title className="text-base">Recent activity</Card.Title>
+          <Card.Description>Your latest actions from the audit trail</Card.Description>
+        </Card.Header>
+        <Card.Content className="p-0">
+          {loading && <div className="space-y-2 p-4">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 rounded-xl" />)}</div>}
           {error && <PageError message={error.message} />}
           {data && data.items.length === 0 && <p className="p-4 text-sm text-muted-foreground">No activity recorded yet.</p>}
           {data && data.items.length > 0 && (
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Target</TableHead>
-                  <TableHead className="text-right">When</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.items.slice(0, 8).map((a) => (
-                  <TableRow key={a._id}>
-                    <TableCell><code className="text-xs">{a.action}</code></TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{a.target_type || "—"}</TableCell>
-                    <TableCell className="text-right text-xs text-muted-foreground">{fmtDate(a.created_at)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
+              <Table.ScrollContainer>
+                <Table.Content aria-label="Recent activity" className="min-w-[560px]">
+                  <Table.Header>
+                    <Table.Column isRowHeader>Action</Table.Column>
+                    <Table.Column>Target</Table.Column>
+                    <Table.Column className="text-right">When</Table.Column>
+                  </Table.Header>
+                  <Table.Body>
+                    {data.items.slice(0, 8).map((a) => (
+                      <Table.Row key={a._id} id={a._id}>
+                        <Table.Cell><Chip variant="soft" color="accent" size="sm" className="font-mono text-xs">{a.action}</Chip></Table.Cell>
+                        <Table.Cell className="text-xs text-muted-foreground">{a.target_type || "—"}</Table.Cell>
+                        <Table.Cell className="text-right text-xs text-muted-foreground">{fmtDate(a.created_at)}</Table.Cell>
+                      </Table.Row>
+                    ))}
+                  </Table.Body>
+                </Table.Content>
+              </Table.ScrollContainer>
             </Table>
           )}
-        </CardContent>
+        </Card.Content>
       </Card>
     </div>
   );

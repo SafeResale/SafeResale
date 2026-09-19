@@ -87,6 +87,15 @@ async def confirm_upload(listing_id: str, body: ConfirmReq, request: Request, us
             server_quality = analyze_image_quality(str(p))
             # merge client + server: server is source of truth
             merged_quality = {**(body.quality or {}), "server": server_quality, "passed": server_quality["passed"]}
+        except ImportError:
+            # cv2 unavailable in this process (backend on Windows, models in WSL)
+            try:
+                from app.services.image_quality import server_quality_for_image
+                server_quality = server_quality_for_image(str(p), body.stored_key)
+                merged_quality = {**(body.quality or {}), "server": server_quality, "passed": server_quality["passed"]}
+            except Exception as e:
+                server_quality = {"error": str(e), "passed": True}
+                merged_quality = body.quality
         except Exception as e:
             server_quality = {"error": str(e), "passed": True}
             merged_quality = body.quality

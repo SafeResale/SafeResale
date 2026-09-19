@@ -12,12 +12,20 @@ import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -30,8 +38,34 @@ import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.atan2
 
 val ANGLES = listOf("front", "back", "left", "right", "top", "bottom", "front_45", "back_45")
+
+private data class AngleGuide(val label: String, val hint: String)
+
+private val ANGLE_GUIDES = mapOf(
+    "front" to AngleGuide("Front", "Camera straight ahead, centered in front of the product."),
+    "back" to AngleGuide("Back", "Move directly behind the product, shoot the back face."),
+    "left" to AngleGuide("Left", "Shoot from the left side, 90° from the front face."),
+    "right" to AngleGuide("Right", "Shoot from the right side, 90° from the front face."),
+    "top" to AngleGuide("Top", "Hold the camera directly above, pointing straight down."),
+    "bottom" to AngleGuide("Bottom", "Camera below the product, pointing up into the underside."),
+    "front_45" to AngleGuide("Front 45°", "Angle the camera exactly 45° from the front face."),
+    "back_45" to AngleGuide("Back 45°", "Mirror shot: angle the camera exactly 45° from the back face."),
+)
+
+private fun guideVector(angle: String): Pair<Offset, Boolean> = when (angle) {
+    "front" -> Offset(0f, -1f) to false
+    "back" -> Offset(0f, 1f) to false
+    "left" -> Offset(-1f, 0f) to false
+    "right" -> Offset(1f, 0f) to false
+    "top" -> Offset(0f, -0.65f) to false
+    "bottom" -> Offset(0f, 0.95f) to false
+    "front_45" -> Offset(-0.7071f, -0.7071f) to true
+    "back_45" -> Offset(0.7071f, 0.7071f) to true
+    else -> Offset(0f, -1f) to false
+}
 
 /** On-device blur gate: variance of Laplacian on a downscaled grayscale
  *  thumbnail. Higher = sharper. Threshold ~100 rejects motion-blur/dark frames
@@ -67,6 +101,78 @@ const val BLUR_THRESHOLD = 100.0
 
 data class AngleState(val angle: String, val status: String, val detail: String = "")
 // status: pending | captured | uploaded | failed
+
+@Composable
+private fun AngleGuideDiagram(angle: String) {
+    val (dir, is45) = guideVector(angle)
+    val accent = MaterialTheme.colorScheme.primary
+    val outline = MaterialTheme.colorScheme.onSurfaceVariant
+    Canvas(Modifier.fillMaxWidth().height(120.dp)) {
+        val w = size.width
+        val h = size.height
+        val cx = w / 2f
+        val cy = h / 2f
+        val prodW = w * 0.30f
+        val prodH = h * 0.30f
+        drawRoundRect(
+            color = accent,
+            topLeft = Offset(cx - prodW / 2f, cy - prodH / 2f),
+            size = Size(prodW, prodH),
+            cornerRadius = CornerRadius(6.dp.toPx())
+        )
+        val dist = h * 0.36f
+        val cam = Offset(cx + dir.x * dist, cy + dir.y * dist)
+        drawLine(
+            color = outline,
+            start = Offset(cx, cy),
+            end = cam,
+            strokeWidth = 2.dp.toPx(),
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f))
+        )
+        val rot = Math.toDegrees(atan2(dir.y.toDouble(), dir.x.toDouble())).toFloat() + 90f
+        rotate(rot, pivot = cam) {
+            drawRoundRect(
+                color = outline,
+                topLeft = Offset(cam.x - 9.dp.toPx(), cam.y - 17.dp.toPx()),
+                size = Size(18.dp.toPx(), 34.dp.toPx()),
+                cornerRadius = CornerRadius(3.dp.toPx())
+            )
+            drawCircle(color = accent, radius = 3.dp.toPx(), center = cam)
+        }
+        if (is45) {
+            val label = Offset((cx + cam.x) / 2f, (cy + cam.y) / 2f)
+            drawCircle(color = accent, radius = 15.dp.toPx(), center = label)
+            val paint = android.graphics.Paint().apply {
+                color = android.graphics.Color.WHITE
+                textSize = 16.dp.toPx()
+                isAntiAlias = true
+                textAlign = android.graphics.Paint.Align.CENTER
+            }
+            drawContext.canvas.nativeCanvas.drawText("45°", label.x, label.y + 5.dp.toPx(), paint)
+        }
+    }
+}
+
+@Composable
+private fun AngleGuideCard(angle: String, step: Int) {
+    val guide = ANGLE_GUIDES[angle] ?: AngleGuide(angle, "")
+    Card(Modifier.padding(12.dp)) {
+        Column(Modifier.padding(12.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Guide · ${guide.label}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                Text("$step/8", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text(guide.hint, style = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.height(8.dp))
+            AngleGuideDiagram(angle)
+            Text(
+                "Blur gate ≥ ${BLUR_THRESHOLD.toInt()} runs on-device before upload (R-CAPTURE-03).",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
 
 @Composable
 fun CaptureScreen(token: String?, listingId: String?, onDone: () -> Unit) {
@@ -213,12 +319,7 @@ fun CaptureScreen(token: String?, listingId: String?, onDone: () -> Unit) {
                     }, ContextCompat.getMainExecutor(c))
                 }
             }, modifier = Modifier.fillMaxSize())
-            Card(Modifier.padding(16.dp)) {
-                Column(Modifier.padding(8.dp)) {
-                    Text("Guide: ${ANGLES[idx]} — fill the frame, avoid glare")
-                    Text("Blur gate ≥ ${BLUR_THRESHOLD.toInt()} runs on-device before upload (R-CAPTURE-03).", style = MaterialTheme.typography.bodySmall)
-                }
-            }
+            AngleGuideCard(ANGLES[idx], idx + 1)
         }
         if (msg.isNotEmpty()) Text(msg, modifier = Modifier.padding(8.dp), style = MaterialTheme.typography.bodyMedium)
         LazyColumn(Modifier.height(120.dp).padding(horizontal = 16.dp)) {

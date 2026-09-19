@@ -34,26 +34,33 @@ PROMPT_BANK: Dict[str, list[str]] = {
         "a photo of a clean undamaged smartphone with no defects, pristine surface",
         "a flawless device with no damage, perfect condition",
         "a close-up photo of a pristine phone with no scratches or cracks",
+        "a clean phone with only minor fingerprints or smudges from handling, no damage",
+        "a phone with light sweat stains or hand marks on the surface, otherwise intact",
+        "a hand holding a clean phone, dark screen turned off showing reflections, fingerprints and sweat smudges but no damage, intact device",
+        "a phone screen turned off showing glare, reflections and oily hand marks, no cracks or dents, undamaged",
+        "a close-up of a phone held in a hand, skin and fingers visible, glossy black screen with light reflections and smudges, undamaged",
     ],
     "scratch": [
-        "a close-up photo of a scratched phone surface",
-        "a device with visible scratches on its body",
+        "a close-up photo of a phone with thin hairline scratches on the glass",
+        "a device with visible surface scratches, fine lines on the body",
     ],
     "crack": [
-        "a photo of a cracked phone screen",
-        "a device with a crack across its surface",
+        "a photo of a phone screen with a sharp crack line across the glass",
+        "a device with a clearly visible crack, fractured glass with a line",
     ],
     "dent": [
-        "a photo of a dented phone body",
-        "a device with a dent on its casing",
+        "a phone body with a deep dent where the metal or plastic is visibly pushed inward, structural deformation",
+        "a device with a dented casing, clear physical indentation and deformed metal",
+        "a close-up of a dented phone edge, obvious dent damage with deformed shape",
     ],
     "screen_damage": [
-        "a photo of a phone with a damaged screen",
-        "a broken phone display with screen damage",
+        "a phone screen visibly cracked and shattered with lines across the display, broken display",
+        "a broken phone display with shattered glass and cracked screen, display damage",
+        "a phone with a clearly broken screen, cracks and shattered display with visible damage",
     ],
     "glass_damage": [
-        "a photo of shattered glass on a device",
-        "a device with broken glass",
+        "a photo of a phone with shattered glass back panel, spiderweb cracks on glass",
+        "a device with broken glass, shattered and cracked glass surface",
     ],
     "rust": [
         "a close-up photo of rust on metal",
@@ -64,8 +71,8 @@ PROMPT_BANK: Dict[str, list[str]] = {
         "a device with corrosion and oxidation",
     ],
     "water_damage": [
-        "a photo of water damage on a device, stains and discoloration",
-        "a water-damaged phone with watermarks",
+        "a phone that was submerged in water, liquid pooled inside the screen",
+        "heavy water damage with moisture and cracking from liquid ingress",
     ],
 }
 

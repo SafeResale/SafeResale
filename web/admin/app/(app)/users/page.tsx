@@ -1,28 +1,72 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
-import { RefreshCw, Search, UserPlus, Users as UsersIcon } from "lucide-react";
-import { post, queryString, ApiError } from "@/lib/api";
+import { RefreshCw, Users as UsersIcon } from "lucide-react";
+import { post, queryString } from "@/lib/api";
 import { useFetch, runMutation } from "@/lib/use-fetch";
 import type { PageResult, UserRow } from "@/lib/types";
 import { fmtShort, initials } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { PageError, EmptyState } from "@/components/error-state";
 import { Pager } from "@/components/pager";
-import { StatusBadge, statusTone } from "@/components/status-badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Avatar,
+  Button,
+  Card,
+  Chip,
+  Input,
+  Label,
+  ListBox,
+  Modal,
+  SearchField,
+  Select,
+  Skeleton,
+  Table,
+} from "@heroui/react";
 import { toast } from "sonner";
 
 const ROLES = ["seller", "buyer", "admin", "inspector"];
+
+type ChipColor = "default" | "accent" | "success" | "warning" | "danger";
+
+const toneToChipColor: Record<string, ChipColor> = {
+  success: "success",
+  warning: "warning",
+  danger: "danger",
+  lime: "accent",
+  info: "accent",
+  neutral: "default",
+  outline: "default",
+  accent: "accent",
+};
+
+const statusToneMap: Record<string, string> = {
+  active: "success",
+  approved: "success",
+  published: "success",
+  released: "success",
+  verified: "success",
+  resolved: "success",
+  ok: "success",
+  live: "success",
+  pending: "warning",
+  review: "warning",
+  in_review: "warning",
+  suspended: "danger",
+  blocked: "danger",
+  restricted: "danger",
+  rejected: "danger",
+  deactivated: "neutral",
+  expired: "neutral",
+  archived: "neutral",
+  unverified: "neutral",
+};
+
+function chipColorForStatus(status?: string): ChipColor {
+  const tone = status ? statusToneMap[status] || "neutral" : "neutral";
+  return toneToChipColor[tone] || "default";
+}
 
 export default function UsersPage() {
   const [q, setQ] = useState("");
@@ -41,6 +85,11 @@ export default function UsersPage() {
     page_size: 25,
   })}`;
   const { data, loading, error, reload } = useFetch<PageResult<UserRow>>(path);
+
+  const commit = useCallback(() => {
+    setSearch(q.trim());
+    setPage(1);
+  }, [q]);
 
   async function createUser(e: React.FormEvent) {
     e.preventDefault();
@@ -64,77 +113,198 @@ export default function UsersPage() {
         title="Users"
         description="Customers, sellers, admins and inspectors — manage roles and status"
         actions={
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button><UserPlus className="size-4" /> Add user</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add user</DialogTitle>
-                <DialogDescription>Creates an account; the user can sign in immediately.</DialogDescription>
-              </DialogHeader>
-              <form onSubmit={createUser} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="u-name">Name</Label>
-                  <Input id="u-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Jane Doe" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="u-email">Email</Label>
-                  <Input id="u-email" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="jane@example.com" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="u-password">Password</Label>
-                  <Input id="u-password" type="password" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Min 8 characters" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="u-phone">Phone (optional)</Label>
-                  <Input id="u-phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1 555 000 0000" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Role</Label>
-                  <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {ROLES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <DialogFooter>
-                  <Button type="submit" className="w-full">Create user</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <>
+            <Button
+              variant="primary"
+              className="bg-accent text-accent-foreground hover:bg-accent/90"
+              onPress={() => setOpen(true)}
+            >
+              Add user
+            </Button>
+            <Modal.Backdrop isOpen={open} onOpenChange={setOpen}>
+              <Modal.Container>
+                <Modal.Dialog className="sm:max-w-[440px]">
+                  <Modal.CloseTrigger />
+                  <Modal.Header>
+                    <Modal.Heading>Add user</Modal.Heading>
+                  </Modal.Header>
+                  <p className="px-6 -mt-2 text-sm text-muted-foreground">Creates an account; the user can sign in immediately.</p>
+                  <Modal.Body>
+                    <form onSubmit={createUser} className="space-y-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="u-name">Name</Label>
+                        <Input
+                          id="u-name"
+                          required
+                          value={form.name}
+                          onChange={(e) => setForm({ ...form, name: e.target.value })}
+                          placeholder="Jane Doe"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="u-email">Email</Label>
+                        <Input
+                          id="u-email"
+                          type="email"
+                          required
+                          value={form.email}
+                          onChange={(e) => setForm({ ...form, email: e.target.value })}
+                          placeholder="jane@example.com"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="u-password">Password</Label>
+                        <Input
+                          id="u-password"
+                          type="password"
+                          required
+                          minLength={8}
+                          value={form.password}
+                          onChange={(e) => setForm({ ...form, password: e.target.value })}
+                          placeholder="Min 8 characters"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="u-phone">Phone (optional)</Label>
+                        <Input
+                          id="u-phone"
+                          value={form.phone}
+                          onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                          placeholder="+1 555 000 0000"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Role</Label>
+                        <Select
+                          aria-label="Role"
+                          placeholder="Select role"
+                          value={form.role}
+                          onChange={(v) => setForm({ ...form, role: (v as string) || "seller" })}
+                        >
+                          <Select.Trigger>
+                            <Select.Value />
+                            <Select.Indicator />
+                          </Select.Trigger>
+                          <Select.Popover>
+                            <ListBox>
+                              {ROLES.map((r) => (
+                                <ListBox.Item key={r} id={r} textValue={r}>
+                                  <span className="capitalize">{r}</span>
+                                  <ListBox.ItemIndicator />
+                                </ListBox.Item>
+                              ))}
+                            </ListBox>
+                          </Select.Popover>
+                        </Select>
+                      </div>
+                      <Button type="submit" variant="primary" className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
+                        Create user
+                      </Button>
+                    </form>
+                  </Modal.Body>
+                </Modal.Dialog>
+              </Modal.Container>
+            </Modal.Backdrop>
+          </>
         }
       />
 
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative flex-1 sm:max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-8" placeholder="Search name or email…" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (setSearch(q.trim()), setPage(1))} />
-        </div>
-        <Select value={role} onValueChange={(v) => { setRole(v); setPage(1); }}>
-          <SelectTrigger className="w-36"><SelectValue placeholder="Role" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All roles</SelectItem>
-            {ROLES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-          </SelectContent>
+        <SearchField
+          aria-label="Search users"
+          className="flex-1 sm:max-w-xs"
+          value={q}
+          onChange={setQ}
+          onSubmit={commit}
+          onClear={() => {
+            setQ("");
+            setSearch("");
+            setPage(1);
+          }}
+        >
+          <SearchField.Group>
+            <SearchField.SearchIcon />
+            <SearchField.Input placeholder="Search name or email…" />
+            <SearchField.ClearButton />
+          </SearchField.Group>
+        </SearchField>
+        <Select
+          className="w-36"
+          placeholder="Role"
+          aria-label="Filter by role"
+          value={role}
+          onChange={(v) => {
+            setRole((v as string) || "all");
+            setPage(1);
+          }}
+        >
+          <Select.Trigger>
+            <Select.Value />
+            <Select.Indicator />
+          </Select.Trigger>
+          <Select.Popover>
+            <ListBox>
+              <ListBox.Item id="all" textValue="All roles">
+                All roles
+                <ListBox.ItemIndicator />
+              </ListBox.Item>
+              {ROLES.map((r) => (
+                <ListBox.Item key={r} id={r} textValue={r}>
+                  <span className="capitalize">{r}</span>
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+              ))}
+            </ListBox>
+          </Select.Popover>
         </Select>
-        <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
-          <SelectTrigger className="w-36"><SelectValue placeholder="Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="suspended">Suspended</SelectItem>
-          </SelectContent>
+        <Select
+          className="w-36"
+          placeholder="Status"
+          aria-label="Filter by status"
+          value={status}
+          onChange={(v) => {
+            setStatus((v as string) || "all");
+            setPage(1);
+          }}
+        >
+          <Select.Trigger>
+            <Select.Value />
+            <Select.Indicator />
+          </Select.Trigger>
+          <Select.Popover>
+            <ListBox>
+              <ListBox.Item id="all" textValue="All statuses">
+                All statuses
+                <ListBox.ItemIndicator />
+              </ListBox.Item>
+              <ListBox.Item id="active" textValue="Active">
+                Active
+                <ListBox.ItemIndicator />
+              </ListBox.Item>
+              <ListBox.Item id="suspended" textValue="Suspended">
+                Suspended
+                <ListBox.ItemIndicator />
+              </ListBox.Item>
+            </ListBox>
+          </Select.Popover>
         </Select>
-        <Button variant="outline" size="icon" onClick={reload} aria-label="Refresh"><RefreshCw className="size-4" /></Button>
+        <Button variant="secondary" isIconOnly aria-label="Refresh" onPress={reload}>
+          <RefreshCw className="size-4" />
+        </Button>
       </div>
 
       {error && <PageError message={error.message} onRetry={reload} />}
 
       {loading && !data && (
-        <Card className="p-4"><div className="space-y-3">{Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} className="h-11" />)}</div></Card>
+        <Card variant="default" className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
+          <Card.Content className="p-4">
+            <div className="space-y-3">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <Skeleton key={i} className="h-11 rounded-xl" />
+              ))}
+            </div>
+          </Card.Content>
+        </Card>
       )}
 
       {data && data.items.length === 0 && (
@@ -143,42 +313,60 @@ export default function UsersPage() {
 
       {data && data.items.length > 0 && (
         <>
-          <div className="overflow-hidden rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Verified</TableHead>
-                  <TableHead className="text-right">Listings</TableHead>
-                  <TableHead className="text-right">Joined</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.items.map((u) => (
-                  <TableRow key={u._id}>
-                    <TableCell>
-                      <Link href={`/users/${u._id}`} className="group flex items-center gap-3">
-                        <Avatar className="size-8">
-                          <AvatarFallback className="bg-muted text-xs font-semibold">{initials(u.name, u.email)}</AvatarFallback>
-                        </Avatar>
-                        <span className="min-w-0">
-                          <span className="block truncate font-medium group-hover:text-primary">{u.name || "—"}</span>
-                          <span className="block max-w-52 truncate text-xs text-muted-foreground">{u.email}</span>
-                        </span>
-                      </Link>
-                    </TableCell>
-                    <TableCell><span className="text-sm capitalize">{u.role}</span></TableCell>
-                    <TableCell><StatusBadge tone={statusTone[u.status] || "neutral"} label={u.status} /></TableCell>
-                    <TableCell><StatusBadge tone={u.verified ? "success" : "neutral"} label={u.verified ? "yes" : "no"} /></TableCell>
-                    <TableCell className="text-right tabular-nums">{u.listing_count ?? 0}</TableCell>
-                    <TableCell className="text-right text-xs text-muted-foreground">{fmtShort(u.created_at)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <Card variant="default" className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
+            <Card.Content className="p-0">
+              <Table>
+                <Table.ScrollContainer>
+                  <Table.Content aria-label="Users" className="min-w-[720px]">
+                    <Table.Header>
+                      <Table.Column isRowHeader>User</Table.Column>
+                      <Table.Column>Role</Table.Column>
+                      <Table.Column>Status</Table.Column>
+                      <Table.Column>Verified</Table.Column>
+                      <Table.Column className="text-right">Listings</Table.Column>
+                      <Table.Column className="text-right">Joined</Table.Column>
+                    </Table.Header>
+                    <Table.Body>
+                      {data.items.map((u) => (
+                        <Table.Row key={u._id} id={u._id}>
+                          <Table.Cell>
+                            <Link href={`/users/${u._id}`} className="group flex items-center gap-3">
+                              <Avatar className="size-8">
+                                <Avatar.Fallback className="bg-muted text-xs font-semibold">
+                                  {initials(u.name, u.email)}
+                                </Avatar.Fallback>
+                              </Avatar>
+                              <span className="min-w-0">
+                                <span className="block truncate font-medium group-hover:text-primary">{u.name || "—"}</span>
+                                <span className="block max-w-52 truncate text-xs text-muted-foreground">{u.email}</span>
+                              </span>
+                            </Link>
+                          </Table.Cell>
+                          <Table.Cell>
+                            <Chip color="accent" variant="soft" size="sm" className="capitalize">
+                              {u.role}
+                            </Chip>
+                          </Table.Cell>
+                          <Table.Cell>
+                            <Chip color={chipColorForStatus(u.status)} variant="soft" size="sm" className="capitalize">
+                              {u.status}
+                            </Chip>
+                          </Table.Cell>
+                          <Table.Cell>
+                            <Chip color={u.verified ? "success" : "default"} variant="soft" size="sm">
+                              {u.verified ? "yes" : "no"}
+                            </Chip>
+                          </Table.Cell>
+                          <Table.Cell className="text-right tabular-nums">{u.listing_count ?? 0}</Table.Cell>
+                          <Table.Cell className="text-right text-xs text-muted-foreground">{fmtShort(u.created_at)}</Table.Cell>
+                        </Table.Row>
+                      ))}
+                    </Table.Body>
+                  </Table.Content>
+                </Table.ScrollContainer>
+              </Table>
+            </Card.Content>
+          </Card>
           <Pager page={data.page} pageSize={data.page_size} total={data.total} onPage={setPage} />
         </>
       )}

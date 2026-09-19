@@ -43,6 +43,17 @@ class ResetIn(BaseModel):
     code: str
     new_password: str
 
+class PhoneIn(BaseModel):
+    phone: str
+
+class PhoneVerifyIn(BaseModel):
+    phone: str
+    code: str
+    name: str | None = None
+
+class GoogleIdTokenIn(BaseModel):
+    id_token: str
+
 def _code() -> str:
     return f"{secrets.randbelow(900000)+100000}"
 
@@ -116,6 +127,56 @@ async def logout(body: RefreshIn, request: Request):
     await audit_log(action="auth.logout", ip=request.client.host if request.client else None, request_id=request.headers.get("X-Request-ID"))
     return
 
+@router.post("/phone/otp", status_code=202)
+async def phone_otp(body: PhoneIn, request: Request):
+    """Dev fallback OTP (not used once Firebase phone auth is configured).
+    Sends (prints) a 6-digit code for {phone}. Swap this for a real SMS
+    gateway or Firebase in production."""
+    await check_rate_limit(request, "auth", key=body.phone)
+    phone = body.phone.strip().replace(" ", "")
+    if not (7 <= len(phone.lstrip("+")) <= 15):
+        raise HTTPException(status_code=422, detail={"code": "bad_phone", "message": "Enter a valid phone number"})
+    db = get_db()
+    await db.verification_codes.delete_many({"phone": phone, "purpose": "phone"})
+    code = _code()
+    await db.verification_codes.insert_one({"phone": phone, "code": code, "purpose": "phone", "created_at": time.time()})
+    await audit_log(action="auth.phone_otp", detail={"phone": phone}, ip=request.client.host if request.client else None, request_id=request.headers.get("X-Request-ID"))
+    print(f"[dev-sms] OTP for {phone}: {code}")
+    return {"sent": True, **({"dev_code": code} if settings.dev_verify_enabled else {})}
+
+@router.post("/phone/verify")
+async def phone_verify(body: PhoneVerifyIn, request: Request):
+    await check_rate_limit(request, "auth", key=body.phone)
+    phone = body.phone.strip().replace(" ", "")
+    db = get_db()
+    code = (body.code or "").strip()
+    rec = await db.verification_codes.find_one({"phone": phone, "code": code, "purpose": "phone"})
+    if not rec:
+        raise HTTPException(status_code=400, detail={"code": "invalid_code", "message": "Invalid OTP"})
+    now = time.time()
+    await db.verification_codes.delete_many({"phone": phone, "purpose": "phone"})
+    user = await db.users.find_one({"phone": phone})
+    if user is None:
+        res = await db.users.insert_one({
+            "name": body.name or f"User {phone[-4:]}",
+            "email": None, "password_hash": None, "phone": phone,
+            "role": "seller", "verified": True, "provider": "phone",
+            "created_at": now, "updated_at": now,
+        })
+        user = {"_id": res.inserted_id, "name": body.name or f"User {phone[-4:]}", "email": None, "role": "seller", "verified": False}
+    else:
+        # A phone number is an identifier, not proof of identity — sellers are
+        # never auto-verified. Admins confirm KYC/document details and flip the
+        # `verified` flag in the admin platform.
+        await db.users.update_one({"_id": user["_id"]}, {"$set": {"provider": "phone", "updated_at": now}})
+    access = create_access_token(str(user["_id"]), user.get("role", "seller"))
+    raw_refresh = create_refresh_token()
+    from hashlib import sha256
+    h = sha256(raw_refresh.encode()).hexdigest()
+    await db.refresh_tokens.insert_one({"user_id": user["_id"], "token_hash": h, "created_at": now})
+    await audit_log(action="auth.phone_login", target_type="user", target_id=user["_id"], actor_id=user["_id"], actor_role=user.get("role"), ip=request.client.host if request.client else None, request_id=request.headers.get("X-Request-ID"))
+    return {"access_token": access, "refresh_token": raw_refresh, "user": {"id": str(user["_id"]), "email": user["email"], "name": user["name"], "role": user.get("role", "seller")}}
+
 @router.post("/request-reset", status_code=202)
 async def request_reset(body: ResetRequestIn, request: Request):
     await check_rate_limit(request, "auth", key=body.email)
@@ -146,7 +207,7 @@ async def me(user=Depends(get_current_user)):
     doc = await db.users.find_one({"_id": ObjectId(user["sub"])})
     if not doc:
         raise HTTPException(status_code=404, detail={"code":"not_found","message":"User not found"})
-    return {"user": {"id": str(doc["_id"]), "email": doc["email"], "name": doc["name"], "role": doc.get("role","seller"), "verified": doc.get("verified", False)}}
+    return {"user": {"id": str(doc["_id"]), "email": doc["email"], "name": doc["name"], "role": doc.get("role","seller"), "verified": doc.get("verified", False), "phone": doc.get("phone")}}
 
 @router.patch("/me")
 async def patch_me(body: dict, user=Depends(get_current_user), request: Request = None):
@@ -192,29 +253,33 @@ async def firebase_login(body: FirebaseIn, request: Request):
     except Exception as e:
         raise HTTPException(status_code=401, detail={"code": "invalid_firebase_token", "message": str(e)})
     email = (claims.get("email") or "").lower()
-    if not email:
-        raise HTTPException(status_code=400, detail={"code": "missing_email", "message": "No email in token"})
+    phone = claims.get("phone_number")
+    if not email and not phone:
+        raise HTTPException(status_code=400, detail={"code": "missing_identifier", "message": "No email or phone in token"})
     firebase_uid = claims.get("sub") or claims.get("user_id") or claims.get("uid")
     now = time.time()
     user = await db.users.find_one({"firebase_uid": firebase_uid}) if firebase_uid else None
-    if user is None:
+    if user is None and email:
         user = await db.users.find_one({"email": email})
-        if user is not None:
-            await db.users.update_one({"_id": user["_id"]}, {"$set": {"firebase_uid": firebase_uid, "provider": "firebase", "verified": True, "updated_at": now}})
-        else:
-            res = await db.users.insert_one({
-                "name": claims.get("name") or email.split("@")[0],
-                "email": email,
-                "firebase_uid": firebase_uid,
-                "password_hash": None,
-                "phone": None,
-                "role": "seller",
-                "verified": bool(claims.get("email_verified", False)),
-                "provider": "firebase",
-                "created_at": now,
-                "updated_at": now,
-            })
-            user = {"_id": res.inserted_id, "email": email, "name": claims.get("name") or email.split("@")[0], "role": "seller", "verified": bool(claims.get("email_verified", False))}
+    if user is None and phone:
+        user = await db.users.find_one({"phone": phone})
+    if user is not None and firebase_uid:
+        # Never auto-verify: email/phone ownership isn't proof of seller identity.
+        await db.users.update_one({"_id": user["_id"]}, {"$set": {"firebase_uid": firebase_uid, "provider": "firebase", "updated_at": now}})
+    if user is None:
+        res = await db.users.insert_one({
+            "name": claims.get("name") or (email.split("@")[0] if email else f"User {phone[-4:]}"),
+            "email": email or None,
+            "phone": phone,
+            "firebase_uid": firebase_uid,
+            "password_hash": None,
+            "role": "seller",
+            "verified": False,
+            "provider": "firebase",
+            "created_at": now,
+            "updated_at": now,
+        })
+        user = {"_id": res.inserted_id, "email": email or None, "name": claims.get("name") or (email.split("@")[0] if email else f"User {phone[-4:]}"), "role": "seller", "verified": False}
     access = create_access_token(str(user["_id"]), user.get("role", "seller"))
     raw_refresh = create_refresh_token()
     from hashlib import sha256

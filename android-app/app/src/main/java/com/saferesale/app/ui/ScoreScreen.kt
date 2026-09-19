@@ -1,19 +1,28 @@
 package com.saferesale.app.ui
 
+import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.saferesale.app.data.ApiClient
+import com.saferesale.app.data.marketplace.MarketplaceRepository
 import com.saferesale.app.diagnostics.BenchScore
 import com.saferesale.app.diagnostics.CoreVScoreReport
 import com.saferesale.app.diagnostics.ModuleScore
+import com.saferesale.app.ui.market.ApiState
+import com.saferesale.app.ui.market.rememberApi
 import kotlinx.coroutines.launch
 
 /**
@@ -72,6 +81,10 @@ fun ScoreScreen(token: String?, listingId: String?, onDone: () -> Unit) {
 
     fun strMap(m: Any?): Map<String, Any> = @Suppress("UNCHECKED_CAST") ((m as? Map<*, *>)?.entries
         ?.associate { (it.key as? String ?: "?") to (it.value as Any) } ?: emptyMap())
+
+    val listingState = rememberApi(listingId) { MarketplaceRepository.listing(token, listingId.orEmpty()) }
+    val submissionUrl = (listingState as? ApiState.Success)?.data?.submission_url
+    val clipboard = LocalClipboardManager.current
 
     Column(Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState())) {
         Text("Device score", style = MaterialTheme.typography.headlineMedium)
@@ -146,6 +159,47 @@ fun ScoreScreen(token: String?, listingId: String?, onDone: () -> Unit) {
                     Text("Reason: ${decision["reason_code"]}")
                     badge?.let { Text("Badge: $it") }
                     hardStops.forEach { Text("⛔ $it", color = MaterialTheme.colorScheme.error) }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        if (submissionUrl != null) {
+            Card(Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Share score link", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Send this link to the technician running the visual report. The moderated score becomes this listing's Trust badge.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = { clipboard.setText(AnnotatedString(submissionUrl)) },
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Copy link")
+                        }
+                        Button(
+                            onClick = {
+                                val send = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, submissionUrl)
+                                }
+                                ctx.startActivity(Intent.createChooser(send, "Share score link"))
+                            },
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Share")
+                        }
+                    }
                 }
             }
         }

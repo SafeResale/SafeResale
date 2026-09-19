@@ -303,7 +303,7 @@ fun CoreVLoadingIndicator(
                 )
             }
             Image(
-                painter = painterResource(R.drawable.app_icon_round),
+                painter = painterResource(R.mipmap.ic_launcher_round),
                 contentDescription = "Loading",
                 modifier = Modifier
                     .size(size * 0.72f)

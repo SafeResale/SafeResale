@@ -1,3 +1,38 @@
+import java.net.NetworkInterface
+
+/** Best-effort IPv4 LAN address so a real device can reach the dev backend.
+ * Prefers the Wi-Fi adapter and 192.168.x addresses; skips virtual NICs
+ * (WSL/Hyper-V/Docker) and loopback. Override anytime with -PapiBaseUrl=. */
+fun lanIpv4(): String? {
+    val ordinary = mutableListOf<String>()
+    val wifi = mutableListOf<String>()
+    try {
+        for (ni in NetworkInterface.getNetworkInterfaces()) {
+            val name = (ni.displayName ?: ni.name).lowercase()
+            if (ni.isLoopback || !ni.isUp) continue
+            if ("vethernet" in name || "hyper-v" in name || "wsl" in name ||
+                "virtual" in name || "vmware" in name || "docker" in name ||
+                "default switch" in name
+            ) continue
+            for (addr in ni.inetAddresses) {
+                val ip = addr.hostAddress ?: continue
+                if (':' in ip) continue
+                if (!ip.startsWith("192.168.") && !ip.startsWith("10.") && !ip.startsWith("172.")) continue
+                val bucket = if ("wi-fi" in name || "wlan" in name || "wireless" in name) wifi else ordinary
+                bucket.add(ip)
+            }
+        }
+    } catch (e: Exception) {
+    }
+    val all = wifi + ordinary
+    return all.firstOrNull { it.startsWith("192.168.") }
+        ?: all.firstOrNull { it.startsWith("10.") }
+        ?: all.firstOrNull { it.startsWith("172.") }
+}
+
+val apiBaseOverride = (findProperty("apiBaseUrl") as String?)
+val defaultBaseUrl = apiBaseOverride ?: "http://${lanIpv4() ?: "10.0.2.2"}:8000"
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +40,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -20,7 +56,8 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
-        buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8000\"")
+        buildConfigField("String", "API_BASE_URL", "\"$defaultBaseUrl\"")
+        buildConfigField("String", "EMULATOR_API_BASE_URL", "\"http://10.0.2.2:8000\"")
     }
     buildTypes {
         release {
@@ -33,7 +70,6 @@ android {
         }
         debug {
             isDebuggable = true
-            applicationIdSuffix = ".debug"
         }
     }
     compileOptions {
@@ -106,6 +142,7 @@ dependencies {
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.coroutines.play.services)
 
     // PDF export
     implementation(libs.itext7.core)
@@ -123,6 +160,15 @@ dependencies {
     implementation("androidx.camera:camera-camera2:1.4.1")
     implementation("androidx.camera:camera-lifecycle:1.4.1")
     implementation("androidx.camera:camera-view:1.4.1")
+
+    // Firebase Auth (Google + phone OTP; client sends only the ID token to the backend)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.play.services.auth)
+    implementation(libs.play.services.location)
+
+    // OpenStreetMap (osmdroid, no API key needed)
+    implementation(libs.osmdroid)
 
     // Testing
     testImplementation(libs.junit)

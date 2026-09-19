@@ -6,10 +6,18 @@ def hard_stops(listing: dict, images: list[dict], detections: list[dict]) -> lis
     angles = {img.get("angle") for img in images}
     if len(angles) < 8:
         stops.append({"code": "HARD_MISSING_ANGLES", "level": "danger", "message": f"Only {len(angles)}/8 angles captured"})
-    # duplicate hash across images
-    hashes = [img.get("quality", {}).get("server", {}).get("details", {}).get("hash") or img.get("quality", {}).get("hash") for img in images]
-    if len(hashes) != len(set(h for h in hashes if h)):
-        stops.append({"code": "HARD_DUPLICATE_IMAGES", "level": "danger", "message": "Duplicate images detected"})
+    # duplicate photos across angles: only byte-identical frames (same sha256
+    # content hash) are real duplicates. Different sides/angles never collide,
+    # so this cannot false-positive on a full 8-angle capture set.
+    seen = set()
+    for img in images:
+        h = img.get("sha256")
+        if not h:
+            continue
+        if h in seen:
+            stops.append({"code": "HARD_DUPLICATE_IMAGES", "level": "danger", "message": "Duplicate images detected"})
+            break
+        seen.add(h)
     # critical defect (water_damage high confidence)
     for d in detections:
         if d.get("class") == "water_damage" and float(d.get("confidence",0)) > 0.7:

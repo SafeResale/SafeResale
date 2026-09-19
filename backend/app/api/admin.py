@@ -213,11 +213,29 @@ async def dashboard(user=Depends(require_role("admin"))):
     async for a in db.audit_logs.find().sort("created_at", -1).limit(10):
         recent_activity.append(_s(a))
 
-    # recent flagged
+    # recent flagged — deduplicate by listing and only include listings whose latest decision is still review/blocked
     recent_flagged = []
-    decs = await db.decisions.find({"status": {"$in": ["review", "blocked"]}}).sort("created_at", -1).limit(5).to_list(5)
+    decs = await db.decisions.find({"status": {"$in": ["review", "blocked"]}}).sort("created_at", -1).limit(20).to_list(20)
     if decs:
-        recent_flagged = await _enrich(db, [await db.listings.find_one({"_id": d["listing_id"]}) or {"_id": d["listing_id"]} for d in decs], with_seller=True)
+        seen = set()
+        uniq_listing_ids = []
+        for d in decs:
+            lid = d["listing_id"]
+            if lid in seen:
+                continue
+            seen.add(lid)
+            # only include if latest decision for this listing is still flagged
+            latest = await _latest_decision(db, lid)
+            if latest and latest.get("status") in ("review", "blocked"):
+                uniq_listing_ids.append(lid)
+            if len(uniq_listing_ids) >= 5:
+                break
+        if uniq_listing_ids:
+            listings_for_flagged = []
+            for lid in uniq_listing_ids:
+                doc = await db.listings.find_one({"_id": lid})
+                listings_for_flagged.append(doc or {"_id": lid})
+            recent_flagged = await _enrich(db, listings_for_flagged, with_seller=True)
 
     return {
         "kpis": {

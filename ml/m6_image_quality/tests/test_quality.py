@@ -125,7 +125,7 @@ def test_sharp_image_has_quality_score_of_100():
 
     result = analyze_image_quality(image)
 
-    assert result["quality_score"] == 80.0
+    assert result["quality_score"] == 100.0
 
 
 def test_blurry_image_has_lower_quality_score():

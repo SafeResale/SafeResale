@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- Emulator loopback + local dev: cleartext HTTP only for these hosts.
+    <!-- Dev builds talk to a local HTTP backend (PC LAN IP or emulator loopback).
+         The app auto-targets the machine's Wi-Fi IP (e.g. 192.168.x.x), which
+         changes, so cleartext is permitted broadly for the demo build.
          NOTE: each domain must appear exactly once in the whole file, or
          the OS throws "has already been specified" at startup. -->
     <domain-config cleartextTrafficPermitted="true">
@@ -8,7 +10,7 @@
         <domain>localhost</domain>
         <domain>127.0.0.1</domain>
     </domain-config>
-    <base-config cleartextTrafficPermitted="false">
+    <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>

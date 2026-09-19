@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@heroui/styles";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
@@ -6,26 +7,40 @@
 :root {
   --radius: 0.625rem;
 
-  /* shadcn-store neutral monochrome base (surfaces, hairline borders, shadows)
-     with a Spotify-inspired accent: #1DB954 green, eclipse/snow ink/paper. */
+  /* HeroUI v3 official theme — https://github.com/heroui-inc/heroui/tree/v3/packages/styles/themes/default/variables.css
+     Base is HeroUI Default (light) — only --accent overridden to SafeResale lime #C6F135 */
   --eclipse: oklch(0.2103 0.0059 285.89);
   --snow: oklch(0.9911 0 0);
-  --lime: #bdf64a;
+  --lime: #C6F135;
+  --safe-lime: oklch(0.8967 0.2039 122.4);
 
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: oklch(0.9702 0 0);
+  --foreground: var(--eclipse);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.72 0.17 152);
-  --primary-foreground: var(--snow);
+  --primary: oklch(0.8967 0.2039 122.4);
+  --primary-foreground: oklch(0.15 0.01 285);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.965 0 0);
   --muted-foreground: oklch(0.5517 0.0138 285.94);
-  --accent: color-mix(in oklab, oklch(0.72 0.17 152) 10%, transparent);
-  --accent-foreground: oklch(0.52 0.17 152);
+  /* HeroUI v3 semantic accent — SafeResale lime #C6F135 */
+  --accent: oklch(0.8967 0.2039 122.4);
+  --accent-foreground: oklch(0.15 0.01 285);
+  /* HeroUI surface/overlay for proper elevation */
+  --surface: oklch(1 0 0);
+  --surface-foreground: var(--eclipse);
+  --surface-secondary: oklch(0.9524 0.0013 286.37);
+  --surface-tertiary: oklch(0.9373 0.0013 286.37);
+  --overlay: oklch(1 0 0);
+  --overlay-foreground: var(--eclipse);
+  --default: oklch(0.94 0.001 286.375);
+  --default-foreground: var(--eclipse);
+  --separator: oklch(0.92 0.004 286.32);
+  --focus: var(--accent);
+  --link: var(--foreground);
   --destructive: oklch(0.6532 0.2328 25.74);
   --danger: oklch(0.6532 0.2328 25.74);
   --destructive-foreground: var(--snow);
@@ -56,20 +71,30 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
+  --background: oklch(0.12 0.005 285.823);
+  --foreground: oklch(0.9911 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.72 0.17 152);
-  --primary-foreground: oklch(0.15 0 0);
+  --primary: oklch(0.8967 0.2039 122.4);
+  --primary-foreground: oklch(0.15 0.01 285);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.25 0 0);
   --muted-foreground: oklch(0.708 0 0);
-  --accent: color-mix(in oklab, oklch(0.75 0.16 152) 14%, transparent);
-  --accent-foreground: oklch(0.78 0.16 152);
+  --accent: oklch(0.8967 0.2039 122.4);
+  --accent-foreground: oklch(0.15 0.01 285);
+  --surface: oklch(0.2103 0.0059 285.89);
+  --surface-foreground: oklch(0.9911 0 0);
+  --surface-secondary: oklch(0.257 0.0037 286.14);
+  --surface-tertiary: oklch(0.2721 0.0024 247.91);
+  --overlay: oklch(0.22 0.0059 285.89);
+  --overlay-foreground: oklch(0.9911 0 0);
+  --default: oklch(0.274 0.006 286.033);
+  --default-foreground: oklch(0.9911 0 0);
+  --separator: oklch(0.22 0.006 286.033);
+  --focus: var(--accent);
   --destructive: oklch(0.594 0.1967 24.63);
   --danger: oklch(0.594 0.1967 24.63);
   --destructive-foreground: var(--snow);

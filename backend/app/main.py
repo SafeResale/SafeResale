@@ -82,3 +82,13 @@ try:
     app.include_router(public_support_router)
 except Exception:
     pass
+try:
+    from app.api.inspections import router as inspections_router  # type: ignore
+    app.include_router(inspections_router)
+except Exception:
+    pass
+try:
+    from app.api.submissions import router as submissions_router  # type: ignore
+    app.include_router(submissions_router)
+except Exception:
+    pass

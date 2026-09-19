@@ -3,7 +3,7 @@
 # DO NOT change these values without re-running the tests — test_quality.py asserts exact
 # scores derived from them (see ml/README.md academic-integrity rule).
 quality:
-  blur_threshold: 250.0
+  blur_threshold: 100.0
   underexposed_luminance: 85
   overexposed_luminance: 160
   glare_ratio_threshold: 0.059

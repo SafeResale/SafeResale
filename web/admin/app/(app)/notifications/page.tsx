@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, Megaphone, RefreshCw } from "lucide-react";
+import { Bell, Megaphone } from "lucide-react";
 import { post } from "@/lib/api";
 import { useFetch, runMutation } from "@/lib/use-fetch";
 import type { NotificationItem, PageResult } from "@/lib/types";
@@ -9,17 +9,7 @@ import { fmtDate, timeAgo } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { PageError, EmptyState } from "@/components/error-state";
 import { Pager } from "@/components/pager";
-import { StatusBadge } from "@/components/status-badge";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
+import { Button, Card, Chip, Input, Label, ListBox, Modal, Select, Skeleton, Table, TextArea } from "@heroui/react";
 
 const AUDIENCES = ["all", "sellers", "buyers", "admins", "inspectors"];
 
@@ -29,15 +19,16 @@ export default function NotificationsPage() {
   const [form, setForm] = useState({ title: "", body: "", audience: "all" });
   const [saving, setSaving] = useState(false);
 
-  const { data, loading, error, reload } = useFetch<PageResult<NotificationItem>>(`/admin/notifications?page=${page}&page_size=20`);
+  const { data, loading, error, reload } = useFetch<PageResult<NotificationItem>>(
+    `/admin/notifications?page=${page}&page_size=20`,
+  );
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    const ok = await runMutation(
-      () => post("/admin/notifications", form),
-      { success: `Notification queued for ${form.audience}` },
-    );
+    const ok = await runMutation(() => post("/admin/notifications", form), {
+      success: `Notification queued for ${form.audience}`,
+    });
     setSaving(false);
     if (ok) {
       setOpen(false);
@@ -52,46 +43,96 @@ export default function NotificationsPage() {
         title="Notifications"
         description="In-app announcements broadcast to user segments"
         actions={
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button><Megaphone className="size-4" /> Broadcast</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>New announcement</DialogTitle>
-                <DialogDescription>Recorded as an in-app notification for the target audience.</DialogDescription>
-              </DialogHeader>
-              <form onSubmit={send} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="n-title">Title</Label>
-                  <Input id="n-title" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="n-body">Body</Label>
-                  <Textarea id="n-body" rows={3} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Audience</Label>
-                  <Select value={form.audience} onValueChange={(v) => setForm({ ...form, audience: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {AUDIENCES.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <DialogFooter>
-                  <Button type="submit" className="w-full" disabled={saving}>{saving ? "Sending…" : "Send announcement"}</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <>
+            <Button
+              variant="primary"
+              className="bg-accent text-accent-foreground hover:bg-accent/90"
+              onPress={() => setOpen(true)}
+            >
+              <Megaphone className="size-4" /> Broadcast
+            </Button>
+            <Modal.Backdrop isOpen={open} onOpenChange={setOpen}>
+              <Modal.Container>
+                <Modal.Dialog className="sm:max-w-md">
+                  <Modal.CloseTrigger />
+                  <Modal.Header>
+                    <Modal.Heading>New announcement</Modal.Heading>
+                    <p className="text-sm text-muted-foreground">
+                      Recorded as an in-app notification for the target audience.
+                    </p>
+                  </Modal.Header>
+                  <Modal.Body>
+                    <form onSubmit={send} className="space-y-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="n-title">Title</Label>
+                        <Input
+                          id="n-title"
+                          required
+                          value={form.title}
+                          onChange={(e) => setForm({ ...form, title: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="n-body">Body</Label>
+                        <TextArea
+                          id="n-body"
+                          rows={3}
+                          value={form.body}
+                          onChange={(e) => setForm({ ...form, body: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Audience</Label>
+                        <Select
+                          aria-label="Audience"
+                          placeholder="Select audience"
+                          value={form.audience}
+                          onChange={(v) => setForm({ ...form, audience: (v as string) || "all" })}
+                        >
+                          <Select.Trigger>
+                            <Select.Value />
+                            <Select.Indicator />
+                          </Select.Trigger>
+                          <Select.Popover>
+                            <ListBox>
+                              {AUDIENCES.map((a) => (
+                                <ListBox.Item key={a} id={a} textValue={a}>
+                                  <span className="capitalize">{a}</span>
+                                  <ListBox.ItemIndicator />
+                                </ListBox.Item>
+                              ))}
+                            </ListBox>
+                          </Select.Popover>
+                        </Select>
+                      </div>
+                      <Button
+                        type="submit"
+                        variant="primary"
+                        className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+                        isDisabled={saving}
+                        isPending={saving}
+                      >
+                        {saving ? "Sending…" : "Send announcement"}
+                      </Button>
+                    </form>
+                  </Modal.Body>
+                </Modal.Dialog>
+              </Modal.Container>
+            </Modal.Backdrop>
+          </>
         }
       />
 
       {error && <PageError message={error.message} onRetry={reload} />}
 
       {loading && !data && (
-        <Card className="p-4"><div className="space-y-3">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-14" />)}</div></Card>
+        <Card className="rounded-2xl p-4 ring-1 ring-black/5 dark:ring-white/10">
+          <Card.Content className="space-y-3 p-0">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-14 rounded-xl" />
+            ))}
+          </Card.Content>
+        </Card>
       )}
 
       {data && data.items.length === 0 && (
@@ -100,33 +141,47 @@ export default function NotificationsPage() {
 
       {data && data.items.length > 0 && (
         <>
-          <div className="overflow-hidden rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Audience</TableHead>
-                  <TableHead>Delivery</TableHead>
-                  <TableHead className="text-right">Recipients</TableHead>
-                  <TableHead className="text-right">Sent</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.items.map((n) => (
-                  <TableRow key={n._id}>
-                    <TableCell>
-                      <p className="font-medium">{n.title}</p>
-                      {n.body && <p className="max-w-96 truncate text-xs text-muted-foreground">{n.body}</p>}
-                    </TableCell>
-                    <TableCell><Badge variant="secondary">{n.audience}</Badge></TableCell>
-                    <TableCell><StatusBadge tone="info" label={n.delivery || "in_app"} /></TableCell>
-                    <TableCell className="text-right tabular-nums">{n.recipient_count ?? 0}</TableCell>
-                    <TableCell className="text-right text-xs text-muted-foreground">{n.sent_at ? timeAgo(n.sent_at) : fmtDate(n.created_at)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <Card className="overflow-hidden rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
+            <Card.Content className="p-0">
+              <Table>
+                <Table.ScrollContainer>
+                  <Table.Content aria-label="Notifications" className="min-w-[640px]">
+                    <Table.Header>
+                      <Table.Column isRowHeader>Title</Table.Column>
+                      <Table.Column>Audience</Table.Column>
+                      <Table.Column>Delivery</Table.Column>
+                      <Table.Column className="text-right">Recipients</Table.Column>
+                      <Table.Column className="text-right">Sent</Table.Column>
+                    </Table.Header>
+                    <Table.Body>
+                      {data.items.map((n) => (
+                        <Table.Row key={n._id} id={n._id}>
+                          <Table.Cell>
+                            <p className="font-medium">{n.title}</p>
+                            {n.body && <p className="max-w-96 truncate text-xs text-muted-foreground">{n.body}</p>}
+                          </Table.Cell>
+                          <Table.Cell>
+                            <Chip color="default" variant="soft" size="sm" className="capitalize">
+                              {n.audience}
+                            </Chip>
+                          </Table.Cell>
+                          <Table.Cell>
+                            <Chip color="accent" variant="soft" size="sm">
+                              {n.delivery || "in_app"}
+                            </Chip>
+                          </Table.Cell>
+                          <Table.Cell className="text-right tabular-nums">{n.recipient_count ?? 0}</Table.Cell>
+                          <Table.Cell className="text-right text-xs text-muted-foreground">
+                            {n.sent_at ? timeAgo(n.sent_at) : fmtDate(n.created_at)}
+                          </Table.Cell>
+                        </Table.Row>
+                      ))}
+                    </Table.Body>
+                  </Table.Content>
+                </Table.ScrollContainer>
+              </Table>
+            </Card.Content>
+          </Card>
           <Pager page={data.page} pageSize={data.page_size} total={data.total} onPage={setPage} />
         </>
       )}

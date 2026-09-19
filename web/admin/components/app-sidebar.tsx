@@ -46,18 +46,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar {...props}>
-      <SidebarHeader>
+      <SidebarHeader className="border-b">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild className="cursor-pointer">
-              <Link href="/dashboard">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <ShieldCheck className="size-5" strokeWidth={2.5} />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">SafeResale</span>
-                  <span className="truncate text-xs">Admin Console</span>
-                </div>
+            <SidebarMenuButton size="lg" asChild className="h-auto py-3 cursor-pointer">
+              <Link href="/dashboard" className="gap-0">
+                <img src="/logo.svg" alt="SafeResale" className="h-[52px] w-auto max-w-[190px] object-contain" />
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

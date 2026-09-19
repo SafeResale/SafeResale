@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -21,23 +21,110 @@ import { useFetch, runMutation } from "@/lib/use-fetch";
 import { capitalize, fmtDate, money, riskLabel, timeAgo } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { PageError } from "@/components/error-state";
-import { StatusBadge, riskTone, statusTone } from "@/components/status-badge";
-import { Spinner } from "@/components/ui/spinner";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ConfirmDialog } from "@/components/confirm-dialog";
+import {
+  Button,
+  Card,
+  Chip,
+  Label,
+  Skeleton,
+  Spinner,
+  Surface,
+  Table,
+  TextArea,
+  AlertDialog,
+} from "@heroui/react";
 
-const ACTIONS: { key: string; label: string; tone: "default" | "danger" | "outline" }[] = [
-  { key: "approve", label: "Approve", tone: "default" },
-  { key: "warn", label: "Warn", tone: "outline" },
-  { key: "block", label: "Block", tone: "danger" },
-  { key: "request_inspection", label: "Request inspection", tone: "outline" },
-  { key: "suspend_seller", label: "Suspend seller", tone: "danger" },
+// Chip color matches HeroUI v3: accent is SafeResale lime (#C6F135 → oklch 0.8967 0.2039 122.4)
+type ChipColor = "default" | "accent" | "success" | "warning" | "danger";
+
+const toneToChipColor: Record<string, ChipColor> = {
+  success: "success",
+  warning: "warning",
+  danger: "danger",
+  lime: "accent",
+  info: "accent",
+  neutral: "default",
+  outline: "default",
+  accent: "accent",
+};
+
+const statusToneMap: Record<string, string> = {
+  active: "success",
+  approved: "success",
+  published: "success",
+  released: "success",
+  verified: "success",
+  resolved: "success",
+  ok: "success",
+  live: "success",
+  review_passed: "warning",
+  warn: "warning",
+  held: "info",
+  pending: "warning",
+  review: "warning",
+  in_review: "warning",
+  verifying: "warning",
+  submitted: "warning",
+  new: "warning",
+  inspection_pending: "info",
+  capturing: "neutral",
+  draft: "neutral",
+  expired: "neutral",
+  archived: "neutral",
+  dismissed: "neutral",
+  refunded: "neutral",
+  deactivated: "neutral",
+  sold: "info",
+  paid: "info",
+  shipped: "info",
+  delivered: "info",
+  unverified: "neutral",
+  suspended: "danger",
+  blocked: "danger",
+  restricted: "danger",
+  rejected: "danger",
+  disputed: "danger",
+  read: "info",
+};
+
+const riskToneMap: Record<string, string> = {
+  low: "success",
+  medium: "warning",
+  high: "danger",
+};
+
+function chipColorForStatus(status?: string): ChipColor {
+  const tone = status ? statusToneMap[status] || "neutral" : "neutral";
+  return toneToChipColor[tone] || "default";
+}
+
+function chipColorForRiskBand(band: string | null): ChipColor {
+  if (!band) return "default";
+  const tone = riskToneMap[band] || "neutral";
+  return toneToChipColor[tone] || "default";
+}
+
+// SafeResale condition → HeroUI Chip color. Good/excellent → lime accent, fair → warning, poor → danger
+function chipColorForCondition(grade: unknown): ChipColor {
+  const s = String(grade ?? "").toLowerCase();
+  if (/excellent|good|like ?new|pass|immaculate/.test(s)) return "accent";
+  if (/fair|moderate|average/.test(s)) return "warning";
+  if (/poor|fail|worn|damaged/.test(s)) return "danger";
+  return "default";
+}
+
+function chipVariantForCondition(grade: unknown): "soft" | "secondary" {
+  const s = String(grade ?? "").toLowerCase();
+  if (/excellent|good|like ?new|pass|immaculate/.test(s)) return "soft";
+  return "soft";
+}
+
+const ACTIONS: { key: string; label: string; variant: "primary" | "secondary" | "danger" }[] = [
+  { key: "approve", label: "Approve", variant: "primary" },
+  { key: "warn", label: "Warn", variant: "secondary" },
+  { key: "block", label: "Block", variant: "danger" },
+  { key: "request_inspection", label: "Request inspection", variant: "secondary" },
+  { key: "suspend_seller", label: "Suspend seller", variant: "danger" },
 ];
 
 function actionLabel(key: string) {
@@ -75,17 +162,10 @@ const levelDot: Record<string, string> = {
   info: "bg-info",
   success: "bg-success",
 };
-const levelTone: Record<string, "success" | "warning" | "danger" | "info" | "neutral"> = {
-  danger: "danger",
-  warn: "warning",
-  error: "danger",
-  info: "info",
-  success: "success",
-  warning: "warning",
-};
 
 export default function ListingDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const { data, loading, error, reload } = useFetch<any>(`/admin/listings/${id}`);
   const [reason, setReason] = useState("");
   const [pendingAction, setPendingAction] = useState<string | null>(null);
@@ -105,8 +185,8 @@ export default function ListingDetailPage() {
       <div>
         <PageHeader title="Listing detail" description={id} />
         <div className="space-y-4">
-          <Skeleton className="h-40 rounded-xl" />
-          <Skeleton className="h-64 rounded-xl" />
+          <Skeleton className="h-40 rounded-2xl" />
+          <Skeleton className="h-64 rounded-2xl" />
         </div>
       </div>
     );
@@ -117,6 +197,9 @@ export default function ListingDetailPage() {
   const evidence = data.evidence;
   const latestRisk = evidence?.risk_history?.[0];
   const risk = riskLabel(latestRisk?.adjusted_score);
+  const latestCondition = evidence?.condition?.[0];
+  const conditionGrade =
+    latestCondition?.label || latestCondition?.grade || latestCondition?.predicted || latestCondition?.result || null;
 
   async function run(action: string) {
     setPendingAction(action);
@@ -132,46 +215,64 @@ export default function ListingDetailPage() {
     }
   }
 
+  const isDestructive = pendingConfirm === "block" || pendingConfirm === "suspend_seller";
+
   return (
     <div>
       <PageHeader
         title="Listing detail"
         description={id}
         actions={
-          <Button asChild variant="outline" size="sm">
-            <Link href="/listings"><ArrowLeft className="size-4" /> Back to listings</Link>
+          <Button variant="secondary" size="sm" onPress={() => router.push("/listings")}>
+            <ArrowLeft className="size-4" /> Back to listings
           </Button>
         }
       />
 
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="space-y-6 xl:col-span-2">
-          <Card>
-            <CardHeader className="flex-row flex-wrap items-start justify-between gap-3 space-y-0">
+          <Card variant="default" className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
+            <Card.Header className="flex-row flex-wrap items-start justify-between gap-3 space-y-0">
               <div className="space-y-1">
-                <CardTitle className="text-xl">{listing.title || "Untitled listing"}</CardTitle>
-                <CardDescription className="flex flex-wrap items-center gap-x-3">
+                <Card.Title className="text-xl">{listing.title || "Untitled listing"}</Card.Title>
+                <Card.Description className="flex flex-wrap items-center gap-x-3">
                   <span>{listing.category}</span>
                   <span className="font-medium text-foreground">{money(listing.price, listing.currency)}</span>
                   <span>{typeof listing.condition === "object" ? JSON.stringify(listing.condition) : String(listing.condition ?? "—")}</span>
-                </CardDescription>
+                </Card.Description>
               </div>
-              <div className="flex items-center gap-2">
-                {risk.band && <StatusBadge tone={riskTone[risk.band]} label={`${risk.label} risk`} />}
-                <StatusBadge tone={statusTone[listing.status] || "neutral"} label={listing.status || "—"} />
+              <div className="flex flex-wrap items-center gap-2">
+                {conditionGrade && (
+                  <Chip color={chipColorForCondition(conditionGrade)} variant={chipVariantForCondition(conditionGrade)} size="sm">
+                    {String(conditionGrade)} condition
+                  </Chip>
+                )}
+                {risk.band && (
+                  <Chip color={chipColorForRiskBand(risk.band)} variant="soft" size="sm">
+                    {risk.label} risk
+                  </Chip>
+                )}
+                <Chip color={chipColorForStatus(listing.status)} variant="soft" size="sm">
+                  {listing.status || "—"}
+                </Chip>
               </div>
-            </CardHeader>
-            <CardContent>
+            </Card.Header>
+            <Card.Content className="px-6 pb-6">
               {listing.description && <p className="mb-4 text-sm leading-relaxed text-muted-foreground">{listing.description}</p>}
               <dl className="grid gap-3 text-sm sm:grid-cols-2">
-                <Row label="Listing ID" mono>{listing._id}</Row>
+                <Row label="Listing ID" mono>
+                  {listing._id}
+                </Row>
                 <Row label="Created">{fmtDate(listing.created_at)}</Row>
                 <Row label="Updated">{fmtDate(listing.updated_at)}</Row>
                 <Row label="Seller">
                   {seller?.name || listing.seller_name ? (
                     <span className="flex flex-col items-end gap-0.5">
                       {seller?.id || listing.seller_id ? (
-                        <Link href={`/users/${seller?.id || listing.seller_id}`} className="text-sm font-medium underline-offset-4 hover:underline">
+                        <Link
+                          href={`/users/${seller?.id || listing.seller_id}`}
+                          className="text-sm font-medium underline-offset-4 hover:underline"
+                        >
                           {capitalize(seller?.name || listing.seller_name)}
                         </Link>
                       ) : (
@@ -183,20 +284,24 @@ export default function ListingDetailPage() {
                     "—"
                   )}
                 </Row>
-                <Row label="Seller ID" mono>{seller?.id || listing.seller_id || "—"}</Row>
+                <Row label="Seller ID" mono>
+                  {seller?.id || listing.seller_id || "—"}
+                </Row>
                 <Row label="Tamper evidence">
-                  <Badge variant="outline" className="border-success/30 bg-success/10 text-success">SHA256 sealed</Badge>
+                  <Chip color="success" variant="soft" size="sm">
+                    SHA256 sealed
+                  </Chip>
                 </Row>
                 {(listing.notes_field || listing.notes) && <Row label="Notes">{listing.notes_field || listing.notes}</Row>}
               </dl>
-            </CardContent>
+            </Card.Content>
           </Card>
 
           <Section title="Images & tamper evidence" icon={Fingerprint}>
             {!evidence?.images?.length && <EmptyNote>No images received for this listing.</EmptyNote>}
             <div className="grid gap-3 sm:grid-cols-2">
               {evidence?.images?.map((img: any) => (
-                <figure key={img._id} className="overflow-hidden rounded-lg border bg-card">
+                <figure key={img._id} className="overflow-hidden rounded-2xl border bg-card ring-1 ring-black/5 dark:ring-white/10">
                   <div className="relative aspect-[4/3] bg-muted">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -208,11 +313,21 @@ export default function ListingDetailPage() {
                   </div>
                   <figcaption className="flex items-center justify-between gap-2 p-3">
                     <span className="text-sm font-medium capitalize">{img.angle.replace(/_/g, " ")}</span>
-                    <StatusBadge tone={img.quality?.passed === false ? "danger" : "success"} label={img.quality?.passed === false ? "quality fail" : "sealed"} />
+                    <Chip
+                      color={img.quality?.passed === false ? "danger" : "success"}
+                      variant="soft"
+                      size="sm"
+                    >
+                      {img.quality?.passed === false ? "quality fail" : "sealed"}
+                    </Chip>
                   </figcaption>
                   <div className="space-y-1 border-t px-3 pb-3 pt-2 font-mono text-[11px] text-muted-foreground">
-                    <p className="truncate" title={img.stored_key}>key: {img.stored_key}</p>
-                    <p className="truncate" title={img.sha256}>sha256: {img.sha256?.slice(0, 32)}…</p>
+                    <p className="truncate" title={img.stored_key}>
+                      key: {img.stored_key}
+                    </p>
+                    <p className="truncate" title={img.sha256}>
+                      sha256: {img.sha256?.slice(0, 32)}…
+                    </p>
                   </div>
                   <p className="px-3 pb-3 text-[11px] text-muted-foreground">
                     server:{" "}
@@ -234,16 +349,24 @@ export default function ListingDetailPage() {
             {!evidence?.risk_history?.length && <EmptyNote>No risk scores computed yet — run verification from the queue.</EmptyNote>}
             {evidence?.risk_history?.length > 0 && (
               <EvidenceTable
-                head={<><TableHead>Score</TableHead><TableHead>Badge</TableHead><TableHead>Calculated</TableHead></>}
+                head={
+                  <>
+                    <Table.Column isRowHeader>Score</Table.Column>
+                    <Table.Column>Badge</Table.Column>
+                    <Table.Column>Calculated</Table.Column>
+                  </>
+                }
               >
                 {evidence.risk_history.map((r: any) => (
-                  <TableRow key={r._id}>
-                    <TableCell className="font-medium tabular-nums">{r.adjusted_score ?? r.raw_score ?? "—"}</TableCell>
-                    <TableCell>
-                      <StatusBadge tone={riskTone[riskLabel(r.adjusted_score).band || undefined]} label={r.badge || riskLabel(r.adjusted_score).label} />
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{fmtDate(r.created_at)}</TableCell>
-                  </TableRow>
+                  <Table.Row key={r._id} id={r._id}>
+                    <Table.Cell className="font-medium tabular-nums">{r.adjusted_score ?? r.raw_score ?? "—"}</Table.Cell>
+                    <Table.Cell>
+                      <Chip color={chipColorForRiskBand(riskLabel(r.adjusted_score).band)} variant="soft" size="sm">
+                        {r.badge || riskLabel(r.adjusted_score).label}
+                      </Chip>
+                    </Table.Cell>
+                    <Table.Cell className="text-xs text-muted-foreground">{fmtDate(r.created_at)}</Table.Cell>
+                  </Table.Row>
                 ))}
               </EvidenceTable>
             )}
@@ -255,7 +378,13 @@ export default function ListingDetailPage() {
             {!evidence?.decisions?.length && <EmptyNote>No moderation decisions recorded.</EmptyNote>}
             {evidence?.decisions?.length > 0 && (
               <EvidenceTable
-                head={<><TableHead>Status</TableHead><TableHead>Reason</TableHead><TableHead>When</TableHead></>}
+                head={
+                  <>
+                    <Table.Column isRowHeader>Status</Table.Column>
+                    <Table.Column>Reason</Table.Column>
+                    <Table.Column>When</Table.Column>
+                  </>
+                }
               >
                 {evidence.decisions.map((d: any) => {
                   const reasons = d.reasons?.length
@@ -266,9 +395,13 @@ export default function ListingDetailPage() {
                         ? [{ level: d.level || "danger", message: d.reason }]
                         : [];
                   return (
-                    <TableRow key={d._id}>
-                      <TableCell><StatusBadge tone={statusTone[d.status] || "neutral"} label={d.status || "—"} /></TableCell>
-                      <TableCell>
+                    <Table.Row key={d._id} id={d._id}>
+                      <Table.Cell>
+                        <Chip color={chipColorForStatus(d.status)} variant="soft" size="sm">
+                          {d.status || "—"}
+                        </Chip>
+                      </Table.Cell>
+                      <Table.Cell>
                         {reasons.length ? (
                           <div className="flex max-w-80 flex-col gap-1">
                             {reasons.map((r: any, i: number) => (
@@ -284,9 +417,9 @@ export default function ListingDetailPage() {
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{fmtDate(d.created_at)}</TableCell>
-                    </TableRow>
+                      </Table.Cell>
+                      <Table.Cell className="text-xs text-muted-foreground">{fmtDate(d.created_at)}</Table.Cell>
+                    </Table.Row>
                   );
                 })}
               </EvidenceTable>
@@ -295,13 +428,21 @@ export default function ListingDetailPage() {
 
           <Section title="Detections" icon={FileSearch}>
             {evidence?.detections?.length ? (
-              <EvidenceTable head={<><TableHead>Type</TableHead><TableHead>Confidence</TableHead><TableHead>Label</TableHead></>}>
+              <EvidenceTable
+                head={
+                  <>
+                    <Table.Column isRowHeader>Type</Table.Column>
+                    <Table.Column>Confidence</Table.Column>
+                    <Table.Column>Label</Table.Column>
+                  </>
+                }
+              >
                 {evidence.detections.map((d: any) => (
-                  <TableRow key={d._id}>
-                    <TableCell className="text-sm">{d.det_type || d.class || d.technique || "—"}</TableCell>
-                    <TableCell className="tabular-nums">{d.confidence != null ? `${(d.confidence * 100).toFixed(0)}%` : "—"}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{d.label || "—"}</TableCell>
-                  </TableRow>
+                  <Table.Row key={d._id} id={d._id}>
+                    <Table.Cell className="text-sm">{d.det_type || d.class || d.technique || "—"}</Table.Cell>
+                    <Table.Cell className="tabular-nums">{d.confidence != null ? `${(d.confidence * 100).toFixed(0)}%` : "—"}</Table.Cell>
+                    <Table.Cell className="text-xs text-muted-foreground">{d.label || "—"}</Table.Cell>
+                  </Table.Row>
                 ))}
               </EvidenceTable>
             ) : (
@@ -316,9 +457,9 @@ export default function ListingDetailPage() {
                   const failed = (d.metrics?.failed ?? 0) > 0 || (d.tests || []).some((t: any) => t.passed === false || t.status === "failed");
                   const passedCount = d.metrics?.passed ?? (d.tests || []).filter((t: any) => t.passed !== false && t.status !== "failed").length;
                   return (
-                    <div key={d._id} className="rounded-lg border bg-card p-3">
+                    <Surface key={d._id} variant="default" className="rounded-2xl border p-3 ring-1 ring-black/5 dark:ring-white/10">
                       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                        <div className="space-y-0.5 min-w-0">
+                        <div className="min-w-0 space-y-0.5">
                           <p className="truncate text-sm font-medium">
                             {d.device?.model || capitalize(d.category || "device") || "Device"}
                             {d.device?.os_version ? ` · ${d.device.os_version}` : ""}
@@ -328,10 +469,10 @@ export default function ListingDetailPage() {
                             {d.simulated ? " · simulated" : ""}
                           </p>
                         </div>
-                        <StatusBadge
-                          tone={failed ? "danger" : "success"}
-                          label={`${failed ? "fail" : "pass"}${d.score != null ? ` · ${d.score}` : ""}`}
-                        />
+                        <Chip color={failed ? "danger" : "success"} variant="soft" size="sm">
+                          {failed ? "fail" : "pass"}
+                          {d.score != null ? ` · ${d.score}` : ""}
+                        </Chip>
                       </div>
                       <div className="space-y-1">
                         {(d.tests || []).map((t: any, i: number) => {
@@ -350,9 +491,7 @@ export default function ListingDetailPage() {
                           );
                         })}
                         {!d.tests?.length && (
-                          <p className="text-xs text-muted-foreground">
-                            no per-test data recorded{d.score != null ? ` · score ${d.score}` : ""}
-                          </p>
+                          <p className="text-xs text-muted-foreground">no per-test data recorded{d.score != null ? ` · score ${d.score}` : ""}</p>
                         )}
                       </div>
                       {d.basis?.length ? <p className="mt-2 text-[11px] text-muted-foreground">{d.basis.join(" · ")}</p> : null}
@@ -362,10 +501,9 @@ export default function ListingDetailPage() {
                           : passedCount > 0
                             ? `${passedCount} tests passed`
                             : ""}
-                        {d.missing_penalty ? ` · penalty ${d.missing_penalty}` : ""}
-                        {" "}· {timeAgo(d.created_at)}
+                        {d.missing_penalty ? ` · penalty ${d.missing_penalty}` : ""} · {timeAgo(d.created_at)}
                       </p>
-                    </div>
+                    </Surface>
                   );
                 })}
               </div>
@@ -382,11 +520,13 @@ export default function ListingDetailPage() {
                   const probs = c.probabilities && typeof c.probabilities === "object" ? Object.entries(c.probabilities) : [];
                   const top = [...probs].sort((a: any, b: any) => Number(b[1]) - Number(a[1]))[0];
                   return (
-                    <div key={c._id} className="rounded-lg border bg-card p-3 text-sm">
+                    <Surface key={c._id} variant="default" className="rounded-2xl border p-3 ring-1 ring-black/5 dark:ring-white/10">
                       <div className="mb-1 flex items-center justify-between">
-                        <span className="font-medium">Predicted condition</span>
+                        <span className="text-sm font-medium">Predicted condition</span>
                         {grade ? (
-                          <StatusBadge tone={gradientTone(grade)} label={String(grade)} />
+                          <Chip color={chipColorForCondition(grade)} variant="soft" size="sm">
+                            {String(grade)}
+                          </Chip>
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
@@ -398,7 +538,7 @@ export default function ListingDetailPage() {
                           {c.simulated ? " · simulated" : ""}
                         </p>
                       )}
-                    </div>
+                    </Surface>
                   );
                 })}
               </div>
@@ -407,12 +547,14 @@ export default function ListingDetailPage() {
             )}
           </Section>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base"><ScrollText className="size-4" /> Audit trail</CardTitle>
-              <CardDescription>Actions taken against this listing</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-1">
+          <Card variant="default" className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
+            <Card.Header>
+              <Card.Title className="flex items-center gap-2 text-base">
+                <ScrollText className="size-4" /> Audit trail
+              </Card.Title>
+              <Card.Description>Actions taken against this listing</Card.Description>
+            </Card.Header>
+            <Card.Content className="space-y-1 px-6 pb-6">
               {!evidence?.audit_trail?.length && <EmptyNote>No audit entries yet.</EmptyNote>}
               {evidence?.audit_trail?.map((a: any) => (
                 <div key={a._id} className="flex items-start gap-3 py-1.5 text-sm">
@@ -426,29 +568,36 @@ export default function ListingDetailPage() {
                   </div>
                 </div>
               ))}
-            </CardContent>
+            </Card.Content>
           </Card>
         </div>
 
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Moderation action</CardTitle>
-              <CardDescription>Every decision is audit-logged with a reason.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <Card variant="default" className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
+            <Card.Header>
+              <Card.Title className="text-base">Moderation action</Card.Title>
+              <Card.Description>Every decision is audit-logged with a reason.</Card.Description>
+            </Card.Header>
+            <Card.Content className="space-y-3 px-6 pb-6">
               <div className="space-y-1.5">
                 <Label htmlFor="reason">Reason</Label>
-                <Textarea id="reason" rows={4} placeholder="Evidence summary for the audit trail…" value={reason} onChange={(e) => setReason(e.target.value)} />
+                <TextArea
+                  id="reason"
+                  aria-label="Moderation reason"
+                  rows={4}
+                  placeholder="Evidence summary for the audit trail…"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 {ACTIONS.map((a) => (
                   <Button
                     key={a.key}
-                    variant={a.tone === "danger" ? "destructive" : a.tone}
+                    variant={a.variant}
                     className="w-full"
-                    disabled={pendingAction !== null}
-                    onClick={() => setPendingConfirm(a.key)}
+                    isDisabled={pendingAction !== null}
+                    onPress={() => setPendingConfirm(a.key)}
                   >
                     {pendingAction === a.key ? <Spinner className="size-4" /> : <StatusIcon action={a.key} />}
                     {a.label}
@@ -456,45 +605,72 @@ export default function ListingDetailPage() {
                 ))}
               </div>
               <p className="text-xs text-muted-foreground">Approve publishes the listing; Block and Suspend seller move it to restricted state.</p>
-            </CardContent>
+            </Card.Content>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base"><ImageIcon className="size-4" /> Evidence counts</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-3 gap-3 text-sm">
+          <Card variant="default" className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
+            <Card.Header>
+              <Card.Title className="flex items-center gap-2 text-base">
+                <ImageIcon className="size-4" /> Evidence counts
+              </Card.Title>
+            </Card.Header>
+            <Card.Content className="grid grid-cols-3 gap-3 px-6 pb-6 text-sm">
               <Info label="Images" value={String(evidence?.images?.length ?? 0)} />
               <Info label="Scores" value={String(evidence?.risk_history?.length ?? 0)} />
               <Info label="Detections" value={String(evidence?.detections?.length ?? 0)} />
               <Info label="Diagnostics" value={String(evidence?.diagnostics?.length ?? 0)} />
               <Info label="Decisions" value={String(evidence?.decisions?.length ?? 0)} />
               <Info label="Audit events" value={String(evidence?.audit_trail?.length ?? 0)} />
-            </CardContent>
+            </Card.Content>
           </Card>
         </div>
       </div>
 
-      <ConfirmDialog
-        open={pendingConfirm !== null}
-        onOpenChange={(v) => !v && setPendingConfirm(null)}
-        title={pendingConfirm ? `Run "${actionLabel(pendingConfirm)}" on this listing?` : ""}
-        description="The decision is audit-logged with the reason above."
-        confirmLabel={pendingConfirm ? actionLabel(pendingConfirm) : "Confirm"}
-        destructive={pendingConfirm === "block" || pendingConfirm === "suspend_seller"}
-        pending={pendingAction !== null}
-        onConfirm={() => pendingConfirm && run(pendingConfirm)}
-      />
+      <AlertDialog>
+        <AlertDialog.Backdrop
+          isOpen={pendingConfirm !== null}
+          onOpenChange={(open) => {
+            if (!open) setPendingConfirm(null);
+          }}
+          variant="blur"
+        >
+          <AlertDialog.Container>
+            <AlertDialog.Dialog className="sm:max-w-[420px]">
+              <AlertDialog.CloseTrigger isDisabled={pendingAction !== null} />
+              <AlertDialog.Header>
+                <AlertDialog.Icon status={isDestructive ? "danger" : "accent"} />
+                <AlertDialog.Heading>{pendingConfirm ? `Run "${actionLabel(pendingConfirm)}" on this listing?` : ""}</AlertDialog.Heading>
+              </AlertDialog.Header>
+              <AlertDialog.Body>
+                <p className="text-sm text-muted-foreground">The decision is audit-logged with the reason above.</p>
+              </AlertDialog.Body>
+              <AlertDialog.Footer>
+                <Button variant="tertiary" slot="close" isDisabled={pendingAction !== null} onPress={() => setPendingConfirm(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant={isDestructive ? "danger" : "primary"}
+                  isDisabled={pendingAction !== null}
+                  onPress={() => pendingConfirm && run(pendingConfirm)}
+                >
+                  {pendingAction !== null ? <Spinner className="size-4" /> : null}
+                  {pendingAction !== null ? "Working…" : pendingConfirm ? actionLabel(pendingConfirm) : "Confirm"}
+                </Button>
+              </AlertDialog.Footer>
+            </AlertDialog.Dialog>
+          </AlertDialog.Container>
+        </AlertDialog.Backdrop>
+      </AlertDialog>
     </div>
   );
 }
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border bg-card p-3">
+    <Surface variant="default" className="rounded-2xl border p-3 text-center ring-1 ring-black/5 dark:ring-white/10">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="text-lg font-bold tabular-nums">{value}</p>
-    </div>
+    </Surface>
   );
 }
 
@@ -509,25 +685,27 @@ function Row({ label, mono, children }: { label: string; mono?: boolean; childre
 
 function Section({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base"><Icon className="size-4" /> {title}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">{children}</CardContent>
+    <Card variant="default" className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
+      <Card.Header>
+        <Card.Title className="flex items-center gap-2 text-base">
+          <Icon className="size-4" /> {title}
+        </Card.Title>
+      </Card.Header>
+      <Card.Content className="space-y-3 px-6 pb-6">{children}</Card.Content>
     </Card>
   );
 }
 
 function EvidenceTable({ head, children }: { head: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>{head}</TableRow>
-        </TableHeader>
-        <TableBody>{children}</TableBody>
-      </Table>
-    </div>
+    <Table>
+      <Table.ScrollContainer>
+        <Table.Content aria-label="Evidence table" className="min-w-[480px]">
+          <Table.Header>{head}</Table.Header>
+          <Table.Body>{children}</Table.Body>
+        </Table.Content>
+      </Table.ScrollContainer>
+    </Table>
   );
 }
 
@@ -535,18 +713,10 @@ function EmptyNote({ children }: { children: React.ReactNode }) {
   return <p className="text-sm text-muted-foreground">{children}</p>;
 }
 
-function gradientTone(grade: any): "success" | "warning" | "danger" | "neutral" {
-  const s = String(grade ?? "").toLowerCase();
-  if (/excellent|good|like ?new|pass|immaculate/.test(s)) return "success";
-  if (/fair|moderate|average/.test(s)) return "warning";
-  if (/poor|fail|worn|damaged/.test(s)) return "danger";
-  return "neutral";
-}
-
 function DetailMap({ title, data }: { title: string; data: any }) {
   const entries = Array.isArray(data) ? data.map((v: any, i: number) => [i, v]) : Object.entries(data);
   return (
-    <div className="rounded-lg border bg-card p-3">
+    <Surface variant="default" className="rounded-2xl border p-3 ring-1 ring-black/5 dark:ring-white/10">
       <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
       <div className="space-y-1 text-xs">
         {entries.map(([k, v], i) => (
@@ -556,6 +726,6 @@ function DetailMap({ title, data }: { title: string; data: any }) {
           </div>
         ))}
       </div>
-    </div>
+    </Surface>
   );
 }

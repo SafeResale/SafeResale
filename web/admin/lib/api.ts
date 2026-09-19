@@ -17,6 +17,98 @@ function token(key: string) {
   return localStorage.getItem(key);
 }
 
+// ── JWT expiry parsing ──────────────────────────────────────────────
+
+function parseJwtExp(jwt: string): number | null {
+  try {
+    const payload = jwt.split(".")[1];
+    if (!payload) return null;
+    const decoded = JSON.parse(atob(payload));
+    return typeof decoded.exp === "number" ? decoded.exp : null;
+  } catch {
+    return null;
+  }
+}
+
+// ── Proactive refresh timer ─────────────────────────────────────────
+
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+const REFRESH_BUFFER_MS = 60_000; // refresh 60 s before expiry
+const LOCK_KEY = "sr_refresh_lock";
+const LOCK_TTL_MS = 10_000;
+
+function cancelRefreshTimer() {
+  if (refreshTimer) {
+    clearTimeout(refreshTimer);
+    refreshTimer = null;
+  }
+}
+
+function scheduleRefresh() {
+  cancelRefreshTimer();
+  const at = token("access_token");
+  if (!at) return;
+  const exp = parseJwtExp(at);
+  if (!exp) return;
+  const msUntilRefresh = exp * 1000 - Date.now() - REFRESH_BUFFER_MS;
+  if (msUntilRefresh <= 0) {
+    // Token already expired or about to — refresh now
+    tryRefresh().then((ok) => {
+      if (ok) scheduleRefresh();
+    });
+    return;
+  }
+  refreshTimer = setTimeout(() => {
+    tryRefresh().then((ok) => {
+      if (ok) scheduleRefresh();
+    });
+  }, msUntilRefresh);
+}
+
+/** Returns true if this tab acquired the lock (another tab is not already refreshing). */
+function acquireRefreshLock(): boolean {
+  if (typeof window === "undefined") return false;
+  const now = Date.now();
+  const raw = localStorage.getItem(LOCK_KEY);
+  if (raw) {
+    const lockTime = parseInt(raw, 10);
+    if (!isNaN(lockTime) && now - lockTime < LOCK_TTL_MS) {
+      return false; // another tab holds the lock
+    }
+  }
+  localStorage.setItem(LOCK_KEY, String(now));
+  return true;
+}
+
+function releaseRefreshLock() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(LOCK_KEY);
+}
+
+// ── Start / stop auth watch ─────────────────────────────────────────
+
+let _watching = false;
+
+export function startAuthWatch() {
+  if (_watching || typeof window === "undefined") return;
+  _watching = true;
+  scheduleRefresh();
+
+  // Re-schedule when tokens change (e.g. after login)
+  const orig = window.localStorage.setItem.bind(localStorage);
+  window.localStorage.setItem = (key: string, value: string) => {
+    orig(key, value);
+    if (key === "access_token") scheduleRefresh();
+  };
+}
+
+export function stopAuthWatch() {
+  cancelRefreshTimer();
+  _watching = false;
+}
+
+// ── API helpers ─────────────────────────────────────────────────────
+
 export async function parseError(res: Response): Promise<ApiError> {
   let status = res.status;
   let message = `${status} ${res.statusText}`;
@@ -84,6 +176,8 @@ export const del = <T = any>(path: string, opts?: ApiOpts) => api<T>(path, { ...
 
 export function clearSession(silent = false) {
   if (typeof window === "undefined") return;
+  cancelRefreshTimer();
+  releaseRefreshLock();
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
   localStorage.removeItem("admin_user");
@@ -93,6 +187,16 @@ export function clearSession(silent = false) {
 async function tryRefresh(): Promise<boolean> {
   const rt = token("refresh_token");
   if (!rt) return false;
+
+  // Tab-lock: prevent concurrent refreshes across tabs
+  if (!acquireRefreshLock()) {
+    // Another tab is refreshing — wait briefly, then check if a new token appeared
+    const prevTok = token("access_token");
+    await new Promise((r) => setTimeout(r, 500));
+    const newTok = token("access_token");
+    return !!newTok && newTok !== prevTok;
+  }
+
   try {
     const res = await fetch(`${API}/auth/refresh`, {
       method: "POST",
@@ -108,6 +212,8 @@ async function tryRefresh(): Promise<boolean> {
     return true;
   } catch {
     return false;
+  } finally {
+    releaseRefreshLock();
   }
 }
 

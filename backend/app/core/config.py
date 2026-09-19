@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     firebase_project_id: str = ""
     firebase_admin_emails: str = ""
     firebase_service_account_file: str = ""
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    public_base_url: str = "http://localhost:8000"
     log_level: str = "info"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")

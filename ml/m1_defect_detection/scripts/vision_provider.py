@@ -40,10 +40,15 @@ except Exception:
 
 # Reuse severity from assess_device so grading stays consistent
 try:
-    from assess_device import SEVERITY, DEFAULT_SEVERITY  # type: ignore
+    from assess_device import SEVERITY, DEFAULT_SEVERITY, HIGH_RISK_CLASSES  # type: ignore
 except Exception:
     SEVERITY: Dict[str, float] = {}
     DEFAULT_SEVERITY = 0.5
+    HIGH_RISK_CLASSES = {"screen_damage", "glass_damage"}
+
+# High-risk (glare/reflection-prone) claims below this conf need a CLIP
+# corroboration to survive; at/above it a single view is trusted on its own.
+VERIFY_SINGLE_CONF = 0.90
 
 
 class StubProvider:
@@ -114,20 +119,36 @@ class YoloClipNimProvider:
                             "bbox": [float(v) for v in box.xyxy[0].tolist()],
                         }
                     )
-            # CLIP fallback — only when YOLO is silent or very weak
+            # CLIP verifier — runs when YOLO is silent/weak OR any high-risk class present (allow veto even of high-conf singles if CLIP strongly clean)
             clip_info = None
-            if self.clip is not None:
+            needs_verify = False
+            max_conf = max((d["conf"] for d in dets), default=0.0)
+            if not dets or max_conf < 0.35:
+                needs_verify = True
+            elif any(d["class"] in HIGH_RISK_CLASSES for d in dets):
+                needs_verify = True
+            if self.clip is not None and needs_verify:
                 try:
-                    # trigger only if no confirmed-strong detection
-                    max_conf = max((d["conf"] for d in dets), default=0.0)
-                    if not dets or max_conf < 0.35:
-                        # lazy load
-                        if self.clip.model is None:
-                            self.clip.load()
-                        clip_info = self.clip.predict(str(path))
-                        # never promote CLIP to a hard detection; surface as advisory
+                    if self.clip.model is None:
+                        self.clip.load()
+                    clip_info = self.clip.predict(str(path))
                 except Exception:
                     clip_info = None
+            # CLIP veto: high-risk claim is dropped when CLIP says clean. For high-conf singles (>=VERIFY_SINGLE_CONF) only veto if CLIP is strongly clean.
+            vetoed: List[Dict[str, Any]] = []
+            if clip_info is not None and clip_info.get("verdict") != "damaged":
+                kept = []
+                for d in dets:
+                    if d["class"] in HIGH_RISK_CLASSES:
+                        if d["conf"] < VERIFY_SINGLE_CONF:
+                            vetoed.append(d)
+                        elif clip_info.get("clean_prob", 0) > 0.45 and clip_info.get("best_damage_prob", 1) < 0.32:
+                            vetoed.append(d)
+                        else:
+                            kept.append(d)
+                    else:
+                        kept.append(d)
+                dets = kept
 
             # description (best-effort, never decides)
             desc_text, desc_source = None, None
@@ -141,10 +162,12 @@ class YoloClipNimProvider:
                 "image": str(path),
                 "detections": dets,
                 "simulated": False,
-                "model_version": Path(self.weights).parent.name,
+                "model_version": Path(self.weights).resolve().parents[1].name,
             }
             if clip_info is not None:
                 entry["clip"] = clip_info
+            if vetoed:
+                entry["vetoed_high_risk"] = [{"class": d["class"], "conf": round(d["conf"], 3)} for d in vetoed]
             if desc_text is not None:
                 entry["description"] = {"text": desc_text, "source": desc_source}
             out.append(entry)
@@ -171,7 +194,7 @@ class YoloClipNimProvider:
             "score": round(score, 1),
             "probabilities": {label: 1.0},
             "simulated": False,
-            "model_version": Path(self.weights).parent.name,
+            "model_version": Path(self.weights).resolve().parents[1].name,
         }
 
 

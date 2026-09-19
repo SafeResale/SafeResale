@@ -181,11 +181,14 @@ def main() -> None:
                 dets.append({"class": name, "conf": conf})
         blurry = bool(is_blurry(p, args.blur_threshold))
         entry: dict = {"image": p.name, "blurry": blurry, "detections": dets}
-        # CLIP second opinion — only when YOLO is silent or max conf is weak
+        # CLIP second opinion — when YOLO is silent/weak OR any high-risk
+        # (glare-prone) claim exists (run on all high-risk to allow veto even of high-conf singles if CLIP strongly disagrees)
         if clip is not None:
             try:
                 max_conf = max((d["conf"] for d in dets), default=0.0)
-                if not dets or max_conf < 0.35:
+                needs_clip = (not dets or max_conf < 0.35
+                              or any(d["class"] in HIGH_RISK_CLASSES for d in dets))
+                if needs_clip:
                     if clip.model is None:
                         clip.load()
                     entry["clip"] = clip.predict(str(p))
@@ -199,6 +202,25 @@ def main() -> None:
             except Exception as e:
                 entry["description_error"] = str(e)
         results.append(entry)
+
+    # ---- pass 1.5: CLIP veto for high-risk claims ----------------------------
+    # A glare/reflection-prone claim is dropped when CLIP contradicts it.
+    # For high-conf singles (>= confirm_single_conf) only veto if CLIP is strongly clean (clean_prob > 0.45) to avoid missing real damage.
+    for r in results:
+        clipv = r.get("clip")
+        if clipv and clipv.get("verdict") != "damaged":
+            kept = []
+            for d in r["detections"]:
+                if d["class"] in HIGH_RISK_CLASSES:
+                    if d["conf"] < args.confirm_single_conf:
+                        r.setdefault("clip_vetoed", []).append(d)
+                    elif clipv.get("clean_prob", 0) > 0.45 and clipv.get("best_damage_prob", 1) < 0.32:
+                        r.setdefault("clip_vetoed", []).append(d)
+                    else:
+                        kept.append(d)
+                else:
+                    kept.append(d)
+            r["detections"] = kept
 
     # ---- pass 2: corroboration across views -------------------------------
     high_risk_views = {}  # class -> number of distinct views claiming it
@@ -324,6 +346,7 @@ def main() -> None:
                         } for d in r["detections"]
                     ],
                     **({"clip": r["clip"]} if "clip" in r else {}),
+                    **({"clip_vetoed": [{"class": d["class"], "conf": round(d["conf"], 3)} for d in r["clip_vetoed"]]} if "clip_vetoed" in r else {}),
                     **({"description": r["description"]} if "description" in r else {}),
                 } for r in results
             ],
