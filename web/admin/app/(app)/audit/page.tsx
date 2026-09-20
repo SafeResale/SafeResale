@@ -11,7 +11,6 @@ import { PageError, EmptyState } from "@/components/error-state";
 import { Pager } from "@/components/pager";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
@@ -34,32 +33,34 @@ export default function AuditPage() {
   }
 
   return (
-    <div>
-      <PageHeader
-        title="Audit trail"
-        description="Every admin action, moderation decision and system event"
-        actions={
+    <div className="flex flex-col gap-4 min-w-0">
+      <div className="@container/main px-4 lg:px-6">
+        <PageHeader
+          title="Audit trail"
+          description="Every admin action, moderation decision and system event"
+          actions={
+            <>
+              <Button variant="secondary" size="icon" aria-label="Refresh" onClick={reload}><RefreshCw className="size-4" /></Button>
+              <Button variant="secondary" onClick={exportCsv}><Download className="size-4" /> Export CSV</Button>
+            </>
+          }
+        />
+      </div>
+
+      <div className="@container/main px-4 lg:px-6 min-w-0">
+        {error && <PageError message={error.message} onRetry={reload} />}
+
+        {loading && !data && (
+          <div className="overflow-hidden rounded-xl border shadow-sm p-4"><div className="space-y-3">{Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-12 rounded-md" />)}</div></div>
+        )}
+
+        {data && data.items.length === 0 && (
+          <EmptyState icon={ScrollText} title="No audit events" description="Events appear as soon as the system records them." />
+        )}
+
+        {data && data.items.length > 0 && (
           <>
-            <Button variant="secondary" size="icon" aria-label="Refresh" onClick={reload}><RefreshCw className="size-4" /></Button>
-            <Button variant="secondary" onClick={exportCsv}><Download className="size-4" /> Export CSV</Button>
-          </>
-        }
-      />
-
-      {error && <PageError message={error.message} onRetry={reload} />}
-
-      {loading && !data && (
-        <Card className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10 p-4"><div className="space-y-3">{Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-12 rounded-xl" />)}</div></Card>
-      )}
-
-      {data && data.items.length === 0 && (
-        <EmptyState icon={ScrollText} title="No audit events" description="Events appear as soon as the system records them." />
-      )}
-
-      {data && data.items.length > 0 && (
-        <>
-          <Card className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
-            <CardContent className="p-0">
+            <div className="overflow-hidden rounded-lg border">
               <div className="overflow-x-auto">
                 <Table aria-label="Audit trail" className="min-w-[880px]">
                   <TableHeader>
@@ -98,11 +99,11 @@ export default function AuditPage() {
                   </TableBody>
                 </Table>
               </div>
-            </CardContent>
-          </Card>
-          <Pager page={data.page} pageSize={50} total={data.total} onPage={setPage} />
-        </>
-      )}
+            </div>
+            <Pager page={data.page} pageSize={50} total={data.total} onPage={setPage} />
+          </>
+        )}
+      </div>
     </div>
   );
 }

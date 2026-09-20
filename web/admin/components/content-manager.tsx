@@ -11,7 +11,6 @@ import { PageError, EmptyState } from "@/components/error-state";
 import { Pager } from "@/components/pager";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -111,18 +110,21 @@ export function ContentManager({ cfg }: { cfg: Cfg }) {
   }, [q]);
 
   return (
-    <div>
-      <PageHeader
-        title={cfg.plural}
-        description={`Manage ${cfg.plural.toLowerCase()} shown on the public site`}
-        actions={
-          <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={openNew}>
-            Add {cfg.singular}
-          </Button>
-        }
-      />
+    <div className="flex flex-col gap-4 min-w-0">
+      <div className="@container/main px-4 lg:px-6">
+        <PageHeader
+          title={cfg.plural}
+          description={`Manage ${cfg.plural.toLowerCase()} shown on the public site`}
+          actions={
+            <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={openNew}>
+              Add {cfg.singular}
+            </Button>
+          }
+        />
+      </div>
 
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="@container/main px-4 lg:px-6 min-w-0 space-y-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1 sm:max-w-xs">
           <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -151,13 +153,11 @@ export function ContentManager({ cfg }: { cfg: Cfg }) {
       {error && <PageError message={error.message} onRetry={reload} />}
 
       {loading && !data && (
-        <Card className="rounded-2xl">
-          <CardContent className="space-y-3 p-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 rounded-xl" />
-            ))}
-          </CardContent>
-        </Card>
+        <div className="overflow-hidden rounded-xl border shadow-sm p-4 space-y-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 rounded-md" />
+          ))}
+        </div>
       )}
 
       {data && data.items.length === 0 && (
@@ -170,8 +170,8 @@ export function ContentManager({ cfg }: { cfg: Cfg }) {
 
       {data && data.items.length > 0 && (
         <>
-          <Card className="overflow-hidden rounded-2xl">
-            <CardContent className="p-0">
+          <div className="overflow-hidden rounded-lg border">
+            <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
@@ -214,8 +214,8 @@ export function ContentManager({ cfg }: { cfg: Cfg }) {
                   ))}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
           <Pager page={data.page} pageSize={data.page_size} total={data.total} onPage={setPage} />
         </>
       )}
@@ -305,6 +305,7 @@ export function ContentManager({ cfg }: { cfg: Cfg }) {
         destructive
         onConfirm={remove}
       />
+      </div>
     </div>
   );
 }

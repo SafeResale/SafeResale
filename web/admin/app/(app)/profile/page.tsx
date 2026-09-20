@@ -38,11 +38,14 @@ export default function ProfilePage() {
   }
 
   return (
-    <div>
-      <PageHeader title="My account" description="Your admin profile and security" />
+    <div className="flex flex-col gap-4 min-w-0">
+      <div className="@container/main px-4 lg:px-6">
+        <PageHeader title="My account" description="Your admin profile and security" />
+      </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
+      <div className="@container/main px-4 lg:px-6 min-w-0">
+        <div className="grid gap-4 lg:grid-cols-2 min-w-0">
+          <Card className="@container/card rounded-xl border shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base"><CircleUser className="size-4" /> Profile</CardTitle>
             <CardDescription>Details attached to your session</CardDescription>
@@ -63,7 +66,7 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
+        <Card className="@container/card rounded-xl border shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base"><KeyRound className="size-4" /> Change password</CardTitle>
             <CardDescription>Choose at least 8 characters. Active sessions will be signed out.</CardDescription>
@@ -89,20 +92,21 @@ export default function ProfilePage() {
             </form>
           </CardContent>
         </Card>
-      </div>
+        </div>
 
-      <Card className="mt-4 rounded-2xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
+        <Card className="@container/card mt-4 overflow-hidden rounded-xl border shadow-sm">
         <CardHeader>
           <CardTitle className="text-base">Recent activity</CardTitle>
           <CardDescription>Your latest actions from the audit trail</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          {loading && <div className="space-y-2 p-4">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 rounded-xl" />)}</div>}
-          {error && <PageError message={error.message} />}
+          {loading && <div className="space-y-2 p-4">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 rounded-md" />)}</div>}
+          {error && <div className="p-4"><PageError message={error.message} /></div>}
           {data && data.items.length === 0 && <p className="p-4 text-sm text-muted-foreground">No activity recorded yet.</p>}
           {data && data.items.length > 0 && (
-            <div className="overflow-x-auto">
-              <Table aria-label="Recent activity" className="min-w-[560px]">
+            <div className="overflow-hidden rounded-lg border">
+              <div className="overflow-x-auto">
+                <Table aria-label="Recent activity" className="min-w-[560px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Action</TableHead>
@@ -120,10 +124,12 @@ export default function ProfilePage() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

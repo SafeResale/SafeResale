@@ -10,7 +10,6 @@ import { riskLabel, timeAgo } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { PageError, EmptyState } from "@/components/error-state";
 import { Pager } from "@/components/pager";
-import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -38,8 +37,8 @@ export default function QueuePage() {
   );
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="@container/main px-4 lg:px-6">
+    <div className="flex flex-col gap-4 min-w-0">
+      <div className="@container/main px-4 lg:px-6 min-w-0">
         <PageHeader
           title="Moderation queue"
           description="Listings flagged by the verification orchestrator — vision, diagnostics and risk"
@@ -58,11 +57,11 @@ export default function QueuePage() {
         />
       </div>
 
-      <div className="@container/main px-4 lg:px-6">
+      <div className="@container/main px-4 lg:px-6 min-w-0">
         {error && <PageError message={error.message} onRetry={reload} />}
 
         {loading && !data && (
-          <div className="rounded-md border">
+          <div className="overflow-hidden rounded-lg border">
             <div className="p-4 space-y-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <Skeleton key={i} className="h-12 rounded-md" />
@@ -80,9 +79,10 @@ export default function QueuePage() {
         )}
 
         {data && data.items.length > 0 && (
-          <div className="space-y-4">
-            <div className="rounded-md border">
-              <Table>
+          <div className="space-y-4 min-w-0">
+            <div className="overflow-hidden rounded-lg border">
+              <div className="overflow-x-auto">
+                <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Listing</TableHead>
@@ -141,7 +141,8 @@ export default function QueuePage() {
                     );
                   })}
                 </TableBody>
-              </Table>
+                </Table>
+              </div>
             </div>
             <Pager page={data.page} pageSize={data.page_size} total={data.total} onPage={setPage} />
           </div>

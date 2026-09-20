@@ -22,39 +22,42 @@ export default function ModelsPage() {
   const { data, loading, error, reload } = useFetch<{ models: ModelInfo[] }>("/admin/models");
 
   return (
-    <div>
-      <PageHeader
-        title="ML models"
-        description="Validation pipeline model versions & metrics"
-        actions={
-          <Button variant="secondary" size="icon" aria-label="Refresh" onClick={reload}>
-            <RefreshCw className="size-4" />
-          </Button>
-        }
-      />
-
-      {error && <PageError message={error.message} onRetry={reload} />}
-
-      {loading && !data && (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-40 rounded-2xl" />
-          ))}
-        </div>
-      )}
-
-      {data && data.models.length === 0 && (
-        <EmptyState
-          icon={Cpu}
-          title="No model metrics yet"
-          description="When the verification pipeline records a model run, its metrics will surface here."
+    <div className="flex flex-col gap-4 min-w-0">
+      <div className="@container/main px-4 lg:px-6">
+        <PageHeader
+          title="ML models"
+          description="Validation pipeline model versions & metrics"
+          actions={
+            <Button variant="secondary" size="icon" aria-label="Refresh" onClick={reload}>
+              <RefreshCw className="size-4" />
+            </Button>
+          }
         />
-      )}
+      </div>
 
-      {data && data.models.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {data.models.map((m) => (
-            <Card key={m._id} className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
+      <div className="@container/main px-4 lg:px-6 min-w-0">
+        {error && <PageError message={error.message} onRetry={reload} />}
+
+        {loading && !data && (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-40 rounded-xl" />
+            ))}
+          </div>
+        )}
+
+        {data && data.models.length === 0 && (
+          <EmptyState
+            icon={Cpu}
+            title="No model metrics yet"
+            description="When the verification pipeline records a model run, its metrics will surface here."
+          />
+        )}
+
+        {data && data.models.length > 0 && (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {data.models.map((m) => (
+              <Card key={m._id} className="@container/card rounded-xl border shadow-sm">
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
                   <CardTitle className="flex items-center gap-2 text-base">
@@ -90,7 +93,8 @@ export default function ModelsPage() {
             </Card>
           ))}
         </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

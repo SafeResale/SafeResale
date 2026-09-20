@@ -47,47 +47,50 @@ export default function SettingsPage() {
   }
 
   return (
-    <div>
-      <PageHeader
-        title="Settings"
-        description="Platform configuration — published live to the public site"
-        actions={
-          <>
-            <Button variant="secondary" size="icon" aria-label="Reset" onClick={reload}>
-              <RefreshCw className="size-4" />
-            </Button>
-            <Button
-              variant="default"
-              className="bg-accent text-accent-foreground hover:bg-accent/90"
-              onClick={save}
-              disabled={!dirty || saving}
-            >
-              {saving ? "Saving…" : <><Save className="size-4" /> Save changes</>}
-            </Button>
-          </>
-        }
-      />
+    <div className="flex flex-col gap-4 min-w-0">
+      <div className="@container/main px-4 lg:px-6">
+        <PageHeader
+          title="Settings"
+          description="Platform configuration — published live to the public site"
+          actions={
+            <>
+              <Button variant="secondary" size="icon" aria-label="Reset" onClick={reload}>
+                <RefreshCw className="size-4" />
+              </Button>
+              <Button
+                variant="default"
+                className="bg-accent text-accent-foreground hover:bg-accent/90"
+                onClick={save}
+                disabled={!dirty || saving}
+              >
+                {saving ? "Saving…" : <><Save className="size-4" /> Save changes</>}
+              </Button>
+            </>
+          }
+        />
+      </div>
 
-      {error && <PageError message={error.message} onRetry={reload} />}
+      <div className="@container/main px-4 lg:px-6 min-w-0">
+        {error && <PageError message={error.message} onRetry={reload} />}
 
-      {loading && !data && (
-        <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}</div>
-      )}
+        {loading && !data && (
+          <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-xl" />)}</div>
+        )}
 
-      {data && (
-        <Tabs defaultValue={data.group_names[0]} className="gap-4">
-          <TabsList aria-label="Settings groups">
+        {data && (
+          <Tabs defaultValue={data.group_names[0]} className="gap-4">
+            <TabsList aria-label="Settings groups">
+              {data.group_names.map((g) => (
+                <TabsTrigger key={g} value={g} className="capitalize">
+                  {g.replace(/_/g, " ")}
+                </TabsTrigger>
+              ))}
+            </TabsList>
             {data.group_names.map((g) => (
-              <TabsTrigger key={g} value={g} className="capitalize">
-                {g.replace(/_/g, " ")}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-          {data.group_names.map((g) => (
-            <TabsContent key={g} value={g} className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                {Object.entries(data.groups[g] || {}).map(([key, entry]) => (
-                  <Card key={key} className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
+              <TabsContent key={g} value={g} className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  {Object.entries(data.groups[g] || {}).map(([key, entry]) => (
+                    <Card key={key} className="@container/card rounded-xl border shadow-sm">
                     <CardHeader className="pb-2">
                       <CardTitle className="flex items-center gap-2 text-sm">
                         {entry.key.replace(/_/g, " ")}
@@ -132,7 +135,8 @@ export default function SettingsPage() {
             </TabsContent>
           ))}
         </Tabs>
-      )}
+        )}
+      </div>
     </div>
   );
 }
