@@ -167,10 +167,12 @@ function useListingColumns(): ColumnDef<ListingItem>[] {
           const it = row.original;
           const info = riskLabel(it.risk?.adjusted_score);
           if (!info.band) return <span className="text-xs text-muted-foreground">no score</span>;
+          // Show risk band + score only — badge (verified/restricted) is listing-level and shown in Status column; mixing caused "restricted · 15 / 100" for low-risk drafts
+          const bandLabel = info.band ? info.band.charAt(0).toUpperCase() + info.band.slice(1) : "";
           return (
             <StatusBadge
               tone={riskTone[info.band] ?? "neutral"}
-              label={it.risk?.badge ? `${it.risk.badge} · ${info.label}` : info.label}
+              label={bandLabel ? `${bandLabel} · ${info.label}` : info.label}
             />
           );
         },

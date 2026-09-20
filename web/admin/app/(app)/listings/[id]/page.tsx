@@ -289,18 +289,22 @@ export default function ListingDetailPage() {
                     </>
                   }
                 >
-                  {evidence.risk_history.map((r: any) => (
-                    <TableRow key={r._id}>
-                      <TableCell className="font-medium tabular-nums">{r.adjusted_score ?? r.raw_score ?? "—"}</TableCell>
-                      <TableCell>
-                        <StatusBadge
-                          tone={riskLabel(r.adjusted_score).band ? riskTone[riskLabel(r.adjusted_score).band!] ?? "neutral" : "neutral"}
-                          label={r.badge || riskLabel(r.adjusted_score).label}
-                        />
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{fmtDate(r.created_at)}</TableCell>
-                    </TableRow>
-                  ))}
+                  {evidence.risk_history.map((r: any) => {
+                    const info = riskLabel(r.adjusted_score ?? r.raw_score);
+                    const bandLabel = info.band ? info.band.charAt(0).toUpperCase() + info.band.slice(1) : "";
+                    return (
+                      <TableRow key={r._id}>
+                        <TableCell className="font-medium tabular-nums">{r.adjusted_score ?? r.raw_score ?? "—"}</TableCell>
+                        <TableCell>
+                          <StatusBadge
+                            tone={info.band ? riskTone[info.band] ?? "neutral" : "neutral"}
+                            label={bandLabel ? `${bandLabel} · ${info.label}` : info.label}
+                          />
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{fmtDate(r.created_at)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </EvidenceTable>
               )}
               {latestRisk?.factors && <DetailMap title="Factors" data={latestRisk.factors} />}
