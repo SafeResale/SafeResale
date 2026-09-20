@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { RefreshCw, Wallet } from "lucide-react";
+import { RefreshCw, Wallet, TrendingUp, TrendingDown, ArrowUpRight } from "lucide-react";
 import { post, queryString } from "@/lib/api";
 import { useFetch, runMutation } from "@/lib/use-fetch";
 import type { EscrowRow, PageResult } from "@/lib/types";
@@ -11,7 +11,8 @@ import { PageError, EmptyState } from "@/components/error-state";
 import { Pager } from "@/components/pager";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -37,32 +38,28 @@ const ACTIONS_FOR: Record<string, { key: string; label: string; tone: "default" 
   refunded: [],
 };
 
-function KpiCard({ label, value, sub, icon: Icon, tone = "default" }: { label: string; value: React.ReactNode; sub?: string; icon?: any; tone?: "lime" | "danger" | "info" | "default" | "success" | "warning" }) {
-  const toneMap: Record<string, string> = {
-    lime: "bg-accent text-accent-foreground",
-    success: "bg-success text-success-foreground",
-    danger: "bg-destructive text-destructive-foreground",
-    warning: "bg-warning text-warning-foreground",
-    info: "bg-accent text-accent-foreground",
-    default: "bg-muted text-muted-foreground",
-  };
+function KpiCard({ label, value, sub, icon: Icon, trend }: { label: string; value: React.ReactNode; sub?: string; icon?: any; trend?: "up" | "down" }) {
   return (
-    <Card className="relative overflow-hidden rounded-2xl border-0 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-black/5 to-transparent dark:via-white/10" />
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between">
-          <CardDescription className="text-[11px] font-semibold uppercase tracking-widest">{label}</CardDescription>
-          {Icon && (
-            <span className={`inline-flex size-9 items-center justify-center rounded-xl text-xs ${toneMap[tone]}`}>
-              <Icon className="size-4" />
-            </span>
-          )}
-        </div>
+    <Card className="@container/card">
+      <CardHeader>
+        <CardDescription>{label}</CardDescription>
+        <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">{value}</CardTitle>
+        <CardAction>
+          <Badge variant="outline" className="flex items-center gap-1">
+            {Icon && <Icon className="size-3.5 text-muted-foreground" />}
+            {trend === "down" ? <TrendingDown className="size-3" /> : <TrendingUp className="size-3" />}
+            {trend === "down" ? "Down" : "Active"}
+          </Badge>
+        </CardAction>
       </CardHeader>
-      <CardContent className="pt-0">
-        <div className="text-2xl font-bold tracking-tight tabular-nums">{value}</div>
-        {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
-      </CardContent>
+      {sub && (
+        <CardFooter className="flex-col items-start gap-1.5 text-sm">
+          <div className="line-clamp-1 flex gap-2 font-medium">
+            {sub} <ArrowUpRight className="size-4" />
+          </div>
+          <div className="text-muted-foreground">Updated just now</div>
+        </CardFooter>
+      )}
     </Card>
   );
 }
@@ -83,125 +80,118 @@ export default function EscrowPage() {
   }
 
   return (
-    <div>
-      <PageHeader
-        title="Escrow"
-        description="Held funds, review states and release/refund transitions"
-        actions={
-          <div className="flex items-center gap-2">
-            <Select value={status} onValueChange={(v) => { setStatus(v || "all"); setPage(1); }}>
-              <SelectTrigger className="w-40" aria-label="Filter by status">
-                <SelectValue placeholder="All states" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All states</SelectItem>
-                {FILTERS.map((f) => (
-                  <SelectItem key={f} value={f}>
-                    <span className="capitalize">{f.replace(/_/g, " ")}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button variant="secondary" size="icon" aria-label="Refresh" onClick={reload}>
-              <RefreshCw className="size-4" />
-            </Button>
-          </div>
-        }
-      />
-
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <KpiCard label="Held funds" value={money(kpis?.held)} icon={Wallet} tone="info" sub="currently held" />
-        <KpiCard label="In review" value={money(kpis?.in_review)} sub="dispute / inspection review" tone="warning" />
-        <KpiCard label="Total in hold" value={money(kpis?.in_hold_total)} sub="held + review" tone="lime" />
+    <div className="flex flex-col gap-4">
+      <div className="@container/main px-4 lg:px-6">
+        <PageHeader
+          title="Escrow"
+          description="Held funds, review states and release/refund transitions"
+          actions={
+            <div className="flex items-center gap-2">
+              <Select value={status} onValueChange={(v) => { setStatus(v || "all"); setPage(1); }}>
+                <SelectTrigger className="w-40 cursor-pointer" aria-label="Filter by status">
+                  <SelectValue placeholder="All states" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="cursor-pointer">All states</SelectItem>
+                  {FILTERS.map((f) => (
+                    <SelectItem key={f} value={f} className="cursor-pointer">
+                      <span className="capitalize">{f.replace(/_/g, " ")}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="icon" aria-label="Refresh" onClick={reload} className="cursor-pointer">
+                <RefreshCw className="size-4" />
+              </Button>
+            </div>
+          }
+        />
       </div>
 
-      {error && <PageError message={error.message} onRetry={reload} />}
+      <div className="@container/main px-4 lg:px-6 space-y-6">
+        <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs grid gap-4 sm:grid-cols-3">
+          <KpiCard label="Held funds" value={money(kpis?.held)} icon={Wallet} sub="currently held" trend="up" />
+          <KpiCard label="In review" value={money(kpis?.in_review)} icon={Wallet} sub="dispute / inspection review" trend="down" />
+          <KpiCard label="Total in hold" value={money(kpis?.in_hold_total)} icon={Wallet} sub="held + review" trend="up" />
+        </div>
 
-      {loading && !data && (
-        <Card className="rounded-2xl p-4 ring-1 ring-black/5 dark:ring-white/10">
-          <CardContent className="space-y-3 p-0">
+        {error && <PageError message={error.message} onRetry={reload} />}
+
+        {loading && !data && (
+          <div className="rounded-md border p-4 space-y-3">
             {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-11 rounded-xl" />
+              <Skeleton key={i} className="h-11 rounded-md" />
             ))}
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        )}
 
-      {data && data.items.length === 0 && (
-        <EmptyState icon={Wallet} title="No escrows" description="Escrows appear once a buyer and seller start a protected transaction." />
-      )}
+        {data && data.items.length === 0 && (
+          <EmptyState icon={Wallet} title="No escrows" description="Escrows appear once a buyer and seller start a protected transaction." />
+        )}
 
-      {data && data.items.length > 0 && (
-        <>
-          <Card className="overflow-hidden rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table aria-label="Escrows" className="min-w-[860px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Escrow</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Listing</TableHead>
-                      <TableHead>Buyer / Seller</TableHead>
-                      <TableHead className="text-right">Created</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.items.map((e) => (
-                      <TableRow key={e._id}>
-                        <TableCell className="font-mono text-xs">{e._id.slice(0, 12)}…</TableCell>
-                        <TableCell className="font-medium tabular-nums">{money(e.amount, e.currency)}</TableCell>
-                        <TableCell>
-                          <StatusBadge tone={(statusTone[e.status] as any) || "neutral"} label={e.status.replace(/_/g, " ")} className="capitalize" />
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">{e.listing_id?.slice(0, 12) || "—"}…</TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {e.buyer_id?.slice(0, 8) || "—"}… / {e.seller_id?.slice(0, 8) || "—"}…
-                        </TableCell>
-                        <TableCell className="text-right text-xs text-muted-foreground">{fmtDate(e.created_at)}</TableCell>
-                        <TableCell>
-                          <div className="flex justify-end gap-1.5">
-                            {(ACTIONS_FOR[e.status] || []).map((a) => {
-                              if (a.tone === "danger") {
-                                return (
-                                  <Button key={a.key} variant="destructive" size="sm" onClick={() => setConfirm({ e, action: a.key })}>
-                                    {a.label}
-                                  </Button>
-                                );
-                              }
-                              if (a.tone === "outline") {
-                                return (
-                                  <Button key={a.key} variant="secondary" size="sm" onClick={() => setConfirm({ e, action: a.key })}>
-                                    {a.label}
-                                  </Button>
-                                );
-                              }
+        {data && data.items.length > 0 && (
+          <div className="space-y-4">
+            <div className="rounded-md border">
+              <Table aria-label="Escrows">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Escrow</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Listing</TableHead>
+                    <TableHead>Buyer / Seller</TableHead>
+                    <TableHead className="text-right">Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.items.map((e) => (
+                    <TableRow key={e._id}>
+                      <TableCell className="font-mono text-xs">{e._id.slice(0, 12)}…</TableCell>
+                      <TableCell className="font-medium tabular-nums">{money(e.amount, e.currency)}</TableCell>
+                      <TableCell>
+                        <StatusBadge tone={(statusTone[e.status] as any) || "neutral"} label={e.status.replace(/_/g, " ")} className="capitalize" />
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">{e.listing_id?.slice(0, 12) || "—"}…</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {e.buyer_id?.slice(0, 8) || "—"}… / {e.seller_id?.slice(0, 8) || "—"}…
+                      </TableCell>
+                      <TableCell className="text-right text-xs text-muted-foreground">{fmtDate(e.created_at)}</TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-1.5">
+                          {(ACTIONS_FOR[e.status] || []).map((a) => {
+                            if (a.tone === "danger") {
                               return (
-                                <Button
-                                  key={a.key}
-                                  size="sm"
-                                  className="bg-accent text-accent-foreground hover:bg-accent/90"
-                                  onClick={() => setConfirm({ e, action: a.key })}
-                                >
+                                <Button key={a.key} variant="destructive" size="sm" onClick={() => setConfirm({ e, action: a.key })} className="cursor-pointer">
                                   {a.label}
                                 </Button>
                               );
-                            })}
-                            {!ACTIONS_FOR[e.status]?.length && <span className="text-xs text-muted-foreground">—</span>}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-          <Pager page={data.page} pageSize={data.page_size} total={data.total} onPage={setPage} />
-        </>
-      )}
+                            }
+                            if (a.tone === "outline") {
+                              return (
+                                <Button key={a.key} variant="outline" size="sm" onClick={() => setConfirm({ e, action: a.key })} className="cursor-pointer">
+                                  {a.label}
+                                </Button>
+                              );
+                            }
+                            return (
+                              <Button key={a.key} size="sm" onClick={() => setConfirm({ e, action: a.key })} className="cursor-pointer">
+                                {a.label}
+                              </Button>
+                            );
+                          })}
+                          {!ACTIONS_FOR[e.status]?.length && <span className="text-xs text-muted-foreground">—</span>}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <Pager page={data.page} pageSize={data.page_size} total={data.total} onPage={setPage} />
+          </div>
+        )}
+      </div>
 
       <ConfirmDialog
         open={confirm !== null}

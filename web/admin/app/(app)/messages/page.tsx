@@ -66,88 +66,91 @@ export default function MessagesPage() {
   }
 
   return (
-    <div>
-      <PageHeader
-        title="Messages"
-        description="Contact form submissions from the public site"
-        actions={
-          <Select
-            value={status}
-            onValueChange={(v) => {
-              setStatus(v || "all");
-              setPage(1);
-            }}
-          >
-            <SelectTrigger className="w-36" aria-label="Filter by status">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="new">New</SelectItem>
-              <SelectItem value="read">Read</SelectItem>
-              <SelectItem value="resolved">Resolved</SelectItem>
-              <SelectItem value="archived">Archived</SelectItem>
-            </SelectContent>
-          </Select>
-        }
-      />
-
-      {error && <PageError message={error.message} onRetry={reload} />}
-
-      {loading && !data && (
-        <Card className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
-          <CardContent className="p-4">
-            <div className="space-y-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-14 rounded-xl" />
-              ))}
+    <div className="flex flex-col gap-4">
+      <div className="@container/main px-4 lg:px-6">
+        <PageHeader
+          title="Messages"
+          description="Contact form submissions from the public site"
+          actions={
+            <div className="flex items-center gap-2">
+              <Select
+                value={status}
+                onValueChange={(v) => {
+                  setStatus(v || "all");
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="w-36 cursor-pointer" aria-label="Filter by status">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="cursor-pointer">All</SelectItem>
+                  <SelectItem value="new" className="cursor-pointer">New</SelectItem>
+                  <SelectItem value="read" className="cursor-pointer">Read</SelectItem>
+                  <SelectItem value="resolved" className="cursor-pointer">Resolved</SelectItem>
+                  <SelectItem value="archived" className="cursor-pointer">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="icon" aria-label="Refresh" onClick={reload} className="cursor-pointer">
+                <RefreshCw className="size-4" />
+              </Button>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          }
+        />
+      </div>
 
-      {data && data.items.length === 0 && (
-        <EmptyState icon={Mail} title="No messages" description="Contact-form submissions will land here as soon as they are sent." />
-      )}
+      <div className="@container/main px-4 lg:px-6 space-y-4">
+        {error && <PageError message={error.message} onRetry={reload} />}
 
-      {data && data.items.length > 0 && (
-        <>
-          <Card className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table aria-label="Messages" className="min-w-[640px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>From</TableHead>
-                      <TableHead>Subject</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Received</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {data.items.map((m) => (
-                      <TableRow key={m._id} id={m._id} className="cursor-pointer" onClick={() => open(m)}>
-                        <TableCell>
-                          <span className="block truncate font-medium">{m.name || "Anonymous"}</span>
+        {loading && !data && (
+          <div className="rounded-md border p-4 space-y-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-14 rounded-md" />
+            ))}
+          </div>
+        )}
+
+        {data && data.items.length === 0 && (
+          <EmptyState icon={Mail} title="No messages" description="Contact-form submissions will land here as soon as they are sent." />
+        )}
+
+        {data && data.items.length > 0 && (
+          <div className="space-y-4">
+            <div className="rounded-md border">
+              <Table aria-label="Messages">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>From</TableHead>
+                    <TableHead>Subject</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Received</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.items.map((m) => (
+                    <TableRow key={m._id} id={m._id} className="cursor-pointer" onClick={() => open(m)}>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="block max-w-[180px] truncate font-medium text-sm">{m.name || "Anonymous"}</span>
                           <span className="block max-w-48 truncate text-xs text-muted-foreground">{m.email}</span>
-                        </TableCell>
-                        <TableCell className="max-w-72">
-                          <span className="block truncate text-sm">{m.subject || "(no subject)"}</span>
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge tone={statusTone[m.status] ?? "neutral"} label={m.status} className="capitalize" />
-                        </TableCell>
-                        <TableCell className="text-right text-xs text-muted-foreground">{timeAgo(m.created_at)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-          <Pager page={data.page} pageSize={data.page_size} total={data.total} onPage={setPage} />
-        </>
-      )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-72">
+                        <span className="block truncate text-sm">{m.subject || "(no subject)"}</span>
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge tone={statusTone[m.status] ?? "neutral"} label={m.status} className="capitalize" />
+                      </TableCell>
+                      <TableCell className="text-right text-xs text-muted-foreground whitespace-nowrap">{timeAgo(m.created_at)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <Pager page={data.page} pageSize={data.page_size} total={data.total} onPage={setPage} />
+          </div>
+        )}
+      </div>
 
       <Dialog
         open={!!selected}
@@ -158,34 +161,26 @@ export default function MessagesPage() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className="sm:max-w-xl rounded-xl">
           <DialogHeader>
             <DialogTitle>{detail?.subject || "Message"}</DialogTitle>
             <DialogDescription>
               {detail?.name || "Anonymous"} · {detail?.email} · {fmtDate(detail?.created_at)}
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-xl border bg-muted/40 p-4 text-sm">
+          <div className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-md border bg-muted/40 p-4 text-sm">
             {detail?.message || "No body."}
           </div>
           <DialogFooter className="flex justify-end gap-2 sm:justify-end">
-            <Button variant="outline" size="sm" onClick={() => selected && remove(selected)}>
+            <Button variant="outline" size="sm" onClick={() => selected && remove(selected)} className="cursor-pointer">
               <Archive className="size-3.5" /> Delete
             </Button>
             {detail?.status === "resolved" ? (
-              <Button
-                size="sm"
-                className="bg-accent text-accent-foreground hover:bg-accent/90"
-                onClick={() => selected && setState(selected, "archived")}
-              >
+              <Button size="sm" onClick={() => selected && setState(selected, "archived")} className="cursor-pointer">
                 <CheckCheck className="size-3.5" /> Archive
               </Button>
             ) : (
-              <Button
-                size="sm"
-                className="bg-accent text-accent-foreground hover:bg-accent/90"
-                onClick={() => selected && setState(selected, "resolved")}
-              >
+              <Button size="sm" onClick={() => selected && setState(selected, "resolved")} className="cursor-pointer">
                 <CheckCheck className="size-3.5" /> Mark resolved
               </Button>
             )}
