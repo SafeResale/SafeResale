@@ -9,7 +9,7 @@ const TONE_CLASS: Record<Tone, string> = {
   danger: "bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/15",
   info: "bg-info/15 text-info border-info/30 hover:bg-info/15",
   neutral: "bg-muted text-muted-foreground border-border hover:bg-muted/80",
-  lime: "bg-accent text-accent-foreground border-accent/40 hover:bg-accent/90",
+  lime: "bg-success/15 text-success border-success/30 hover:bg-success/15",
   outline: "border-border text-foreground hover:bg-muted/50",
 }
 
