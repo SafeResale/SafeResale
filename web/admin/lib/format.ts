@@ -2,27 +2,27 @@ import type { RiskBand } from "./types";
 
 export function money(v?: number | null, currency?: string | null) {
   if (v === undefined || v === null || isNaN(Number(v))) return "—";
-  const cur = currency || "USD";
+  const cur = currency || "INR";
   try {
-    return new Intl.NumberFormat("en-US", { style: "currency", currency: cur, maximumFractionDigits: 2 }).format(Number(v));
+    return new Intl.NumberFormat("en-IN", { style: "currency", currency: cur, maximumFractionDigits: 2 }).format(Number(v));
   } catch {
-    return `$${Number(v).toFixed(2)}`;
+    return `₹${Number(v).toFixed(2)}`;
   }
 }
 
 export function fmtNumber(v?: number | null) {
   if (v === undefined || v === null || isNaN(Number(v))) return "—";
-  return new Intl.NumberFormat("en-US").format(Number(v));
+  return new Intl.NumberFormat("en-IN").format(Number(v));
 }
 
 export function fmtDate(ts?: number | null, opts: Intl.DateTimeFormatOptions = {}) {
   if (!ts) return "—";
-  return new Date(ts * 1000).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", ...opts });
+  return new Date(ts * 1000).toLocaleString("en-IN", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", ...opts });
 }
 
 export function fmtShort(ts?: number | null) {
   if (!ts) return "—";
-  return new Date(ts * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return new Date(ts * 1000).toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" });
 }
 
 export function timeAgo(ts?: number | null) {

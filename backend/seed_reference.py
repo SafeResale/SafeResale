@@ -16,7 +16,7 @@ DB_NAME = "saferesale"
 DEFAULT_SETTINGS = {
     "general": {
         "site_name": "SafeResale", "support_email": "support@saferesale.dev", "support_phone": "",
-        "currency": "USD", "currency_symbol": "$", "escrow_fee_percent": 0.0, "max_listing_price": 10000000,
+        "currency": "INR", "currency_symbol": "₹", "escrow_fee_percent": 0.0, "max_listing_price": 10000000,
         "languages": "en",
     },
     "marketplace": {
@@ -88,6 +88,13 @@ async def main():
         for key, value in keys.items():
             exists = await db.system_settings.find_one({"key": key})
             if exists:
+                # migrate legacy USD -> INR
+                if key == "currency" and exists.get("value") == "USD":
+                    await db.system_settings.update_one({"key": key}, {"$set": {"value": "INR", "updated_at": now}})
+                    print("migrated setting: currency USD -> INR")
+                elif key == "currency_symbol" and exists.get("value") == "$":
+                    await db.system_settings.update_one({"key": key}, {"$set": {"value": "₹", "updated_at": now}})
+                    print("migrated setting: currency_symbol $ -> ₹")
                 continue
             await db.system_settings.insert_one({
                 "key": key, "value": value, "type": TYPES.get(key, "string"), "group": group,
