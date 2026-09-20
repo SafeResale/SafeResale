@@ -1,284 +1,542 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useState } from "react"
-import {
-  Activity, AlertTriangle, ArrowUpRight, ArrowDownRight, BadgeCheck, Flag, Mail,
-  Package, ScrollText, ShieldAlert, Users, Wallet, TrendingUp, Sparkles, RefreshCw,
-} from "lucide-react"
-import { Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import * as React from "react"
+import { TrendingDown, TrendingUp } from "lucide-react"
+import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
+
+import { useIsMobile } from "@/hooks/use-mobile"
 import { useFetch } from "@/lib/use-fetch"
 import type { DashboardData } from "@/lib/types"
-import { fmtDate, fmtNumber, money, riskLabel, timeAgo } from "@/lib/format"
+import { fmtNumber, money, riskLabel, timeAgo } from "@/lib/format"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { StatusBadge } from "@/components/status-badge"
 
-const RISK_COLORS: Record<string, string> = { low: "#C6F135", medium: "#f59e0b", high: "#ef4444" }
-const STATUS_STYLE: Record<string, string> = {
-  approved: "#C6F135", published: "#C6F135", review: "#f59e0b", verifying: "#f59e0b", submitted: "#f59e0b",
-  blocked: "#ef4444", draft: "#9ca3af", capturing: "#9ca3af", restricted: "#a78bfa", inspection_pending: "#0ea5e9",
-}
-
-function GreetingHeader({ onRefresh }: { onRefresh: () => void }) {
-  const [greeting, setGreeting] = useState("Good morning")
-  useEffect(() => {
-    const h = new Date().getHours()
-    if (h < 12) setGreeting("Good morning")
-    else if (h < 17) setGreeting("Good afternoon")
-    else setGreeting("Good evening")
-  }, [])
+// ---------------------------------------------------------------------------
+// SectionCards — template exact structure, wired to SafeResale kpis
+// ---------------------------------------------------------------------------
+function SectionCards({ kpis }: { kpis: DashboardData["kpis"] }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          {greeting}, Admin
-          <span className="inline-flex size-7 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-sm">
-            <Sparkles className="size-3.5" />
-          </span>
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">Stay ahead with real-time trust & verification insights</p>
-      </div>
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" className="rounded-full" onClick={onRefresh}>
-          <RefreshCw className="size-3.5" /> Refresh
-        </Button>
-        <Link href="/queue">
-          <Button size="sm" className="rounded-full bg-accent text-accent-foreground hover:bg-accent/90">
-            Open queue <ArrowUpRight className="size-3.5" />
-          </Button>
-        </Link>
-      </div>
+    <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <Card className="@container/card">
+        <CardHeader>
+          <CardDescription>Total Listings</CardDescription>
+          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+            {fmtNumber(kpis.total_listings)}
+          </CardTitle>
+          <CardAction>
+            <Badge variant="outline">
+              <TrendingUp />
+              +{fmtNumber(kpis.new_today)} today
+            </Badge>
+          </CardAction>
+        </CardHeader>
+        <CardFooter className="flex-col items-start gap-1.5 text-sm">
+          <div className="line-clamp-1 flex gap-2 font-medium">
+            Last 7 days growth <TrendingUp className="size-4" />
+          </div>
+          <div className="text-muted-foreground">Last 7d: {fmtNumber(kpis.new_7d)} listings</div>
+        </CardFooter>
+      </Card>
+
+      <Card className="@container/card">
+        <CardHeader>
+          <CardDescription>Pending Review</CardDescription>
+          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+            {fmtNumber(kpis.pending_review)}
+          </CardTitle>
+          <CardAction>
+            <Badge variant="outline">
+              {kpis.pending_review > 0 ? <TrendingDown /> : <TrendingUp />}
+              {kpis.pending_review > 0 ? "Needs attention" : "All clear"}
+            </Badge>
+          </CardAction>
+        </CardHeader>
+        <CardFooter className="flex-col items-start gap-1.5 text-sm">
+          <div className="line-clamp-1 flex gap-2 font-medium">
+            {kpis.pending_review > 0 ? "Attention required" : "Queue clear"}{" "}
+            {kpis.pending_review > 0 ? <TrendingDown className="size-4" /> : <TrendingUp className="size-4" />}
+          </div>
+          <div className="text-muted-foreground">Approved rate {kpis.approval_rate}%</div>
+        </CardFooter>
+      </Card>
+
+      <Card className="@container/card">
+        <CardHeader>
+          <CardDescription>High-Risk</CardDescription>
+          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+            {fmtNumber(kpis.high_risk)}
+          </CardTitle>
+          <CardAction>
+            <Badge variant="outline">
+              <TrendingDown />
+              Warning
+            </Badge>
+          </CardAction>
+        </CardHeader>
+        <CardFooter className="flex-col items-start gap-1.5 text-sm">
+          <div className="line-clamp-1 flex gap-2 font-medium">
+            Risk monitoring <TrendingDown className="size-4" />
+          </div>
+          <div className="text-muted-foreground">Avg risk {kpis.avg_risk ?? "—"}</div>
+        </CardFooter>
+      </Card>
+
+      <Card className="@container/card">
+        <CardHeader>
+          <CardDescription>Escrow Held</CardDescription>
+          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+            {money(kpis.escrow_held)}
+          </CardTitle>
+          <CardAction>
+            <Badge variant="outline">
+              <TrendingUp />+{money(kpis.escrow_in_review)} in review
+            </Badge>
+          </CardAction>
+        </CardHeader>
+        <CardFooter className="flex-col items-start gap-1.5 text-sm">
+          <div className="line-clamp-1 flex gap-2 font-medium">
+            Secure funds <TrendingUp className="size-4" />
+          </div>
+          <div className="text-muted-foreground">
+            {fmtNumber(kpis.users.total)} users · {fmtNumber(kpis.users.sellers)} sellers
+          </div>
+        </CardFooter>
+      </Card>
     </div>
   )
 }
 
-function KpiCard({ label, value, sub, delta, icon: Icon, tone = "default" }: { label: string; value: React.ReactNode; sub?: string; delta?: string; icon: any; tone?: "lime" | "danger" | "info" | "default" | "success" | "warning" }) {
-  const toneMap: Record<string, string> = {
-    lime: "bg-accent text-accent-foreground ring-accent/20",
-    success: "bg-success/10 text-success ring-success/20",
-    danger: "bg-destructive/10 text-destructive ring-destructive/20",
-    warning: "bg-warning/10 text-warning ring-warning/20",
-    info: "bg-info/10 text-info ring-info/20",
-    default: "bg-muted text-muted-foreground ring-black/5",
-  }
+// ---------------------------------------------------------------------------
+// ChartAreaInteractive — template styling, fed by data.trend (14 days)
+// ---------------------------------------------------------------------------
+const chartConfig = {
+  listings: {
+    label: "Listings",
+    color: "var(--primary)",
+  },
+} satisfies ChartConfig
+
+function ChartAreaInteractive({ trend }: { trend: DashboardData["trend"] }) {
+  const isMobile = useIsMobile()
+  const [timeRange, setTimeRange] = React.useState("14d")
+
+  React.useEffect(() => {
+    if (isMobile) setTimeRange("7d")
+  }, [isMobile])
+
+  // trend: { date: number (unix sec), count: number }[]  -> { date: YYYY-MM-DD, listings: number }
+  const chartData = React.useMemo(() => {
+    return trend.map((t) => {
+      const d = new Date(t.date * 1000)
+      const iso = d.toISOString().slice(0, 10)
+      return { date: iso, listings: t.count }
+    })
+  }, [trend])
+
+  const filteredData = React.useMemo(() => {
+    if (timeRange === "7d") return chartData.slice(-7)
+    if (timeRange === "30d") return chartData // only 14 available, show all
+    return chartData // 14d
+  }, [chartData, timeRange])
+
   return (
-    <Card className="relative overflow-hidden rounded-2xl transition-all hover:shadow-md">
-      <CardHeader className="gap-1 p-4 pb-2">
-        <div className="flex items-start justify-between">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-          <span className={`inline-flex size-8 items-center justify-center rounded-lg text-[11px] ring-1 ${toneMap[tone]}`}>
-            <Icon className="size-4" />
-          </span>
-        </div>
+    <Card className="@container/card">
+      <CardHeader>
+        <CardTitle>Listings Created</CardTitle>
+        <CardDescription>
+          <span className="hidden @[540px]/card:block">Total for the last 14 days</span>
+          <span className="@[540px]/card:hidden">Last 14 days</span>
+        </CardDescription>
+        <CardAction>
+          <Select value={timeRange} onValueChange={setTimeRange}>
+            <SelectTrigger
+              className="flex w-40 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate @[767px]/card:hidden sm:flex"
+              aria-label="Select a value"
+            >
+              <SelectValue placeholder="Last 14 days" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="14d" className="rounded-lg">
+                Last 14 days
+              </SelectItem>
+              <SelectItem value="7d" className="rounded-lg">
+                Last 7 days
+              </SelectItem>
+              <SelectItem value="30d" className="rounded-lg">
+                Last 30 days
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </CardAction>
       </CardHeader>
-      <CardContent className="px-4 pb-4 pt-0">
-        <div className="text-2xl font-bold tracking-tight tabular-nums">{value}</div>
-        {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
-        {delta && (
-          <p className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-success">
-            <ArrowUpRight className="size-3" /> {delta}
-          </p>
-        )}
+      <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
+        <ChartContainer config={chartConfig} className="aspect-auto h-[250px] w-full">
+          <AreaChart data={filteredData}>
+            <defs>
+              <linearGradient id="fillListings" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="var(--color-listings)" stopOpacity={1.0} />
+                <stop offset="95%" stopColor="var(--color-listings)" stopOpacity={0.1} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="date"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              minTickGap={32}
+              tickFormatter={(value) => {
+                const date = new Date(value)
+                return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+              }}
+            />
+            <ChartTooltip
+              cursor={false}
+              content={
+                <ChartTooltipContent
+                  labelFormatter={(value) => {
+                    return new Date(value as string).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })
+                  }}
+                  indicator="dot"
+                />
+              }
+            />
+            <Area dataKey="listings" type="natural" fill="url(#fillListings)" stroke="var(--color-listings)" />
+          </AreaChart>
+        </ChartContainer>
       </CardContent>
     </Card>
   )
 }
 
+// ---------------------------------------------------------------------------
+// DataTable — template shell (4 tabs) wired to SafeResale data
+// Outline: flagged queue table, Past Performance: risk distribution bars
+// Key Personnel: status distribution bars, Focus Documents: recent activity
+// ---------------------------------------------------------------------------
+const RISK_COLORS: Record<string, string> = { low: "#C6F135", medium: "#f59e0b", high: "#ef4444" }
+const STATUS_COLORS: Record<string, string> = {
+  approved: "#C6F135",
+  published: "#C6F135",
+  review: "#f59e0b",
+  verifying: "#f59e0b",
+  submitted: "#f59e0b",
+  blocked: "#ef4444",
+  draft: "#9ca3af",
+  capturing: "#9ca3af",
+  restricted: "#a78bfa",
+  inspection_pending: "#0ea5e9",
+}
+
+function DataTableSection({ data }: { data: DashboardData }) {
+  const riskRows = Object.entries(data.risk_distribution) as [string, number][]
+  const riskTotal = riskRows.reduce((a, [, n]) => a + n, 0) || 1
+  const statusRows = Object.entries(data.status_distribution).sort((a, b) => b[1] - a[1])
+  const statusTotal = statusRows.reduce((a, [, n]) => a + n, 0) || 1
+  const flaggedCount = data.recent_flagged.length
+  const activityCount = data.recent_activity.length
+
+  return (
+    <Tabs defaultValue="outline" className="w-full flex-col justify-start gap-6">
+      <div className="flex items-center justify-between px-4 lg:px-6 flex-wrap gap-3">
+        <TabsList className="**:data-[slot=badge]:bg-muted-foreground/30 hidden **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1 sm:flex">
+          <TabsTrigger value="outline" className="cursor-pointer">
+            Outline {flaggedCount ? <Badge variant="secondary">{flaggedCount}</Badge> : null}
+          </TabsTrigger>
+          <TabsTrigger value="past-performance" className="cursor-pointer">
+            Past Performance <Badge variant="secondary">{riskRows.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="key-personnel" className="cursor-pointer">
+            Key Personnel <Badge variant="secondary">{statusRows.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="focus-documents" className="cursor-pointer">
+            Focus Documents {activityCount ? <Badge variant="secondary">{activityCount}</Badge> : null}
+          </TabsTrigger>
+        </TabsList>
+
+        {/* mobile select */}
+        <Select defaultValue="outline">
+          <SelectTrigger className="flex w-fit sm:hidden" aria-label="Select a view">
+            <SelectValue placeholder="Select a view" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="outline">Outline</SelectItem>
+            <SelectItem value="past-performance">Past Performance</SelectItem>
+            <SelectItem value="key-personnel">Key Personnel</SelectItem>
+            <SelectItem value="focus-documents">Focus Documents</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <div className="flex items-center gap-2">
+          <Link href="/queue">
+            <Button variant="outline" size="sm">
+              View queue
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      {/* Outline — Flagged queue table */}
+      <TabsContent value="outline" className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
+        <div className="overflow-hidden rounded-lg border">
+          <Table>
+            <TableHeader className="bg-muted sticky top-0 z-10">
+              <TableRow>
+                <TableHead>Title</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Seller</TableHead>
+                <TableHead>Risk</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {flaggedCount === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                    Nothing flagged — the system is quiet.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                data.recent_flagged.map((it, idx) => {
+                  const label = riskLabel(it.risk?.adjusted_score)
+                  const tone = label.band === "high" ? "danger" : label.band === "medium" ? "warning" : "success"
+                  return (
+                    <TableRow key={`${it.listing?._id}-${it.decision?._id || it.risk?._id || idx}`}>
+                      <TableCell>
+                        <Link href={`/listings/${it.listing?._id}`} className="font-medium hover:underline">
+                          {it.listing?.title || "Untitled listing"}
+                        </Link>
+                        <div className="text-xs text-muted-foreground">{timeAgo(it.listing?.created_at)}</div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-muted-foreground px-1.5">
+                          {it.listing?.category || "—"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">{it.seller?.name || it.seller?.email || "unknown"}</TableCell>
+                      <TableCell>
+                        <StatusBadge tone={tone as any} label={label.label} />
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-muted-foreground px-1.5 capitalize">
+                          {it.decision?.status || it.listing?.status || "—"}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        <div className="flex items-center justify-between px-4">
+          <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
+            {flaggedCount} flagged item(s)
+          </div>
+        </div>
+      </TabsContent>
+
+      {/* Past Performance — Risk distribution */}
+      <TabsContent value="past-performance" className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Risk distribution</CardTitle>
+            <CardDescription>
+              {fmtNumber(data.risk_samples)} latest scores · balanced trust
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {riskRows.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No risk data yet.</p>
+            ) : (
+              riskRows.map(([k, v]) => (
+                <div key={k} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="capitalize font-medium">{k}</span>
+                    <span className="font-mono text-muted-foreground">
+                      {v} · {Math.round((v / riskTotal) * 100)}%
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${(v / riskTotal) * 100}%`, background: RISK_COLORS[k] || "#9ca3af" }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      {/* Key Personnel — Status distribution */}
+      <TabsContent value="key-personnel" className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Status distribution</CardTitle>
+            <CardDescription>
+              {fmtNumber(data.kpis.total_listings)} total · live pipeline
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {statusRows.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No listings yet.</p>
+            ) : (
+              statusRows.map(([s, n]) => (
+                <div key={s} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="capitalize font-medium">{s.replace(/_/g, " ")}</span>
+                    <span className="font-mono text-muted-foreground">
+                      {n} · {Math.round((n / statusTotal) * 100)}%
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${(n / statusTotal) * 100}%`, background: STATUS_COLORS[s] || "#9ca3af" }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      {/* Focus Documents — Recent activity */}
+      <TabsContent value="focus-documents" className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent activity</CardTitle>
+            <CardDescription>Latest admin audit events</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {activityCount === 0 ? (
+              <p className="text-sm text-muted-foreground">No audit events yet.</p>
+            ) : (
+              <div className="space-y-1">
+                {data.recent_activity.map((a) => (
+                  <div key={a._id} className="flex items-start gap-3 rounded-xl p-2.5 hover:bg-muted/50 transition-colors">
+                    <span className="mt-1.5 size-2 rounded-full bg-primary shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm leading-none">{a.action}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {a.target_type ? `${a.target_type} ${a.target_id?.slice(0, 8)}… · ` : ""}
+                        {timeAgo(a.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Page — template structure: title + SectionCards + Chart + DataTable
+// ---------------------------------------------------------------------------
 export default function DashboardPage() {
   const { data, loading, error, reload } = useFetch<DashboardData>("/admin/dashboard")
 
   if (error) {
     return (
-      <div className="space-y-4">
-        <GreetingHeader onRefresh={reload} />
-        <Card className="p-8 text-center">
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">{error.message}</p>
-            <Button onClick={reload} variant="outline">Retry</Button>
-          </CardContent>
-        </Card>
-      </div>
+      <>
+        <div className="px-4 lg:px-6">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+            <p className="text-muted-foreground">Welcome to your admin dashboard</p>
+          </div>
+        </div>
+        <div className="@container/main px-4 lg:px-6">
+          <Card className="p-8 text-center">
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">{error.message}</p>
+              <Button onClick={reload} variant="outline">
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </>
     )
   }
 
   if (loading || !data) {
     return (
-      <div className="space-y-6">
-        <div className="h-16 rounded-2xl bg-muted animate-pulse" />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 rounded-2xl" />
-          ))}
+      <>
+        <div className="px-4 lg:px-6">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+            <p className="text-muted-foreground">Welcome to your admin dashboard</p>
+          </div>
         </div>
-      </div>
+        <div className="@container/main px-4 lg:px-6 space-y-6">
+          <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-32 rounded-xl" />
+            ))}
+          </div>
+          <Skeleton className="h-[340px] rounded-xl" />
+        </div>
+        <div className="@container/main px-4 lg:px-6">
+          <Skeleton className="h-[320px] rounded-xl" />
+        </div>
+      </>
     )
   }
 
-  const k = data.kpis
-  const trend = data.trend.map((t) => ({ day: fmtDate(t.date, { month: "short", day: "numeric" }), count: t.count }))
-  const statusRows = Object.entries(data.status_distribution).sort((a, b) => b[1] - a[1])
-  const riskRows = Object.entries(data.risk_distribution) as [string, number][]
-  const totalStatuses = statusRows.reduce((a, [, n]) => a + n, 0)
-
   return (
-    <div className="space-y-6">
-      <GreetingHeader onRefresh={reload} />
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label="Total listings" value={fmtNumber(k.total_listings)} delta={`${k.new_today} today`} sub={`${k.new_7d} last 7d`} icon={Package} tone="lime" />
-        <KpiCard label="Pending review" value={fmtNumber(k.pending_review)} sub="submitted · verifying · review" icon={ShieldAlert} tone="info" />
-        <KpiCard label="High-risk" value={fmtNumber(k.high_risk)} sub={`${k.approval_rate}% approval rate`} icon={AlertTriangle} tone="danger" />
-        <KpiCard label="Avg risk score" value={k.avg_risk > 0 ? k.avg_risk : "—"} sub={`over ${fmtNumber(data.risk_samples)} scores`} icon={Activity} tone="warning" />
-        <KpiCard label="Users" value={fmtNumber(k.users.total)} sub={`${k.users.sellers} sellers · ${k.users.suspended} suspended`} icon={Users} tone="default" />
-        <KpiCard label="Escrow held" value={money(k.escrow_held)} sub={`${money(k.escrow_in_review)} in review`} icon={Wallet} tone="success" />
-        <KpiCard label="Reports" value={fmtNumber(k.reports_pending)} sub="pending moderation" icon={Flag} tone="danger" />
-        <KpiCard label="Messages" value={fmtNumber(k.messages_new)} sub="new inbox" icon={Mail} tone="default" />
+    <>
+      {/* Page Title and Description */}
+      <div className="px-4 lg:px-6">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">Welcome to your admin dashboard</p>
+        </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-12">
-        <Card className="lg:col-span-7 rounded-2xl overflow-hidden">
-          <CardHeader className="flex-row items-center justify-between border-b px-5 py-4">
-            <div>
-              <CardTitle className="text-sm font-semibold flex items-center gap-2"><TrendingUp className="size-4 text-muted-foreground" /> Listings created</CardTitle>
-              <CardDescription className="text-xs mt-0.5">Last 14 days · {fmtNumber(k.total_listings)} total</CardDescription>
-            </div>
-            <StatusBadge tone="success" label="Live" dot />
-          </CardHeader>
-          <CardContent className="pt-4 px-5 pb-5">
-            <div className="h-[264px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trend} margin={{ top: 4, right: 4, left: -18, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="limeFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#C6F135" stopOpacity={0.4} />
-                      <stop offset="100%" stopColor="#C6F135" stopOpacity={0.02} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={24} />
-                  <YAxis tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <Tooltip
-                    contentStyle={{ borderRadius: 12, border: "1px solid var(--border)", background: "var(--card)", fontSize: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
-                    formatter={(v: any) => [v, "Listings"]}
-                  />
-                  <Area type="monotone" dataKey="count" stroke="#C6F135" strokeWidth={2.5} fill="url(#limeFill)" dot={false} activeDot={{ r: 4, fill: "#C6F135", strokeWidth: 2, stroke: "#fff" }} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-5 rounded-2xl overflow-hidden">
-          <CardHeader className="border-b px-5 py-4">
-            <CardTitle className="text-sm font-semibold">Risk distribution</CardTitle>
-            <CardDescription className="text-xs mt-0.5">{fmtNumber(data.risk_samples)} latest scores · balanced trust</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-4 px-5 pb-5">
-            <div className="h-44">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={riskRows.map(([k2, v]) => ({ name: k2, value: v }))} dataKey="value" nameKey="name" innerRadius={56} outerRadius={80} paddingAngle={3} strokeWidth={0}>
-                    {riskRows.map(([k2]) => (
-                      <Cell key={k2} fill={RISK_COLORS[k2] || "#9ca3af"} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid var(--border)", background: "var(--card)", fontSize: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              {riskRows.map(([k2, v]) => (
-                <div key={k2} className="rounded-xl bg-muted/50 p-2.5 text-center">
-                  <span className="mx-auto mb-1 block size-2 rounded-full" style={{ background: RISK_COLORS[k2] }} />
-                  <p className="text-xs capitalize font-medium text-foreground">{k2}</p>
-                  <p className="text-lg font-bold tabular-nums text-foreground">{v}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="@container/main px-4 lg:px-6 space-y-6">
+        <SectionCards kpis={data.kpis} />
+        <ChartAreaInteractive trend={data.trend} />
       </div>
-
-      <div className="grid gap-4 lg:grid-cols-12">
-        <Card className="lg:col-span-5 rounded-2xl">
-          <CardHeader className="border-b px-5 py-4">
-            <CardTitle className="text-sm font-semibold">Status distribution</CardTitle>
-            <CardDescription className="text-xs mt-0.5">{fmtNumber(k.total_listings)} total · live pipeline</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-4 px-5 pb-5 space-y-3">
-            {statusRows.length === 0 && <p className="text-sm text-muted-foreground">No listings yet.</p>}
-            {statusRows.map(([s, n]) => (
-              <div key={s} className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="capitalize font-medium text-foreground">{s.replace(/_/g, " ")}</span>
-                  <span className="font-mono text-muted-foreground">{n} · {totalStatuses ? Math.round((n / totalStatuses) * 100) : 0}%</span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-muted">
-                  <div className="h-full rounded-full transition-all" style={{ width: totalStatuses ? `${(n / totalStatuses) * 100}%` : "0%", background: STATUS_STYLE[s] || "#9ca3af" }} />
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-7 rounded-2xl overflow-hidden">
-          <CardHeader className="flex-row items-center justify-between border-b px-5 py-4">
-            <div>
-              <CardTitle className="text-sm font-semibold">Flagged queue</CardTitle>
-              <CardDescription className="text-xs mt-0.5">Latest review / blocked decisions</CardDescription>
-            </div>
-            <Link href="/queue"><Button variant="outline" size="sm" className="rounded-full">View queue</Button></Link>
-          </CardHeader>
-          <CardContent className="p-0">
-            {data.recent_flagged.length === 0 ? (
-              <p className="p-6 text-sm text-muted-foreground">Nothing flagged — the system is quiet.</p>
-            ) : (
-              <div className="divide-y divide-border">
-                {data.recent_flagged.map((it: any, idx: number) => {
-                  const label = riskLabel(it.risk?.adjusted_score)
-                  return (
-                    <Link key={`${it.listing?._id}-${it.decision?._id || it.risk?._id || idx}`} href={`/listings/${it.listing?._id}`} className="flex items-center gap-3 px-5 py-3.5 hover:bg-muted/50 transition-colors">
-                      <div className="size-9 rounded-xl bg-accent/15 text-accent-foreground grid place-items-center shrink-0 font-bold text-xs">{(it.listing?.title || "?")[0]}</div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-foreground">{it.listing?.title || "Untitled listing"}</p>
-                        <p className="text-xs text-muted-foreground truncate">{it.listing?.category} · {it.seller?.name || "unknown"} · {timeAgo(it.listing?.created_at)}</p>
-                      </div>
-                      <StatusBadge tone={label.band === "high" ? "danger" : label.band === "medium" ? "warning" : "success"} label={label.label} />
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      <div className="@container/main">
+        <DataTableSection data={data} />
       </div>
-
-      <Card className="rounded-2xl">
-        <CardHeader className="border-b px-5 py-4">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2"><ScrollText className="size-4 text-muted-foreground" /> Recent activity</CardTitle>
-          <CardDescription className="text-xs mt-0.5">Latest admin audit events · {fmtDate(Date.now() / 1000)}</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-4 px-5 pb-5">
-          {data.recent_activity.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No audit events yet.</p>
-          ) : (
-            <div className="space-y-1">
-              {data.recent_activity.map((a: any) => (
-                <div key={a._id} className="flex items-start gap-3 rounded-xl p-2.5 hover:bg-muted/50 transition-colors">
-                  <span className="mt-1.5 size-2 rounded-full bg-accent shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm leading-none text-foreground">{a.action}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{a.target_type ? `${a.target_type} ${a.target_id?.slice(0, 8)}… · ` : ""}{timeAgo(a.created_at)}</p>
-                  </div>
-                  <BadgeCheck className="size-4 text-muted-foreground/40 shrink-0 mt-0.5" />
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+    </>
   )
 }

@@ -1,13 +1,16 @@
 "use client";
 
-import { ThemeProvider } from "next-themes";
+import { ThemeProvider } from "@/components/theme-provider";
+import { SidebarConfigProvider } from "@/contexts/sidebar-context";
 import { Toaster } from "@/components/ui/sonner";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-      {children}
-      <Toaster position="bottom-right" richColors closeButton />
+    <ThemeProvider defaultTheme="system" storageKey="nextjs-ui-theme">
+      <SidebarConfigProvider>
+        {children}
+        <Toaster position="bottom-right" richColors closeButton />
+      </SidebarConfigProvider>
     </ThemeProvider>
   );
 }
