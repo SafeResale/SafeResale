@@ -1,7 +1,7 @@
 import { AlertCircle, RefreshCw } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 
 export function PageError({ message, onRetry }: { message?: string; onRetry?: () => void }) {
   return (
@@ -34,18 +34,16 @@ export function EmptyState({
   action?: React.ReactNode
 }) {
   return (
-    <Card className="flex flex-col items-center justify-center p-12 text-center">
-      <CardContent className="flex flex-col items-center [&>div]:w-full">
-        {Icon && (
-          <div className="mb-4 flex size-12 items-center justify-center rounded-xl bg-muted">
-            <Icon className="size-6 text-muted-foreground" />
-          </div>
-        )}
-        <p className="text-sm font-semibold">{title}</p>
-        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
-        {action && <div className="mt-4">{action}</div>}
-      </CardContent>
-    </Card>
+    <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-card p-12 text-center shadow-sm">
+      {Icon && (
+        <div className="mb-2 flex size-12 items-center justify-center rounded-xl bg-muted">
+          <Icon className="size-6 text-muted-foreground" />
+        </div>
+      )}
+      <p className="text-sm font-semibold">{title}</p>
+      {description && <p className="max-w-sm text-sm text-muted-foreground">{description}</p>}
+      {action && <div className="mt-2">{action}</div>}
+    </div>
   )
 }
 
