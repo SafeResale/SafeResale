@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState, type ReactNode } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { Spinner } from "@heroui/react"
+import { Loader2 } from "lucide-react"
 import { startAuthWatch } from "@/lib/api"
 
 const PUBLIC_PATHS = ["/login"]
@@ -23,7 +23,7 @@ export default function RequireAuth({ children }: { children: ReactNode }) {
   if (!ready)
     return (
       <div className="flex min-h-svh flex-col items-center justify-center gap-3 text-muted-foreground">
-        <Spinner className="size-6" />
+        <Loader2 className="size-6 animate-spin" />
         <p className="text-sm">Checking session…</p>
       </div>
     )

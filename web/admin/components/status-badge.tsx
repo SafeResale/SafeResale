@@ -1,15 +1,16 @@
-import { Chip } from "@heroui/react"
+import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
 
 type Tone = "success" | "warning" | "danger" | "neutral" | "lime" | "outline" | "info"
 
-const TONE_COLOR: Record<Tone, string> = {
-  success: "success",
-  warning: "warning",
-  danger: "danger",
-  info: "info",
-  neutral: "default",
-  lime: "accent",
-  outline: "default",
+const TONE_CLASS: Record<Tone, string> = {
+  success: "bg-success/15 text-success border-success/30 hover:bg-success/15",
+  warning: "bg-warning/15 text-warning border-warning/30 hover:bg-warning/15",
+  danger: "bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/15",
+  info: "bg-info/15 text-info border-info/30 hover:bg-info/15",
+  neutral: "bg-muted text-muted-foreground border-border hover:bg-muted/80",
+  lime: "bg-accent text-accent-foreground border-accent/40 hover:bg-accent/90",
+  outline: "border-border text-foreground hover:bg-muted/50",
 }
 
 export function StatusBadge({
@@ -24,10 +25,10 @@ export function StatusBadge({
   dot?: boolean
 }) {
   return (
-    <Chip size="sm" variant="soft" color={TONE_COLOR[tone] as any} className={className}>
-      {dot && <span className="mr-1 size-1.5 rounded-full bg-current" />}
+    <Badge variant="outline" className={cn("gap-1 px-2.5 py-0.5 font-medium", TONE_CLASS[tone], className)}>
+      {dot && <span className="size-1.5 rounded-full bg-current" />}
       {label ?? "—"}
-    </Chip>
+    </Badge>
   )
 }
 

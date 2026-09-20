@@ -10,7 +10,12 @@ import { PageHeader } from "@/components/page-header";
 import { PageError, EmptyState } from "@/components/error-state";
 import { Pager } from "@/components/pager";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { Button, Card, Chip, ListBox, Select, Skeleton, Table } from "@heroui/react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { StatusBadge, statusTone } from "@/components/status-badge";
 
 const FILTERS = ["pending", "held", "in_review", "released", "refunded"];
 
@@ -32,71 +37,32 @@ const ACTIONS_FOR: Record<string, { key: string; label: string; tone: "default" 
   refunded: [],
 };
 
-type ChipColor = "default" | "accent" | "success" | "warning" | "danger";
-
-const toneToChipColor: Record<string, ChipColor> = {
-  success: "success",
-  warning: "warning",
-  danger: "danger",
-  lime: "accent",
-  info: "accent",
-  neutral: "default",
-  outline: "default",
-  accent: "accent",
-};
-
-const statusToneMap: Record<string, string> = {
-  pending: "warning",
-  held: "info",
-  in_review: "warning",
-  released: "success",
-  refunded: "neutral",
-  active: "success",
-  approved: "success",
-  published: "success",
-  verified: "success",
-  resolved: "success",
-  capturing: "neutral",
-  draft: "neutral",
-  expired: "neutral",
-  archived: "neutral",
-  suspended: "danger",
-  blocked: "danger",
-  rejected: "danger",
-  disputed: "danger",
-};
-
-function chipColorForStatus(status?: string): ChipColor {
-  const tone = status ? statusToneMap[status] || "neutral" : "neutral";
-  return toneToChipColor[tone] || "default";
-}
-
 function KpiCard({ label, value, sub, icon: Icon, tone = "default" }: { label: string; value: React.ReactNode; sub?: string; icon?: any; tone?: "lime" | "danger" | "info" | "default" | "success" | "warning" }) {
   const toneMap: Record<string, string> = {
     lime: "bg-accent text-accent-foreground",
     success: "bg-success text-success-foreground",
-    danger: "bg-danger text-danger-foreground",
+    danger: "bg-destructive text-destructive-foreground",
     warning: "bg-warning text-warning-foreground",
     info: "bg-accent text-accent-foreground",
-    default: "bg-default text-default-foreground",
+    default: "bg-muted text-muted-foreground",
   };
   return (
     <Card className="relative overflow-hidden rounded-2xl border-0 shadow-sm ring-1 ring-black/5 dark:ring-white/10">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-black/5 to-transparent dark:via-white/10" />
-      <Card.Header className="pb-2">
+      <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
-          <Card.Description className="text-[11px] font-semibold uppercase tracking-widest">{label}</Card.Description>
+          <CardDescription className="text-[11px] font-semibold uppercase tracking-widest">{label}</CardDescription>
           {Icon && (
             <span className={`inline-flex size-9 items-center justify-center rounded-xl text-xs ${toneMap[tone]}`}>
               <Icon className="size-4" />
             </span>
           )}
         </div>
-      </Card.Header>
-      <Card.Content className="pt-0">
+      </CardHeader>
+      <CardContent className="pt-0">
         <div className="text-2xl font-bold tracking-tight tabular-nums">{value}</div>
         {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
-      </Card.Content>
+      </CardContent>
     </Card>
   );
 }
@@ -123,36 +89,20 @@ export default function EscrowPage() {
         description="Held funds, review states and release/refund transitions"
         actions={
           <div className="flex items-center gap-2">
-            <Select
-              className="w-40"
-              placeholder="All states"
-              aria-label="Filter by status"
-              value={status}
-              onChange={(v) => {
-                setStatus((v as string) || "all");
-                setPage(1);
-              }}
-            >
-              <Select.Trigger>
-                <Select.Value />
-                <Select.Indicator />
-              </Select.Trigger>
-              <Select.Popover>
-                <ListBox>
-                  <ListBox.Item id="all" textValue="All states">
-                    All states
-                    <ListBox.ItemIndicator />
-                  </ListBox.Item>
-                  {FILTERS.map((f) => (
-                    <ListBox.Item key={f} id={f} textValue={f}>
-                      <span className="capitalize">{f.replace(/_/g, " ")}</span>
-                      <ListBox.ItemIndicator />
-                    </ListBox.Item>
-                  ))}
-                </ListBox>
-              </Select.Popover>
+            <Select value={status} onValueChange={(v) => { setStatus(v || "all"); setPage(1); }}>
+              <SelectTrigger className="w-40" aria-label="Filter by status">
+                <SelectValue placeholder="All states" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All states</SelectItem>
+                {FILTERS.map((f) => (
+                  <SelectItem key={f} value={f}>
+                    <span className="capitalize">{f.replace(/_/g, " ")}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
-            <Button variant="secondary" isIconOnly aria-label="Refresh" onPress={reload}>
+            <Button variant="secondary" size="icon" aria-label="Refresh" onClick={reload}>
               <RefreshCw className="size-4" />
             </Button>
           </div>
@@ -169,11 +119,11 @@ export default function EscrowPage() {
 
       {loading && !data && (
         <Card className="rounded-2xl p-4 ring-1 ring-black/5 dark:ring-white/10">
-          <Card.Content className="space-y-3 p-0">
+          <CardContent className="space-y-3 p-0">
             {Array.from({ length: 8 }).map((_, i) => (
               <Skeleton key={i} className="h-11 rounded-xl" />
             ))}
-          </Card.Content>
+          </CardContent>
         </Card>
       )}
 
@@ -184,73 +134,70 @@ export default function EscrowPage() {
       {data && data.items.length > 0 && (
         <>
           <Card className="overflow-hidden rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
-            <Card.Content className="p-0">
-              <Table>
-                <Table.ScrollContainer>
-                  <Table.Content aria-label="Escrows" className="min-w-[860px]">
-                    <Table.Header>
-                      <Table.Column isRowHeader>Escrow</Table.Column>
-                      <Table.Column>Amount</Table.Column>
-                      <Table.Column>Status</Table.Column>
-                      <Table.Column>Listing</Table.Column>
-                      <Table.Column>Buyer / Seller</Table.Column>
-                      <Table.Column className="text-right">Created</Table.Column>
-                      <Table.Column className="text-right">Actions</Table.Column>
-                    </Table.Header>
-                    <Table.Body>
-                      {data.items.map((e) => (
-                        <Table.Row key={e._id} id={e._id}>
-                          <Table.Cell className="font-mono text-xs">{e._id.slice(0, 12)}…</Table.Cell>
-                          <Table.Cell className="font-medium tabular-nums">{money(e.amount, e.currency)}</Table.Cell>
-                          <Table.Cell>
-                            <Chip color={chipColorForStatus(e.status)} variant="soft" size="sm" className="capitalize">
-                              {e.status.replace(/_/g, " ")}
-                            </Chip>
-                          </Table.Cell>
-                          <Table.Cell className="font-mono text-xs">{e.listing_id?.slice(0, 12) || "—"}…</Table.Cell>
-                          <Table.Cell className="font-mono text-xs">
-                            {e.buyer_id?.slice(0, 8) || "—"}… / {e.seller_id?.slice(0, 8) || "—"}…
-                          </Table.Cell>
-                          <Table.Cell className="text-right text-xs text-muted-foreground">{fmtDate(e.created_at)}</Table.Cell>
-                          <Table.Cell>
-                            <div className="flex justify-end gap-1.5">
-                              {(ACTIONS_FOR[e.status] || []).map((a) => {
-                                if (a.tone === "danger") {
-                                  return (
-                                    <Button key={a.key} variant="danger" size="sm" onPress={() => setConfirm({ e, action: a.key })}>
-                                      {a.label}
-                                    </Button>
-                                  );
-                                }
-                                if (a.tone === "outline") {
-                                  return (
-                                    <Button key={a.key} variant="secondary" size="sm" onPress={() => setConfirm({ e, action: a.key })}>
-                                      {a.label}
-                                    </Button>
-                                  );
-                                }
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table aria-label="Escrows" className="min-w-[860px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Escrow</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Listing</TableHead>
+                      <TableHead>Buyer / Seller</TableHead>
+                      <TableHead className="text-right">Created</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {data.items.map((e) => (
+                      <TableRow key={e._id}>
+                        <TableCell className="font-mono text-xs">{e._id.slice(0, 12)}…</TableCell>
+                        <TableCell className="font-medium tabular-nums">{money(e.amount, e.currency)}</TableCell>
+                        <TableCell>
+                          <StatusBadge tone={(statusTone[e.status] as any) || "neutral"} label={e.status.replace(/_/g, " ")} className="capitalize" />
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">{e.listing_id?.slice(0, 12) || "—"}…</TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {e.buyer_id?.slice(0, 8) || "—"}… / {e.seller_id?.slice(0, 8) || "—"}…
+                        </TableCell>
+                        <TableCell className="text-right text-xs text-muted-foreground">{fmtDate(e.created_at)}</TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-1.5">
+                            {(ACTIONS_FOR[e.status] || []).map((a) => {
+                              if (a.tone === "danger") {
                                 return (
-                                  <Button
-                                    key={a.key}
-                                    variant="primary"
-                                    size="sm"
-                                    className="bg-accent text-accent-foreground hover:bg-accent/90"
-                                    onPress={() => setConfirm({ e, action: a.key })}
-                                  >
+                                  <Button key={a.key} variant="destructive" size="sm" onClick={() => setConfirm({ e, action: a.key })}>
                                     {a.label}
                                   </Button>
                                 );
-                              })}
-                              {!ACTIONS_FOR[e.status]?.length && <span className="text-xs text-muted-foreground">—</span>}
-                            </div>
-                          </Table.Cell>
-                        </Table.Row>
-                      ))}
-                    </Table.Body>
-                  </Table.Content>
-                </Table.ScrollContainer>
-              </Table>
-            </Card.Content>
+                              }
+                              if (a.tone === "outline") {
+                                return (
+                                  <Button key={a.key} variant="secondary" size="sm" onClick={() => setConfirm({ e, action: a.key })}>
+                                    {a.label}
+                                  </Button>
+                                );
+                              }
+                              return (
+                                <Button
+                                  key={a.key}
+                                  size="sm"
+                                  className="bg-accent text-accent-foreground hover:bg-accent/90"
+                                  onClick={() => setConfirm({ e, action: a.key })}
+                                >
+                                  {a.label}
+                                </Button>
+                              );
+                            })}
+                            {!ACTIONS_FOR[e.status]?.length && <span className="text-xs text-muted-foreground">—</span>}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
           </Card>
           <Pager page={data.page} pageSize={data.page_size} total={data.total} onPage={setPage} />
         </>

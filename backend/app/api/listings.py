@@ -6,6 +6,7 @@ from app.core.db import get_db
 from app.core.security import get_current_user
 from app.core.audit import log as audit_log
 from app.core.config import settings
+from app.core.catalog import fields_for, SCHEMAS, LEGACY_SLUGS
 
 router = APIRouter(prefix="/listings", tags=["listings"])
 
@@ -83,9 +84,9 @@ class DraftIn(BaseModel):
         if (self.latitude is not None and not (-90 <= self.latitude <= 90)) or \
            (self.longitude is not None and not (-180 <= self.longitude <= 180)):
             raise ValueError("latitude/longitude out of range")
-        if self.category == "mobile" and self.battery_health and self.battery_health not in ("good","moderate","poor","unknown"):
+        if "battery_health" in fields_for(self.category) and self.battery_health and self.battery_health not in ("good","moderate","poor","unknown"):
             raise ValueError("battery_health must be good|moderate|poor|unknown")
-        if self.category == "vehicle" and self.odometer is not None and (self.odometer < 0 or self.odometer > 2_000_000):
+        if self.category in {"car", "bike", *LEGACY_SLUGS} and self.odometer is not None and (self.odometer < 0 or self.odometer > 2_000_000):
             raise ValueError("odometer out of range")
 
 @router.post("/create-draft", status_code=201)
@@ -129,13 +130,7 @@ async def create_draft(request: Request, body: DraftIn, user=Depends(get_current
 
 @router.get("/categories")
 async def categories():
-    return [
-        {"category": "mobile", "schema": ["price","year","brand","model","storage","battery_health","condition","notes"]},
-        {"category": "laptop", "schema": ["price","year","brand","model","storage","battery_health","condition","notes"]},
-        {"category": "tablet", "schema": ["price","year","brand","model","storage","battery_health","condition","notes"]},
-        {"category": "vehicle", "schema": ["price","year","brand","model","odometer","condition","notes"]},
-        {"category": "accessory", "schema": ["price","brand","type","condition","notes"]},
-    ]
+    return [{"category": slug, "schema": fields} for slug, fields in SCHEMAS.items()]
 
 @router.get("/my")
 async def my_listings(user=Depends(get_current_user)):

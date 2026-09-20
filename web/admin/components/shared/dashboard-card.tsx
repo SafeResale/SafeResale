@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils"
-import type * as React from "react"
-import { Card } from "@heroui/react"
+import { Card } from "@/components/ui/card"
 
 export function DashboardCard({
   className,
@@ -8,7 +7,7 @@ export function DashboardCard({
 }: React.ComponentProps<typeof Card>) {
   return (
     <Card
-      className={cn("rounded-none bg-background shadow-none ring-0 h-full", className)}
+      className={cn("rounded-none bg-background shadow-none ring-0 gap-4", className)}
       {...props}
     />
   )

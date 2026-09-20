@@ -1,10 +1,10 @@
 """Admin catalog management — categories CRUD.
 
-SafeResale keeps a small, deliberate category set aligned with the verification
-trust engine (mobile / vehicle / accessory). This router makes that set
-manageable: rename, re-describe, tune the seller-form schema fields, enable/
-disable, reorder. The verification pipeline keys off `slug`, so slugs are
-immutable-after-use (deletion guarded when listings reference a category).
+The category set follows the PRD product scope (docs/08-ml-plan.md §3.1): the
+verification trust engine is category-agnostic and keys off `slug`, so slugs
+are immutable-after-use (deletion guarded when listings reference a category).
+This router manages the canonical catalog defined in `app/core/catalog.py`:
+rename, re-describe, tune the seller-form schema fields, enable/disable, reorder.
 """
 import time
 import re
@@ -16,6 +16,7 @@ from app.core.db import get_db
 from app.core.security import require_role
 from app.core.audit import log as audit_log
 from app.core.serialize import parse_id, s as _s
+from app.core.catalog import CATEGORIES as DEFAULTS
 
 router = APIRouter(prefix="/admin/categories", tags=["admin", "catalog"])
 
@@ -30,22 +31,12 @@ class CategoryIn(BaseModel):
     sort: int = 0
 
 
-DEFAULTS = [
-    {"name": "Mobile", "slug": "mobile", "description": "Smartphones, tablets and cellular devices", "icon": "smartphone",
-     "fields": ["price", "year", "brand", "model", "storage", "battery_health", "condition", "notes"], "active": True, "sort": 1},
-    {"name": "Vehicle", "slug": "vehicle", "description": "Cars, bikes and other motor vehicles", "icon": "car",
-     "fields": ["price", "year", "brand", "model", "odometer", "condition", "notes"], "active": True, "sort": 2},
-    {"name": "Accessory", "slug": "accessory", "description": "Cases, chargers, parts and add-ons", "icon": "package",
-     "fields": ["price", "brand", "type", "condition", "notes"], "active": True, "sort": 3},
-]
-
-
 def _slugify(raw: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", raw.strip().lower()).strip("-")
 
 
 async def _ensure_defaults(db):
-    """Seed the canonical three categories on first use (idempotent)."""
+    """Seed the canonical catalog categories on first use (idempotent)."""
     if await db.categories.count_documents({}):
         return
     now = time.time()

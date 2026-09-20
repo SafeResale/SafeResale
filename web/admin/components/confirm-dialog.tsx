@@ -1,6 +1,16 @@
 "use client"
 
-import { AlertDialog, Button, Label } from "@heroui/react"
+import { Button } from "@/components/ui/button"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface ConfirmDialogProps {
   open: boolean
@@ -26,34 +36,23 @@ export function ConfirmDialog({
   onConfirm,
 }: ConfirmDialogProps) {
   return (
-    <AlertDialog isOpen={open} onOpenChange={(v) => { if (!pending) onOpenChange(v) }}>
-      <AlertDialog.Backdrop />
-      <AlertDialog.Container>
-        <AlertDialog.Dialog>
-          <AlertDialog.Header>
-            <AlertDialog.Icon />
-            <AlertDialog.Heading>{title}</AlertDialog.Heading>
-          </AlertDialog.Header>
-          {description && (
-            <AlertDialog.Body>
-              <Label>{description}</Label>
-            </AlertDialog.Body>
-          )}
-          <AlertDialog.Footer>
-            <AlertDialog.CloseTrigger>
-              <Button variant="ghost" isDisabled={pending}>{cancelLabel}</Button>
-            </AlertDialog.CloseTrigger>
-            <Button
-              variant={destructive ? "danger" : "primary"}
-              isDisabled={pending}
-              onPress={onConfirm}
-            >
-              {pending ? "Working…" : confirmLabel}
-            </Button>
-          </AlertDialog.Footer>
-          <AlertDialog.CloseTrigger />
-        </AlertDialog.Dialog>
-      </AlertDialog.Container>
+    <AlertDialog open={open} onOpenChange={(v) => { if (!pending) onOpenChange(v) }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          {description && <AlertDialogDescription>{description}</AlertDialogDescription>}
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={pending}>{cancelLabel}</AlertDialogCancel>
+          <AlertDialogAction
+            className={destructive ? "bg-destructive text-white hover:bg-destructive/90" : undefined}
+            disabled={pending}
+            onClick={onConfirm}
+          >
+            {pending ? "Working…" : confirmLabel}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
     </AlertDialog>
   )
 }

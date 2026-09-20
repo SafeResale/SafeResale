@@ -9,7 +9,11 @@ import { timeAgo } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { PageError, EmptyState } from "@/components/error-state";
 import { Pager } from "@/components/pager";
-import { Button, Card, Chip, Skeleton, Table } from "@heroui/react";
+import { StatusBadge } from "@/components/status-badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
 export default function AuditPage() {
   const [page, setPage] = useState(1);
@@ -36,8 +40,8 @@ export default function AuditPage() {
         description="Every admin action, moderation decision and system event"
         actions={
           <>
-            <Button variant="secondary" isIconOnly aria-label="Refresh" onPress={reload}><RefreshCw className="size-4" /></Button>
-            <Button variant="secondary" onPress={exportCsv}><Download className="size-4" /> Export CSV</Button>
+            <Button variant="secondary" size="icon" aria-label="Refresh" onClick={reload}><RefreshCw className="size-4" /></Button>
+            <Button variant="secondary" onClick={exportCsv}><Download className="size-4" /> Export CSV</Button>
           </>
         }
       />
@@ -55,46 +59,46 @@ export default function AuditPage() {
       {data && data.items.length > 0 && (
         <>
           <Card className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
-            <Card.Content className="p-0">
-              <Table>
-                <Table.ScrollContainer>
-                  <Table.Content aria-label="Audit trail" className="min-w-[880px]">
-                    <Table.Header>
-                      <Table.Column isRowHeader>Action</Table.Column>
-                      <Table.Column>Actor</Table.Column>
-                      <Table.Column>Target</Table.Column>
-                      <Table.Column>Details</Table.Column>
-                      <Table.Column className="text-right">When</Table.Column>
-                      <Table.Column className="text-right">IP</Table.Column>
-                    </Table.Header>
-                    <Table.Body>
-                      {data.items.map((a) => (
-                        <Table.Row key={a._id} id={a._id}>
-                          <Table.Cell>
-                            <Chip variant="soft" color="accent" size="sm" className="font-mono text-xs">{a.action}</Chip>
-                          </Table.Cell>
-                          <Table.Cell>
-                            <span className="text-xs">{a.actor_role || "—"}</span>
-                            <span className="block font-mono text-[11px] text-muted-foreground">{a.actor_id ? a.actor_id.slice(0, 10) : ""}</span>
-                          </Table.Cell>
-                          <Table.Cell>
-                            <span className="text-xs">{a.target_type || "—"}</span>
-                            <span className="block font-mono text-[11px] text-muted-foreground">{a.target_id ? a.target_id.slice(0, 10) : ""}</span>
-                          </Table.Cell>
-                          <Table.Cell className="max-w-72">
-                            <p className="truncate font-mono text-[11px] text-muted-foreground">
-                              {a.detail ? (typeof a.detail === "string" ? a.detail : JSON.stringify(a.detail)) : "—"}
-                            </p>
-                          </Table.Cell>
-                          <Table.Cell className="text-right text-xs text-muted-foreground">{timeAgo(a.created_at)}</Table.Cell>
-                          <Table.Cell className="text-right font-mono text-[11px] text-muted-foreground">{a.ip || "—"}</Table.Cell>
-                        </Table.Row>
-                      ))}
-                    </Table.Body>
-                  </Table.Content>
-                </Table.ScrollContainer>
-              </Table>
-            </Card.Content>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table aria-label="Audit trail" className="min-w-[880px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Action</TableHead>
+                      <TableHead>Actor</TableHead>
+                      <TableHead>Target</TableHead>
+                      <TableHead>Details</TableHead>
+                      <TableHead className="text-right">When</TableHead>
+                      <TableHead className="text-right">IP</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {data.items.map((a) => (
+                      <TableRow key={a._id}>
+                        <TableCell>
+                          <StatusBadge tone="lime" label={a.action} className="font-mono text-xs" />
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-xs">{a.actor_role || "—"}</span>
+                          <span className="block font-mono text-[11px] text-muted-foreground">{a.actor_id ? a.actor_id.slice(0, 10) : ""}</span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-xs">{a.target_type || "—"}</span>
+                          <span className="block font-mono text-[11px] text-muted-foreground">{a.target_id ? a.target_id.slice(0, 10) : ""}</span>
+                        </TableCell>
+                        <TableCell className="max-w-72">
+                          <p className="truncate font-mono text-[11px] text-muted-foreground">
+                            {a.detail ? (typeof a.detail === "string" ? a.detail : JSON.stringify(a.detail)) : "—"}
+                          </p>
+                        </TableCell>
+                        <TableCell className="text-right text-xs text-muted-foreground">{timeAgo(a.created_at)}</TableCell>
+                        <TableCell className="text-right font-mono text-[11px] text-muted-foreground">{a.ip || "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
           </Card>
           <Pager page={data.page} pageSize={50} total={data.total} onPage={setPage} />
         </>

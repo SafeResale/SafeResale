@@ -1,7 +1,7 @@
 "use client"
 
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { Button } from "@heroui/react"
+import { Button } from "@/components/ui/button"
 
 export function Pager({
   page,
@@ -24,13 +24,13 @@ export function Pager({
         {from}–{to} of {total}
       </p>
       <div className="flex items-center gap-1.5">
-        <Button variant="outline" isIconOnly size="sm" className="h-8 w-8" isDisabled={page <= 1} onPress={() => onPage(page - 1)} aria-label="Previous page">
+        <Button variant="outline" size="icon" className="h-8 w-8" disabled={page <= 1} onClick={() => onPage(page - 1)} aria-label="Previous page">
           <ChevronLeft className="size-4" />
         </Button>
         <span className="min-w-10 text-center text-xs text-muted-foreground tabular-nums">
           {page} / {pages}
         </span>
-        <Button variant="outline" isIconOnly size="sm" className="h-8 w-8" isDisabled={page >= pages} onPress={() => onPage(page + 1)} aria-label="Next page">
+        <Button variant="outline" size="icon" className="h-8 w-8" disabled={page >= pages} onClick={() => onPage(page + 1)} aria-label="Next page">
           <ChevronRight className="size-4" />
         </Button>
       </div>

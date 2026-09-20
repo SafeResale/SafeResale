@@ -10,77 +10,10 @@ import { riskLabel, timeAgo } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { PageError, EmptyState } from "@/components/error-state";
 import { Pager } from "@/components/pager";
-import { Card, Chip, Select, ListBox, Skeleton } from "@heroui/react";
-
-// Chip color mapping — SafeResale lime accent system
-type ChipColor = "default" | "accent" | "success" | "warning" | "danger";
-
-const toneToChipColor: Record<string, ChipColor> = {
-  success: "success",
-  warning: "warning",
-  danger: "danger",
-  lime: "accent",
-  info: "accent",
-  neutral: "default",
-  outline: "default",
-  accent: "accent",
-};
-
-const statusToneMap: Record<string, string> = {
-  active: "success",
-  approved: "success",
-  published: "success",
-  released: "success",
-  verified: "success",
-  resolved: "success",
-  ok: "success",
-  live: "success",
-  review_passed: "warning",
-  warn: "warning",
-  held: "info",
-  pending: "warning",
-  review: "warning",
-  in_review: "warning",
-  verifying: "warning",
-  submitted: "warning",
-  new: "warning",
-  inspection_pending: "info",
-  capturing: "neutral",
-  draft: "neutral",
-  expired: "neutral",
-  archived: "neutral",
-  dismissed: "neutral",
-  refunded: "neutral",
-  deactivated: "neutral",
-  sold: "info",
-  paid: "info",
-  shipped: "info",
-  delivered: "info",
-  unverified: "neutral",
-  suspended: "danger",
-  blocked: "danger",
-  restricted: "danger",
-  rejected: "danger",
-  disputed: "danger",
-  read: "info",
-};
-
-const riskToneMap: Record<string, string> = {
-  low: "success",
-  medium: "warning",
-  high: "danger",
-};
-
-function chipColorForStatus(status?: string): ChipColor {
-  const tone = status ? statusToneMap[status] || "neutral" : "neutral";
-  return toneToChipColor[tone] || "default";
-}
-
-function chipColorForRiskBand(band: string | null): ChipColor {
-  if (!band) return "default";
-  const tone = riskToneMap[band] || "neutral";
-  return toneToChipColor[tone] || "default";
-}
+import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatusBadge, statusTone, riskTone } from "@/components/status-badge";
 
 interface FlaggedItem {
   decision: { _id: string; listing_id: string; status: string; reason?: string; created_at?: number };
@@ -108,33 +41,15 @@ export default function QueuePage() {
         title="Moderation queue"
         description="Listings flagged by the verification orchestrator — vision, diagnostics and risk"
         actions={
-          <Select
-            className="w-44"
-            aria-label="Filter by flag status"
-            placeholder="All flags"
-            value={status}
-            onChange={(v) => changeStatus((v as string) || "all")}
-          >
-            <Select.Trigger>
-              <Select.Value />
-              <Select.Indicator />
-            </Select.Trigger>
-            <Select.Popover>
-              <ListBox>
-                <ListBox.Item id="all" textValue="All flags">
-                  All flags
-                  <ListBox.ItemIndicator />
-                </ListBox.Item>
-                <ListBox.Item id="review" textValue="Review">
-                  Review
-                  <ListBox.ItemIndicator />
-                </ListBox.Item>
-                <ListBox.Item id="blocked" textValue="Blocked">
-                  Blocked
-                  <ListBox.ItemIndicator />
-                </ListBox.Item>
-              </ListBox>
-            </Select.Popover>
+          <Select value={status} onValueChange={(v) => changeStatus((v as string) || "all")}>
+            <SelectTrigger className="w-44" aria-label="Filter by flag status">
+              <SelectValue placeholder="All flags" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All flags</SelectItem>
+              <SelectItem value="review">Review</SelectItem>
+              <SelectItem value="blocked">Blocked</SelectItem>
+            </SelectContent>
           </Select>
         }
       />
@@ -142,14 +57,14 @@ export default function QueuePage() {
       {error && <PageError message={error.message} onRetry={reload} />}
 
       {loading && !data && (
-        <Card variant="default" className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
-          <Card.Content className="p-4">
+        <Card className="rounded-2xl p-0 ring-1 ring-black/5 dark:ring-white/10">
+          <CardContent className="p-4">
             <div className="space-y-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <Skeleton key={i} className="h-20 rounded-xl" />
               ))}
             </div>
-          </Card.Content>
+          </CardContent>
         </Card>
       )}
 
@@ -163,8 +78,8 @@ export default function QueuePage() {
 
       {data && data.items.length > 0 && (
         <>
-          <Card variant="default" className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
-            <Card.Content className="p-0">
+          <Card className="rounded-2xl p-0 ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
+            <CardContent className="p-0">
               <div className="divide-y">
                 {data.items.map((it) => {
                   const risk = riskLabel(it.risk?.adjusted_score);
@@ -182,19 +97,15 @@ export default function QueuePage() {
                         </p>
                       </div>
                       {risk.band && (
-                        <Chip color={chipColorForRiskBand(risk.band)} variant="soft" size="sm">
-                          {it.risk?.badge ? `${it.risk.badge} (${risk.label})` : `${risk.label} risk`}
-                        </Chip>
+                        <StatusBadge tone={riskTone[risk.band] ?? "neutral"} label={it.risk?.badge ? `${it.risk.badge} (${risk.label})` : `${risk.label} risk`} />
                       )}
-                      <Chip color={chipColorForStatus(it.decision.status)} variant="soft" size="sm">
-                        {it.decision.status}
-                      </Chip>
+                      <StatusBadge tone={it.decision.status ? statusTone[it.decision.status] ?? "neutral" : "neutral"} label={it.decision.status} />
                       <ArrowUpRight className="size-4 shrink-0 text-muted-foreground" />
                     </Link>
                   );
                 })}
               </div>
-            </Card.Content>
+            </CardContent>
           </Card>
           <Pager page={data.page} pageSize={data.page_size} total={data.total} onPage={setPage} />
         </>

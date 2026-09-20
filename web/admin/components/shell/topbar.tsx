@@ -5,7 +5,14 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { LogOut, ShieldCheck, UserCircle } from "lucide-react"
 import { clearSession, getSessionUser } from "@/lib/api"
-import { Avatar, Button, Dropdown, Label } from "@heroui/react"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { findItem } from "./nav"
@@ -50,43 +57,43 @@ export function Topbar() {
             className="hidden items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-xs sm:flex"
             title="Backend health"
           >
-            <span className={cn("size-1.5 rounded-full", health === "ok" ? "bg-success" : health === "down" ? "bg-danger" : "bg-warning")} />
+            <span className={cn("size-1.5 rounded-full", health === "ok" ? "bg-success" : health === "down" ? "bg-destructive" : "bg-warning")} />
             <span className="text-muted-foreground/80">{health === "ok" ? "API online" : health === "down" ? "API offline" : "…"}</span>
           </div>
 
           <ThemeToggle />
 
-          <Dropdown>
-            <Dropdown.Trigger>
-              <Button variant="ghost" className="h-9 gap-2 px-2 rounded-lg">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" className="flex h-9 items-center gap-2 rounded-lg px-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring/50 focus-visible:ring-[3px]">
                 <Avatar className="size-7">
-                  <Avatar.Fallback className="bg-gradient-to-br from-accent to-accent/70 text-[10px] font-bold text-accent-foreground shadow-sm">
+                  <AvatarFallback className="bg-gradient-to-br from-accent to-accent/70 text-[10px] font-bold text-accent-foreground shadow-sm">
                     {((user?.name || user?.email || "A")[0] || "A").toUpperCase()}
-                  </Avatar.Fallback>
+                  </AvatarFallback>
                 </Avatar>
                 <span className="hidden max-w-[140px] truncate text-sm lg:block">{user?.name || user?.email}</span>
-              </Button>
-            </Dropdown.Trigger>
-            <Dropdown.Popover>
-              <Dropdown.Menu>
-                <Dropdown.Item id="profile" textValue="Your profile">
-                  <Link href="/profile" className="flex items-center gap-2.5">
-                    <UserCircle className="size-4 text-muted-foreground" /> Your profile
-                  </Link>
-                </Dropdown.Item>
-                <Dropdown.Item id="settings" textValue="Admin settings">
-                  <Link href="/settings" className="flex items-center gap-2.5">
-                    <ShieldCheck className="size-4 text-muted-foreground" /> Admin settings
-                  </Link>
-                </Dropdown.Item>
-                <Dropdown.Item id="signout" textValue="Sign out" variant="danger" onPress={() => clearSession()}>
-                  <Label className="flex items-center gap-2.5 text-danger">
-                    <LogOut className="size-4" /> Sign out
-                  </Label>
-                </Dropdown.Item>
-              </Dropdown.Menu>
-            </Dropdown.Popover>
-          </Dropdown>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[12rem] rounded-xl">
+              <DropdownMenuItem asChild>
+                <Link href="/profile" className="flex items-center gap-2.5">
+                  <UserCircle className="size-4 text-muted-foreground" /> Your profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/settings" className="flex items-center gap-2.5">
+                  <ShieldCheck className="size-4 text-muted-foreground" /> Admin settings
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() => clearSession()}
+                className="flex items-center gap-2.5 text-destructive focus:text-destructive"
+              >
+                <LogOut className="size-4" /> Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>

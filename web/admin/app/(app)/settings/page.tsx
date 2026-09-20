@@ -7,7 +7,14 @@ import { useFetch, runMutation } from "@/lib/use-fetch";
 import type { SettingsData } from "@/lib/types";
 import { PageHeader } from "@/components/page-header";
 import { PageError } from "@/components/error-state";
-import { Button, Card, Chip, Input, Skeleton, Switch, Tabs, TextArea, Tooltip } from "@heroui/react";
+import { StatusBadge } from "@/components/status-badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function SettingsPage() {
   const { data, loading, error, reload } = useFetch<SettingsData>("/admin/settings");
@@ -46,15 +53,14 @@ export default function SettingsPage() {
         description="Platform configuration — published live to the public site"
         actions={
           <>
-            <Button variant="secondary" isIconOnly aria-label="Reset" onPress={reload}>
+            <Button variant="secondary" size="icon" aria-label="Reset" onClick={reload}>
               <RefreshCw className="size-4" />
             </Button>
             <Button
-              variant="primary"
+              variant="default"
               className="bg-accent text-accent-foreground hover:bg-accent/90"
-              onPress={save}
-              isDisabled={!dirty || saving}
-              isPending={saving}
+              onClick={save}
+              disabled={!dirty || saving}
             >
               {saving ? "Saving…" : <><Save className="size-4" /> Save changes</>}
             </Button>
@@ -69,52 +75,42 @@ export default function SettingsPage() {
       )}
 
       {data && (
-        <Tabs defaultSelectedKey={data.group_names[0]} className="gap-4">
-          <Tabs.ListContainer>
-            <Tabs.List aria-label="Settings groups">
-              {data.group_names.map((g) => (
-                <Tabs.Tab key={g} id={g} className="capitalize">
-                  {g.replace(/_/g, " ")}
-                  <Tabs.Indicator />
-                </Tabs.Tab>
-              ))}
-            </Tabs.List>
-          </Tabs.ListContainer>
+        <Tabs defaultValue={data.group_names[0]} className="gap-4">
+          <TabsList aria-label="Settings groups">
+            {data.group_names.map((g) => (
+              <TabsTrigger key={g} value={g} className="capitalize">
+                {g.replace(/_/g, " ")}
+              </TabsTrigger>
+            ))}
+          </TabsList>
           {data.group_names.map((g) => (
-            <Tabs.Panel key={g} id={g} className="space-y-4">
+            <TabsContent key={g} value={g} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 {Object.entries(data.groups[g] || {}).map(([key, entry]) => (
                   <Card key={key} className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
-                    <Card.Header className="pb-2">
-                      <Card.Title className="flex items-center gap-2 text-sm">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2 text-sm">
                         {entry.key.replace(/_/g, " ")}
                         {entry.overridden && (
-                          <Tooltip delay={0}>
-                            <Tooltip.Trigger aria-label="Customized">
-                              <span className="inline-flex">
-                                <CheckCircle2 className="size-3.5 text-success" />
-                              </span>
-                            </Tooltip.Trigger>
-                            <Tooltip.Content>Customized — differs from default</Tooltip.Content>
-                          </Tooltip>
+                          <span
+                            title="Customized — differs from default"
+                            aria-label="Customized"
+                            className="inline-flex"
+                          >
+                            <CheckCircle2 className="size-3.5 text-success" />
+                          </span>
                         )}
-                      </Card.Title>
-                      <Card.Description className="text-xs">{entry.description}</Card.Description>
-                    </Card.Header>
-                    <Card.Content>
+                      </CardTitle>
+                      <CardDescription className="text-xs">{entry.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
                       {entry.type === "boolean" ? (
                         <div className="flex items-center gap-3">
-                          <Switch isSelected={!!form[key]} onChange={(v) => setValue(key, v)} aria-label={entry.key}>
-                            <Switch.Control>
-                              <Switch.Thumb />
-                            </Switch.Control>
-                          </Switch>
-                          <Chip color={form[key] ? "success" : "default"} variant="soft" size="sm">
-                            {form[key] ? "Enabled" : "Disabled"}
-                          </Chip>
+                          <Switch checked={!!form[key]} onCheckedChange={(v) => setValue(key, v)} aria-label={entry.key} />
+                          <StatusBadge tone={form[key] ? "success" : "neutral"} label={form[key] ? "Enabled" : "Disabled"} />
                         </div>
                       ) : entry.type === "textarea" ? (
-                        <TextArea
+                        <Textarea
                           rows={4}
                           aria-label={entry.key}
                           value={typeof form[key] === "string" ? form[key] : ""}
@@ -129,11 +125,11 @@ export default function SettingsPage() {
                           onChange={(e) => setValue(key, entry.type === "number" ? Number(e.target.value) : e.target.value)}
                         />
                       )}
-                    </Card.Content>
+                    </CardContent>
                   </Card>
                 ))}
               </div>
-            </Tabs.Panel>
+            </TabsContent>
           ))}
         </Tabs>
       )}

@@ -8,17 +8,10 @@ import asyncio
 import time
 from motor.motor_asyncio import AsyncIOMotorClient
 
+from app.core.catalog import CATEGORIES
+
 MONGO_URL = "mongodb://localhost:27017"
 DB_NAME = "saferesale"
-
-CATEGORIES = [
-    {"name": "Mobile", "slug": "mobile", "description": "Smartphones, tablets and cellular devices", "icon": "smartphone",
-     "fields": ["price", "year", "brand", "model", "storage", "battery_health", "condition", "notes"], "active": True, "sort": 1},
-    {"name": "Vehicle", "slug": "vehicle", "description": "Cars, bikes and other motor vehicles", "icon": "car",
-     "fields": ["price", "year", "brand", "model", "odometer", "condition", "notes"], "active": True, "sort": 2},
-    {"name": "Accessory", "slug": "accessory", "description": "Cases, chargers, parts and add-ons", "icon": "package",
-     "fields": ["price", "brand", "type", "condition", "notes"], "active": True, "sort": 3},
-]
 
 DEFAULT_SETTINGS = {
     "general": {

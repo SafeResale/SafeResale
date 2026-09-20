@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ShieldCheck } from "lucide-react";
+import { Loader2, ShieldCheck } from "lucide-react";
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, getIdToken } from "firebase/auth";
 import { getFirebaseAuth, isFirebaseConfigured } from "@/lib/firebase";
 import { post, storeTokens, clearSession } from "@/lib/api";
-import { Card, Button, Input, Label, TextField, Spinner } from "@heroui/react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function LoginPage() {
   const fbReady = isFirebaseConfigured();
@@ -74,30 +77,30 @@ export default function LoginPage() {
       </div>
 
       <Card className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
-        <Card.Header className="pb-2">
-          <Card.Title className="text-base">Sign in</Card.Title>
-          <Card.Description>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Sign in</CardTitle>
+          <CardDescription>
             {fbReady ? "Use your Firebase admin account or Google." : "Dev mode — backend credentials."}
-          </Card.Description>
-        </Card.Header>
-        <Card.Content>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
           {err && (
-            <div className="mb-4 rounded-xl border border-danger/20 bg-danger/10 px-3 py-2 text-sm text-danger">
+            <div className="mb-4 rounded-xl border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {err}
             </div>
           )}
 
           <form className="space-y-4" onSubmit={onEmailLogin}>
-            <TextField isRequired>
+            <div className="space-y-1.5">
               <Label>Email</Label>
-              <Input type="email" placeholder="admin@example.com" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
-            </TextField>
-            <TextField isRequired>
+              <Input type="email" placeholder="admin@example.com" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
+            </div>
+            <div className="space-y-1.5">
               <Label>Password</Label>
-              <Input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
-            </TextField>
-            <Button type="submit" className="w-full" isDisabled={busy} isPending={busy}>
-              {busy ? <Spinner size="sm" color="current" /> : null}
+              <Input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
+            </div>
+            <Button type="submit" className="w-full" disabled={busy}>
+              {busy ? <Loader2 className="size-4 animate-spin" /> : null}
               {busy ? "Signing in..." : "Sign in"}
             </Button>
           </form>
@@ -109,7 +112,7 @@ export default function LoginPage() {
                 or
                 <span className="h-px flex-1 bg-border" />
               </div>
-              <Button variant="secondary" className="w-full" isDisabled={busy} onPress={onGoogleLogin}>
+              <Button variant="secondary" className="w-full" disabled={busy} onClick={onGoogleLogin}>
                 Continue with Google
               </Button>
             </>
@@ -121,7 +124,7 @@ export default function LoginPage() {
               <code className="text-foreground">.env.local</code> to enable Google sign-in.
             </p>
           )}
-        </Card.Content>
+        </CardContent>
       </Card>
     </div>
   );

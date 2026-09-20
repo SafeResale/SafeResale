@@ -10,31 +10,27 @@ import { timeAgo } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { PageError, EmptyState } from "@/components/error-state";
 import { Pager } from "@/components/pager";
-import { Button, Card, Chip, Input, Label, ListBox, Modal, Select, Skeleton, Table } from "@heroui/react";
-
-type ChipColor = "default" | "accent" | "success" | "warning" | "danger";
-
-const toneToChipColor: Record<string, ChipColor> = {
-  success: "success",
-  warning: "warning",
-  danger: "danger",
-  lime: "accent",
-  info: "accent",
-  neutral: "default",
-  outline: "default",
-  accent: "accent",
-};
-
-const statusToneMap: Record<string, string> = {
-  pending: "warning",
-  resolved: "success",
-  dismissed: "neutral",
-};
-
-function chipColorForStatus(status?: string): ChipColor {
-  const tone = status ? statusToneMap[status] || "neutral" : "neutral";
-  return toneToChipColor[tone] || "default";
-}
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { StatusBadge, statusTone } from "@/components/status-badge";
 
 export default function ReportsPage() {
   const [status, setStatus] = useState("all");
@@ -70,7 +66,7 @@ export default function ReportsPage() {
         title="Reports"
         description="Content and user reports submitted through the app"
         actions={
-          <Button variant="secondary" isIconOnly aria-label="Refresh" onPress={reload}>
+          <Button variant="secondary" size="icon" aria-label="Refresh" onClick={reload}>
             <RefreshCw className="size-4" />
           </Button>
         }
@@ -78,77 +74,51 @@ export default function ReportsPage() {
 
       <div className="mb-4 flex flex-wrap gap-2">
         <Select
-          className="w-36"
-          placeholder="Status"
-          aria-label="Filter by status"
           value={status}
-          onChange={(v) => {
-            setStatus((v as string) || "all");
+          onValueChange={(v) => {
+            setStatus(v || "all");
             setPage(1);
           }}
         >
-          <Select.Trigger>
-            <Select.Value />
-            <Select.Indicator />
-          </Select.Trigger>
-          <Select.Popover>
-            <ListBox>
-              <ListBox.Item id="all" textValue="All statuses">
-                All statuses <ListBox.ItemIndicator />
-              </ListBox.Item>
-              <ListBox.Item id="pending" textValue="Pending">
-                Pending <ListBox.ItemIndicator />
-              </ListBox.Item>
-              <ListBox.Item id="resolved" textValue="Resolved">
-                Resolved <ListBox.ItemIndicator />
-              </ListBox.Item>
-              <ListBox.Item id="dismissed" textValue="Dismissed">
-                Dismissed <ListBox.ItemIndicator />
-              </ListBox.Item>
-            </ListBox>
-          </Select.Popover>
+          <SelectTrigger className="w-36" aria-label="Filter by status">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="resolved">Resolved</SelectItem>
+            <SelectItem value="dismissed">Dismissed</SelectItem>
+          </SelectContent>
         </Select>
         <Select
-          className="w-36"
-          placeholder="Target"
-          aria-label="Filter by target"
           value={type}
-          onChange={(v) => {
-            setType((v as string) || "all");
+          onValueChange={(v) => {
+            setType(v || "all");
             setPage(1);
           }}
         >
-          <Select.Trigger>
-            <Select.Value />
-            <Select.Indicator />
-          </Select.Trigger>
-          <Select.Popover>
-            <ListBox>
-              <ListBox.Item id="all" textValue="All targets">
-                All targets <ListBox.ItemIndicator />
-              </ListBox.Item>
-              <ListBox.Item id="listing" textValue="Listing">
-                Listing <ListBox.ItemIndicator />
-              </ListBox.Item>
-              <ListBox.Item id="user" textValue="User">
-                User <ListBox.ItemIndicator />
-              </ListBox.Item>
-            </ListBox>
-          </Select.Popover>
+          <SelectTrigger className="w-36" aria-label="Filter by target">
+            <SelectValue placeholder="Target" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All targets</SelectItem>
+            <SelectItem value="listing">Listing</SelectItem>
+            <SelectItem value="user">User</SelectItem>
+          </SelectContent>
         </Select>
       </div>
 
       {error && <PageError message={error.message} onRetry={reload} />}
 
       {loading && !data && (
-        <Card variant="default" className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
-          <Card.Content className="p-4">
+        <Card className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
+          <CardContent className="p-4">
             <div className="space-y-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <Skeleton key={i} className="h-14 rounded-xl" />
               ))}
             </div>
-          </Card.Content>
+          </CardContent>
         </Card>
       )}
 
@@ -158,113 +128,104 @@ export default function ReportsPage() {
 
       {data && data.items.length > 0 && (
         <>
-          <Card variant="default" className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
-            <Card.Content className="p-0">
-              <Table>
-                <Table.ScrollContainer>
-                  <Table.Content aria-label="Reports" className="min-w-[760px]">
-                    <Table.Header>
-                      <Table.Column isRowHeader>Target</Table.Column>
-                      <Table.Column>Reason</Table.Column>
-                      <Table.Column>Reporter</Table.Column>
-                      <Table.Column>Status</Table.Column>
-                      <Table.Column className="text-right">Reported</Table.Column>
-                      <Table.Column className="text-right">Actions</Table.Column>
-                    </Table.Header>
-                    <Table.Body>
-                      {data.items.map((r) => (
-                        <Table.Row key={r._id} id={r._id}>
-                          <Table.Cell className="max-w-52">
-                            {r.target_type === "listing" && r.target?.id ? (
-                              <Link href={`/listings/${r.target.id}`}>
-                                <span className="block truncate font-medium hover:text-primary">{r.target.title || "Untitled listing"}</span>
-                                <span className="text-xs text-muted-foreground">listing · {r.target.status}</span>
-                              </Link>
-                            ) : r.target_type === "user" && r.target?.id ? (
-                              <Link href={`/users/${r.target.id}`}>
-                                <span className="block truncate font-medium hover:text-primary">{r.target.name || "User"}</span>
-                                <span className="text-xs text-muted-foreground">user · {r.target.role}</span>
-                              </Link>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">
-                                {r.target_id} ({r.target_type})
-                              </span>
-                            )}
-                          </Table.Cell>
-                          <Table.Cell className="max-w-56">
-                            <span className="block truncate text-sm">{r.reason}</span>
-                            {r.description && <span className="block truncate text-xs text-muted-foreground">{r.description}</span>}
-                          </Table.Cell>
-                          <Table.Cell className="text-xs text-muted-foreground">{r.reporter?.name || r.reporter?.email || "—"}</Table.Cell>
-                          <Table.Cell>
-                            <Chip color={chipColorForStatus(r.status)} variant="soft" size="sm" className="capitalize">
-                              {r.status}
-                            </Chip>
-                          </Table.Cell>
-                          <Table.Cell className="text-right text-xs text-muted-foreground">{timeAgo(r.created_at)}</Table.Cell>
-                          <Table.Cell>
-                            {r.status === "pending" ? (
-                              <div className="flex justify-end gap-1.5">
-                                <Button
-                                  variant="primary"
-                                  size="sm"
-                                  className="bg-accent text-accent-foreground hover:bg-accent/90"
-                                  onPress={() => {
-                                    setActing(r);
-                                    setResolution("");
-                                  }}
-                                >
-                                  <ShieldCheck className="size-3.5" /> Resolve
-                                </Button>
-                                <Button variant="ghost" size="sm" onPress={() => resolve(r, "dismiss")}>
-                                  <X className="size-3.5" /> Dismiss
-                                </Button>
-                              </div>
-                            ) : (
-                              <span className="block text-right text-xs text-muted-foreground">{r.resolved_at ? timeAgo(r.resolved_at) : "—"}</span>
-                            )}
-                          </Table.Cell>
-                        </Table.Row>
-                      ))}
-                    </Table.Body>
-                  </Table.Content>
-                </Table.ScrollContainer>
-              </Table>
-            </Card.Content>
+          <Card className="rounded-2xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table aria-label="Reports" className="min-w-[760px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Target</TableHead>
+                      <TableHead>Reason</TableHead>
+                      <TableHead>Reporter</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Reported</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {data.items.map((r) => (
+                      <TableRow key={r._id} id={r._id}>
+                        <TableCell className="max-w-52">
+                          {r.target_type === "listing" && r.target?.id ? (
+                            <Link href={`/listings/${r.target.id}`}>
+                              <span className="block truncate font-medium hover:text-primary">{r.target.title || "Untitled listing"}</span>
+                              <span className="text-xs text-muted-foreground">listing · {r.target.status}</span>
+                            </Link>
+                          ) : r.target_type === "user" && r.target?.id ? (
+                            <Link href={`/users/${r.target.id}`}>
+                              <span className="block truncate font-medium hover:text-primary">{r.target.name || "User"}</span>
+                              <span className="text-xs text-muted-foreground">user · {r.target.role}</span>
+                            </Link>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              {r.target_id} ({r.target_type})
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="max-w-56">
+                          <span className="block truncate text-sm">{r.reason}</span>
+                          {r.description && <span className="block truncate text-xs text-muted-foreground">{r.description}</span>}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{r.reporter?.name || r.reporter?.email || "—"}</TableCell>
+                        <TableCell>
+                          <StatusBadge tone={statusTone[r.status] ?? "neutral"} label={r.status} className="capitalize" />
+                        </TableCell>
+                        <TableCell className="text-right text-xs text-muted-foreground">{timeAgo(r.created_at)}</TableCell>
+                        <TableCell>
+                          {r.status === "pending" ? (
+                            <div className="flex justify-end gap-1.5">
+                              <Button
+                                size="sm"
+                                className="bg-accent text-accent-foreground hover:bg-accent/90"
+                                onClick={() => {
+                                  setActing(r);
+                                  setResolution("");
+                                }}
+                              >
+                                <ShieldCheck className="size-3.5" /> Resolve
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => resolve(r, "dismiss")}>
+                                <X className="size-3.5" /> Dismiss
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="block text-right text-xs text-muted-foreground">{r.resolved_at ? timeAgo(r.resolved_at) : "—"}</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
           </Card>
           <Pager page={data.page} pageSize={data.page_size} total={data.total} onPage={setPage} />
         </>
       )}
 
-      <Modal.Backdrop isOpen={!!acting} onOpenChange={(v) => !v && setActing(null)}>
-        <Modal.Container>
-          <Modal.Dialog className="sm:max-w-[440px]">
-            <Modal.CloseTrigger />
-            <Modal.Header>
-              <Modal.Heading>Resolve report</Modal.Heading>
-            </Modal.Header>
-            <p className="px-6 -mt-2 text-sm text-muted-foreground">Record how the review was actioned for the audit trail.</p>
-            <Modal.Body>
-              <div className="space-y-1.5">
-                <Label htmlFor="note">Resolution note (optional)</Label>
-                <Input
-                  id="note"
-                  value={resolution}
-                  onChange={(e) => setResolution(e.target.value)}
-                  placeholder="e.g. verified with seller — listing approved"
-                />
-              </div>
-              <Button
-                variant="primary"
-                className="mt-4 w-full bg-accent text-accent-foreground hover:bg-accent/90"
-                onPress={() => acting && resolve(acting, "resolve")}
-              >
-                Mark resolved
-              </Button>
-            </Modal.Body>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
+      <Dialog open={!!acting} onOpenChange={(v) => !v && setActing(null)}>
+        <DialogContent className="sm:max-w-[440px]">
+          <DialogHeader>
+            <DialogTitle>Resolve report</DialogTitle>
+            <DialogDescription>Record how the review was actioned for the audit trail.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label htmlFor="note">Resolution note (optional)</Label>
+            <Input
+              id="note"
+              value={resolution}
+              onChange={(e) => setResolution(e.target.value)}
+              placeholder="e.g. verified with seller — listing approved"
+            />
+          </div>
+          <Button
+            className="mt-4 w-full bg-accent text-accent-foreground hover:bg-accent/90"
+            onClick={() => acting && resolve(acting, "resolve")}
+          >
+            Mark resolved
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

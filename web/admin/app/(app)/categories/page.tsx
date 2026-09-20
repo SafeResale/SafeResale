@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FolderPlus, Pencil, Tags, Trash2 } from "lucide-react";
+import { FolderPlus, Loader2, Pencil, Tags, Trash2 } from "lucide-react";
 import { del, patch, post } from "@/lib/api";
 import { useFetch, runMutation } from "@/lib/use-fetch";
 import type { Category } from "@/lib/types";
@@ -9,7 +9,21 @@ import { fmtShort } from "@/lib/format";
 import { PageHeader } from "@/components/page-header";
 import { PageError, EmptyState } from "@/components/error-state";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { Button, Card, Chip, Input, Label, Modal, Skeleton, Switch, TextArea } from "@heroui/react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { StatusBadge } from "@/components/status-badge";
 
 interface FormState {
   name: string;
@@ -95,96 +109,89 @@ export default function CategoriesPage() {
         actions={
           <>
             <Button
-              variant="primary"
               className="bg-accent text-accent-foreground hover:bg-accent/90"
-              onPress={() => {
+              onClick={() => {
                 setEditing(null);
                 setOpen(true);
               }}
             >
               <FolderPlus className="size-4" /> Add category
             </Button>
-            <Modal.Backdrop isOpen={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
-              <Modal.Container>
-                <Modal.Dialog className="sm:max-w-lg">
-                  <Modal.CloseTrigger />
-                  <Modal.Header>
-                    <Modal.Heading>{editing ? `Edit — ${editing.name}` : "Add category"}</Modal.Heading>
-                    <p className="text-sm text-muted-foreground">
-                      {editing
-                        ? `Slug "${editing.slug}" stays stable while the trust engine uses it.`
-                        : "Slug is generated from the name."}
-                    </p>
-                  </Modal.Header>
-                  <Modal.Body>
-                    <form onSubmit={save} className="space-y-4">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="c-name">Name</Label>
-                        <Input id="c-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="c-desc">Description</Label>
-                        <TextArea
-                          id="c-desc"
-                          rows={2}
-                          value={form.description}
-                          onChange={(e) => setForm({ ...form, description: e.target.value })}
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                          <Label htmlFor="c-icon">Icon</Label>
-                          <Input
-                            id="c-icon"
-                            value={form.icon}
-                            onChange={(e) => setForm({ ...form, icon: e.target.value })}
-                            placeholder="smartphone"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor="c-sort">Sort order</Label>
-                          <Input
-                            id="c-sort"
-                            type="number"
-                            value={form.sort}
-                            onChange={(e) => setForm({ ...form, sort: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="c-fields">Seller form fields (comma separated)</Label>
-                        <Input
-                          id="c-fields"
-                          value={form.fields}
-                          onChange={(e) => setForm({ ...form, fields: e.target.value })}
-                          placeholder="price, year, brand, model, condition"
-                        />
-                      </div>
-                      <div className="flex items-center justify-between rounded-xl border bg-card px-3 py-2.5">
-                        <div>
-                          <p className="text-sm font-medium">Active</p>
-                          <p className="text-xs text-muted-foreground">Inactive categories are hidden from new listings.</p>
-                        </div>
-                        <Switch isSelected={form.active} onChange={(v) => setForm({ ...form, active: v })} aria-label="Active">
-                          <Switch.Control>
-                            <Switch.Thumb />
-                          </Switch.Control>
-                        </Switch>
-                      </div>
-                      <Button
-                        type="submit"
-                        variant="primary"
-                        className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
-                        isDisabled={saving}
-                        isPending={saving}
-                      >
-                        {saving ? "Saving…" : editing ? "Save changes" : "Create category"}
-                      </Button>
-                    </form>
-                  </Modal.Body>
-                </Modal.Dialog>
-              </Modal.Container>
-            </Modal.Backdrop>
+            <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>{editing ? `Edit — ${editing.name}` : "Add category"}</DialogTitle>
+                  <DialogDescription>
+                    {editing
+                      ? `Slug "${editing.slug}" stays stable while the trust engine uses it.`
+                      : "Slug is generated from the name."}
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={save} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="c-name">Name</Label>
+                    <Input id="c-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="c-desc">Description</Label>
+                    <Textarea
+                      id="c-desc"
+                      rows={2}
+                      value={form.description}
+                      onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="c-icon">Icon</Label>
+                      <Input
+                        id="c-icon"
+                        value={form.icon}
+                        onChange={(e) => setForm({ ...form, icon: e.target.value })}
+                        placeholder="smartphone"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="c-sort">Sort order</Label>
+                      <Input
+                        id="c-sort"
+                        type="number"
+                        value={form.sort}
+                        onChange={(e) => setForm({ ...form, sort: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="c-fields">Seller form fields (comma separated)</Label>
+                    <Input
+                      id="c-fields"
+                      value={form.fields}
+                      onChange={(e) => setForm({ ...form, fields: e.target.value })}
+                      placeholder="price, year, brand, model, condition"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between rounded-xl border bg-card px-3 py-2.5">
+                    <div>
+                      <p className="text-sm font-medium">Active</p>
+                      <p className="text-xs text-muted-foreground">Inactive categories are hidden from new listings.</p>
+                    </div>
+                    <Switch
+                      checked={form.active}
+                      onCheckedChange={(v) => setForm({ ...form, active: v })}
+                      aria-label="Active"
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    disabled={saving}
+                    className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+                  >
+                    {saving && <Loader2 className="size-4 animate-spin" />}
+                    {saving ? "Saving…" : editing ? "Save changes" : "Create category"}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
           </>
         }
       />
@@ -207,7 +214,7 @@ export default function CategoriesPage() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {data.items.map((c) => (
             <Card key={c._id} className="flex flex-col rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
-              <Card.Header className="pb-2">
+              <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2">
                     {c.icon && (
@@ -216,22 +223,18 @@ export default function CategoriesPage() {
                       </span>
                     )}
                     <div>
-                      <Card.Title className="text-base">{c.name}</Card.Title>
-                      <Card.Description className="font-mono text-xs">{c.slug}</Card.Description>
+                      <CardTitle className="text-base">{c.name}</CardTitle>
+                      <CardDescription className="font-mono text-xs">{c.slug}</CardDescription>
                     </div>
                   </div>
-                  <Chip color={c.active ? "success" : "default"} variant="soft" size="sm">
-                    {c.active ? "active" : "off"}
-                  </Chip>
+                  <StatusBadge tone={c.active ? "success" : "neutral"} label={c.active ? "active" : "off"} />
                 </div>
-              </Card.Header>
-              <Card.Content className="flex flex-1 flex-col gap-3">
+              </CardHeader>
+              <CardContent className="flex flex-1 flex-col gap-3">
                 <p className="min-h-8 text-sm text-muted-foreground">{c.description || "No description"}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {(c.fields || []).map((f) => (
-                    <Chip key={f} color="accent" variant="soft" size="sm">
-                      {f}
-                    </Chip>
+                    <StatusBadge key={f} tone="lime" label={f} />
                   ))}
                 </div>
                 <div className="mt-auto flex items-center justify-between border-t pt-3">
@@ -241,19 +244,19 @@ export default function CategoriesPage() {
                   <div className="flex gap-1.5">
                     <Button
                       variant="secondary"
-                      isIconOnly
+                      size="icon"
                       aria-label="Toggle active"
                       className="size-8"
-                      onPress={() => toggleActive(c)}
+                      onClick={() => toggleActive(c)}
                     >
                       <span className={`size-2.5 rounded-full ${c.active ? "bg-success" : "bg-muted-foreground/50"}`} />
                     </Button>
                     <Button
                       variant="secondary"
-                      isIconOnly
+                      size="icon"
                       aria-label="Edit"
                       className="size-8"
-                      onPress={() => {
+                      onClick={() => {
                         setEditing(c);
                         setOpen(true);
                       }}
@@ -262,16 +265,16 @@ export default function CategoriesPage() {
                     </Button>
                     <Button
                       variant="secondary"
-                      isIconOnly
+                      size="icon"
                       aria-label="Delete"
-                      className="size-8 text-danger"
-                      onPress={() => setConfirmDel(c)}
+                      className="size-8 text-destructive"
+                      onClick={() => setConfirmDel(c)}
                     >
                       <Trash2 className="size-3.5" />
                     </Button>
                   </div>
                 </div>
-              </Card.Content>
+              </CardContent>
             </Card>
           ))}
         </div>

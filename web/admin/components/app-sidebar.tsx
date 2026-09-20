@@ -3,9 +3,16 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
-import { EllipsisVertical, LogOut, Settings, ShieldCheck, UserCircle, ChevronsUpDown } from "lucide-react"
+import { LogOut, Settings, UserCircle, ChevronsUpDown } from "lucide-react"
 import { clearSession, getSessionUser } from "@/lib/api"
-import { Avatar, Dropdown, Label } from "@heroui/react"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { NAV_GROUPS } from "@/components/shell/nav"
 import {
   Sidebar,
@@ -18,7 +25,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
-  useSidebar,
 } from "@/components/ui/sidebar"
 
 function activeSegment(pathname: string): string {
@@ -39,8 +45,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar {...props}>
       <SidebarHeader>
-        <Link href="/dashboard" className="flex items-center gap-0 px-1 pt-1 pb-0.5">
-          <img src="/logo.svg" alt="SafeResale" className="h-[44px] w-auto max-w-[180px] object-contain" />
+        <Link href="/dashboard" className="flex items-center px-1 pt-2 pb-1">
+          <img src="/app_logo.png" alt="SafeResale" className="h-14 w-auto object-contain" />
         </Link>
       </SidebarHeader>
 
@@ -88,13 +94,16 @@ function NavUser({ user }: { user: any }) {
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <Dropdown>
-          <Dropdown.Trigger>
-            <SidebarMenuButton size="lg" className="cursor-pointer data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground gap-3 py-2.5">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuButton
+              size="lg"
+              className="cursor-pointer data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground gap-3 py-2.5"
+            >
               <Avatar className="size-8 rounded-lg shrink-0">
-                <Avatar.Fallback className="rounded-lg bg-gradient-to-br from-accent to-accent/70 text-[11px] font-bold text-accent-foreground shadow-sm">
+                <AvatarFallback className="rounded-lg bg-gradient-to-br from-accent to-accent/70 text-[11px] font-bold text-accent-foreground shadow-sm">
                   {initial}
-                </Avatar.Fallback>
+                </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight min-w-0">
                 <span className="truncate font-medium text-sidebar-foreground">{name}</span>
@@ -102,27 +111,32 @@ function NavUser({ user }: { user: any }) {
               </div>
               <ChevronsUpDown className="ml-auto size-3.5 text-sidebar-foreground/40 shrink-0" />
             </SidebarMenuButton>
-          </Dropdown.Trigger>
-          <Dropdown.Popover>
-            <Dropdown.Menu>
-              <Dropdown.Item id="profile" textValue="Profile">
-                <Link href="/profile" className="flex items-center gap-2.5">
-                  <UserCircle className="size-4 text-sidebar-foreground/60" /> Profile
-                </Link>
-              </Dropdown.Item>
-              <Dropdown.Item id="settings" textValue="Settings">
-                <Link href="/settings" className="flex items-center gap-2.5">
-                  <Settings className="size-4 text-sidebar-foreground/60" /> Settings
-                </Link>
-              </Dropdown.Item>
-              <Dropdown.Item id="signout" textValue="Sign out" variant="danger" onPress={() => clearSession()}>
-                <Label className="flex items-center gap-2.5">
-                  <LogOut className="size-4" /> Sign out
-                </Label>
-              </Dropdown.Item>
-            </Dropdown.Menu>
-          </Dropdown.Popover>
-        </Dropdown>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            side="right"
+            align="start"
+            sideOffset={8}
+            className="min-w-[12rem] rounded-xl"
+          >
+            <DropdownMenuItem asChild>
+              <Link href="/profile" className="flex items-center gap-2.5">
+                <UserCircle className="size-4 text-sidebar-foreground/60" /> Profile
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/settings" className="flex items-center gap-2.5">
+                <Settings className="size-4 text-sidebar-foreground/60" /> Settings
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={() => clearSession()}
+              className="flex items-center gap-2.5 text-destructive focus:text-destructive"
+            >
+              <LogOut className="size-4" /> Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
   )

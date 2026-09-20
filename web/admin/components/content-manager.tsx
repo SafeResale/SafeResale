@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { FileText, Pencil, RefreshCw, Trash2 } from "lucide-react";
+import { FileText, Pencil, RefreshCw, Search, Trash2 } from "lucide-react";
 import { del, patch, post, queryString } from "@/lib/api";
 import { useFetch, runMutation } from "@/lib/use-fetch";
 import type { ContentItem, PageResult } from "@/lib/types";
@@ -10,20 +10,29 @@ import { PageHeader } from "@/components/page-header";
 import { PageError, EmptyState } from "@/components/error-state";
 import { Pager } from "@/components/pager";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Button,
-  Card,
-  Chip,
-  Input,
-  Label,
-  ListBox,
-  Modal,
-  SearchField,
   Select,
-  Skeleton,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
-  TextArea,
-} from "@heroui/react";
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { StatusBadge } from "@/components/status-badge";
 
 interface Cfg {
   plural: string;
@@ -35,27 +44,12 @@ interface Cfg {
   defaults: Record<string, any>;
 }
 
-type ChipColor = "default" | "accent" | "success" | "warning" | "danger";
-const toneToChipColor: Record<string, ChipColor> = {
-  success: "success",
-  warning: "warning",
-  danger: "danger",
-  lime: "accent",
-  info: "accent",
-  neutral: "default",
-  outline: "default",
-  accent: "accent",
-};
 const statusToneMap: Record<string, string> = {
   published: "success",
   draft: "neutral",
   active: "success",
   archived: "neutral",
 };
-function chipColorForStatus(status?: string): ChipColor {
-  const tone = status ? statusToneMap[status] || "neutral" : "neutral";
-  return toneToChipColor[tone] || "default";
-}
 
 export function ContentManager({ cfg }: { cfg: Cfg }) {
   const [q, setQ] = useState("");
@@ -122,63 +116,34 @@ export function ContentManager({ cfg }: { cfg: Cfg }) {
         title={cfg.plural}
         description={`Manage ${cfg.plural.toLowerCase()} shown on the public site`}
         actions={
-          <Button variant="primary" className="bg-accent text-accent-foreground hover:bg-accent/90" onPress={openNew}>
+          <Button className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={openNew}>
             Add {cfg.singular}
           </Button>
         }
       />
 
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-        <SearchField
-          aria-label="Search"
-          className="flex-1 sm:max-w-xs"
-          value={q}
-          onChange={setQ}
-          onSubmit={commit}
-          onClear={() => {
-            setQ("");
-            setSearch("");
-            setPage(1);
-          }}
-        >
-          <SearchField.Group>
-            <SearchField.SearchIcon />
-            <SearchField.Input placeholder="Search…" />
-            <SearchField.ClearButton />
-          </SearchField.Group>
-        </SearchField>
-        <Select
-          className="w-36"
-          aria-label="Filter by status"
-          placeholder="Status"
-          value={status}
-          onChange={(v) => {
-            setStatus((v as string) || "all");
-            setPage(1);
-          }}
-        >
-          <Select.Trigger>
-            <Select.Value />
-            <Select.Indicator />
-          </Select.Trigger>
-          <Select.Popover>
-            <ListBox>
-              <ListBox.Item id="all" textValue="All statuses">
-                All statuses
-                <ListBox.ItemIndicator />
-              </ListBox.Item>
-              <ListBox.Item id="published" textValue="Published">
-                Published
-                <ListBox.ItemIndicator />
-              </ListBox.Item>
-              <ListBox.Item id="draft" textValue="Draft">
-                Draft
-                <ListBox.ItemIndicator />
-              </ListBox.Item>
-            </ListBox>
-          </Select.Popover>
+        <div className="relative flex-1 sm:max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="pl-8"
+            placeholder="Search…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && commit()}
+          />
+        </div>
+        <Select value={status} onValueChange={(v) => { setStatus(v || "all"); setPage(1); }}>
+          <SelectTrigger className="w-36">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="published">Published</SelectItem>
+            <SelectItem value="draft">Draft</SelectItem>
+          </SelectContent>
         </Select>
-        <Button variant="secondary" isIconOnly aria-label="Refresh" onPress={reload}>
+        <Button variant="outline" size="icon" aria-label="Refresh" onClick={reload}>
           <RefreshCw className="size-4" />
         </Button>
       </div>
@@ -186,12 +151,12 @@ export function ContentManager({ cfg }: { cfg: Cfg }) {
       {error && <PageError message={error.message} onRetry={reload} />}
 
       {loading && !data && (
-        <Card className="rounded-2xl p-4 ring-1 ring-black/5 dark:ring-white/10">
-          <Card.Content className="space-y-3 p-0">
+        <Card className="rounded-2xl">
+          <CardContent className="space-y-3 p-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-12 rounded-xl" />
             ))}
-          </Card.Content>
+          </CardContent>
         </Card>
       )}
 
@@ -205,161 +170,131 @@ export function ContentManager({ cfg }: { cfg: Cfg }) {
 
       {data && data.items.length > 0 && (
         <>
-          <Card className="overflow-hidden rounded-2xl ring-1 ring-black/5 dark:ring-white/10">
-            <Card.Content className="p-0">
+          <Card className="overflow-hidden rounded-2xl">
+            <CardContent className="p-0">
               <Table>
-                <Table.ScrollContainer>
-                  <Table.Content aria-label={cfg.plural} className="min-w-[640px]">
-                    <Table.Header>
-                      <Table.Column isRowHeader>{cfg.singular}</Table.Column>
-                      <Table.Column>Status</Table.Column>
-                      <Table.Column className="text-right">Updated</Table.Column>
-                      <Table.Column className="text-right">Actions</Table.Column>
-                    </Table.Header>
-                    <Table.Body>
-                      {data.items.map((it: any) => (
-                        <Table.Row key={it._id} id={it._id}>
-                          <Table.Cell className="max-w-96">
-                            <p className="truncate font-medium">{cfg.title(it)}</p>
-                            {cfg.subtitle && <p className="truncate text-xs text-muted-foreground">{cfg.subtitle(it)}</p>}
-                          </Table.Cell>
-                          <Table.Cell>
-                            <Chip color={chipColorForStatus(it.status)} variant="soft" size="sm" className="capitalize">
-                              {it.status}
-                            </Chip>
-                          </Table.Cell>
-                          <Table.Cell className="text-right text-xs text-muted-foreground">
-                            {timeAgo(it.updated_at || it.created_at)}
-                          </Table.Cell>
-                          <Table.Cell>
-                            <div className="flex justify-end gap-1.5">
-                              <Button variant="secondary" isIconOnly aria-label="Edit" className="size-8" onPress={() => openEdit(it)}>
-                                <Pencil className="size-3.5" />
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                isIconOnly
-                                aria-label="Delete"
-                                className="size-8 text-danger"
-                                onPress={() => setConfirmDel(it)}
-                              >
-                                <Trash2 className="size-3.5" />
-                              </Button>
-                            </div>
-                          </Table.Cell>
-                        </Table.Row>
-                      ))}
-                    </Table.Body>
-                  </Table.Content>
-                </Table.ScrollContainer>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="w-1/2">{cfg.singular}</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Updated</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.items.map((it: any) => (
+                    <TableRow key={it._id}>
+                      <TableCell className="max-w-96">
+                        <p className="truncate font-medium">{cfg.title(it)}</p>
+                        {cfg.subtitle && <p className="truncate text-xs text-muted-foreground">{cfg.subtitle(it)}</p>}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge tone={(statusToneMap[it.status] as any) || "neutral"} label={it.status} className="capitalize" />
+                      </TableCell>
+                      <TableCell className="text-right text-xs text-muted-foreground">
+                        {timeAgo(it.updated_at || it.created_at)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-1.5">
+                          <Button variant="ghost" size="icon" aria-label="Edit" onClick={() => openEdit(it)}>
+                            <Pencil className="size-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Delete"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => setConfirmDel(it)}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
               </Table>
-            </Card.Content>
+            </CardContent>
           </Card>
           <Pager page={data.page} pageSize={data.page_size} total={data.total} onPage={setPage} />
         </>
       )}
 
-      <Modal.Backdrop isOpen={open} onOpenChange={setOpen}>
-        <Modal.Container>
-          <Modal.Dialog className="sm:max-w-xl">
-            <Modal.CloseTrigger />
-            <Modal.Header>
-              <Modal.Heading>{editing ? `Edit ${cfg.singular}` : `Add ${cfg.singular}`}</Modal.Heading>
-              <p className="text-sm text-muted-foreground">Published items are visible on the public site.</p>
-            </Modal.Header>
-            <Modal.Body>
-              <form onSubmit={save} className="space-y-4">
-                {cfg.fields.map((f) => {
-                  const value = form[f.key] ?? "";
-                  return (
-                    <div key={f.key} className="space-y-1.5">
-                      <Label htmlFor={`f-${f.key}`}>{f.label}</Label>
-                      {f.type === "select" ? (
-                        <Select
-                          aria-label={f.label}
-                          placeholder={f.label}
-                          value={String(value)}
-                          onChange={(v) => setForm({ ...form, [f.key]: v as string })}
-                        >
-                          <Select.Trigger>
-                            <Select.Value />
-                            <Select.Indicator />
-                          </Select.Trigger>
-                          <Select.Popover>
-                            <ListBox>
-                              {f.options?.map((o) => (
-                                <ListBox.Item key={o} id={o} textValue={o}>
-                                  {o}
-                                  <ListBox.ItemIndicator />
-                                </ListBox.Item>
-                              ))}
-                            </ListBox>
-                          </Select.Popover>
-                        </Select>
-                      ) : f.type === "textarea" ? (
-                        <TextArea
-                          id={`f-${f.key}`}
-                          rows={f.key === "content" ? 8 : 3}
-                          value={String(value)}
-                          onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
-                        />
-                      ) : f.type === "number" ? (
-                        <Input
-                          id={`f-${f.key}`}
-                          type="number"
-                          value={String(value)}
-                          onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
-                        />
-                      ) : (
-                        <Input
-                          id={`f-${f.key}`}
-                          value={String(value)}
-                          onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-                <div className="space-y-1.5">
-                  <Label>Status</Label>
-                  <Select
-                    aria-label="Status"
-                    placeholder="Select status"
-                    value={String(form.status ?? "draft")}
-                    onChange={(v) => setForm({ ...form, status: (v as string) || "draft" })}
-                  >
-                    <Select.Trigger>
-                      <Select.Value />
-                      <Select.Indicator />
-                    </Select.Trigger>
-                    <Select.Popover>
-                      <ListBox>
-                        <ListBox.Item id="published" textValue="Published">
-                          Published
-                          <ListBox.ItemIndicator />
-                        </ListBox.Item>
-                        <ListBox.Item id="draft" textValue="Draft">
-                          Draft
-                          <ListBox.ItemIndicator />
-                        </ListBox.Item>
-                      </ListBox>
-                    </Select.Popover>
-                  </Select>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{editing ? `Edit ${cfg.singular}` : `Add ${cfg.singular}`}</DialogTitle>
+            <DialogDescription>Published items are visible on the public site.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={save} className="space-y-4">
+            {cfg.fields.map((f) => {
+              const value = form[f.key] ?? "";
+              return (
+                <div key={f.key} className="space-y-1.5">
+                  <Label htmlFor={`f-${f.key}`}>{f.label}</Label>
+                  {f.type === "select" ? (
+                    <Select
+                      value={String(value)}
+                      onValueChange={(v) => setForm({ ...form, [f.key]: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={f.label} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {f.options?.map((o) => (
+                          <SelectItem key={o} value={o}>{o}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : f.type === "textarea" ? (
+                    <Textarea
+                      id={`f-${f.key}`}
+                      rows={f.key === "content" ? 8 : 3}
+                      value={String(value)}
+                      onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+                    />
+                  ) : f.type === "number" ? (
+                    <Input
+                      id={`f-${f.key}`}
+                      type="number"
+                      value={String(value)}
+                      onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+                    />
+                  ) : (
+                    <Input
+                      id={`f-${f.key}`}
+                      value={String(value)}
+                      onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+                    />
+                  )}
                 </div>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
-                  isDisabled={saving}
-                  isPending={saving}
-                >
-                  {saving ? "Saving…" : editing ? "Save changes" : `Create ${cfg.singular}`}
-                </Button>
-              </form>
-            </Modal.Body>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
+              );
+            })}
+            <div className="space-y-1.5">
+              <Label>Status</Label>
+              <Select
+                value={String(form.status ?? "draft")}
+                onValueChange={(v) => setForm({ ...form, status: v || "draft" })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="published">Published</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              type="submit"
+              className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+              disabled={saving}
+            >
+              {saving ? "Saving…" : editing ? "Save changes" : `Create ${cfg.singular}`}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={confirmDel !== null}
