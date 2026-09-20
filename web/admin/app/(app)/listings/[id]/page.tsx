@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { post } from "@/lib/api";
 import { useFetch, runMutation } from "@/lib/use-fetch";
 import { capitalize, fmtDate, money, riskLabel, timeAgo } from "@/lib/format";
+import { defectFamily, defectLabel, defectsFor, isRelevantDefect } from "@/lib/defects";
 import { PageHeader } from "@/components/page-header";
 import { PageError } from "@/components/error-state";
 import { Button } from "@/components/ui/button";
@@ -340,23 +341,48 @@ export default function ListingDetailPage() {
 
           <Section title="Detections" icon={FileSearch}>
             {evidence?.detections?.length ? (
-              <EvidenceTable
-                head={
-                  <>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Confidence</TableHead>
-                    <TableHead>Label</TableHead>
-                  </>
-                }
-              >
-                {evidence.detections.map((d: any) => (
-                  <TableRow key={d._id}>
-                    <TableCell className="text-sm">{d.det_type || d.class || d.technique || "—"}</TableCell>
-                    <TableCell className="tabular-nums">{d.confidence != null ? `${(d.confidence * 100).toFixed(0)}%` : "—"}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{d.label || "—"}</TableCell>
-                  </TableRow>
-                ))}
-              </EvidenceTable>
+              <>
+                <p className="mb-2 text-xs text-muted-foreground">
+                  Showing {evidence.detections.length} detection{evidence.detections.length !== 1 ? "s" : ""} for <span className="font-medium text-foreground">{listing.category ?? "—"}</span> —{" "}
+                  relevant types: {defectsFor(listing.category).slice(0, 6).map(defectLabel).join(", ")}…
+                </p>
+                <EvidenceTable
+                  head={
+                    <>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Category match</TableHead>
+                      <TableHead>Confidence</TableHead>
+                      <TableHead>Label</TableHead>
+                    </>
+                  }
+                >
+                  {evidence.detections.map((d: any) => {
+                    const cls = d.det_type || d.class || d.technique || "";
+                    const relevant = isRelevantDefect(listing.category, cls);
+                    return (
+                      <TableRow key={d._id}>
+                        <TableCell className="text-sm">
+                          <span className="flex items-center gap-2">
+                            {defectLabel(cls)}
+                            <StatusBadge tone="neutral" label={defectFamily(cls)} className="text-[10px] leading-none" />
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge tone={relevant ? "success" : "neutral"} label={relevant ? "relevant" : "other category"} />
+                        </TableCell>
+                        <TableCell className="tabular-nums">{d.confidence != null ? `${(d.confidence * 100).toFixed(0)}%` : "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{d.label || "—"}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </EvidenceTable>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {defectsFor(listing.category).map((c) => (
+                    <StatusBadge key={c} tone="neutral" label={defectLabel(c)} className="text-[11px]" />
+                  ))}
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground">Full taxonomy per category — highlighted row is what the model actually detected. Irrelevant types appear as “other category”.</p>
+              </>
             ) : (
               <EmptyNote>No detections recorded for this listing (image tampering and defect detection run only when photos are submitted through the app).</EmptyNote>
             )}

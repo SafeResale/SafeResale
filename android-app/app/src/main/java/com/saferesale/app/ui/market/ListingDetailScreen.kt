@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.saferesale.app.data.ApiClient
 import com.saferesale.app.data.marketplace.MarketplaceRepository
+import com.saferesale.app.domain.model.Defects
 import com.saferesale.app.domain.model.MarketListing
 import com.saferesale.app.domain.model.MlModelsReport
 import com.saferesale.app.domain.model.MlModelVerdict
@@ -224,6 +225,9 @@ fun ListingDetailScreen(
 
                     Spacer(Modifier.height(14.dp))
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                    Spacer(Modifier.height(14.dp))
+                    DefectsForCategoryCard(category = listing.category)
 
                     Spacer(Modifier.height(14.dp))
                     AiAnalysisCard(listing.ml_models)
@@ -624,6 +628,51 @@ private fun AiModelRow(model: MlModelVerdict) {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun DefectsForCategoryCard(category: String?) {
+    val defects = Defects.forCategory(category)
+    if (defects.isEmpty()) return
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = Color.White,
+        border = BorderStroke(1.dp, Color(0x21000000)),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Build, contentDescription = null, tint = TerritoryAccent, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Checked for this category", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Text(category ?: "—", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Spacer(Modifier.height(3.dp))
+            Text(
+                when (category) {
+                    "car", "vehicle" -> "Inspektlabs checklist: dents, paint, glass, lights, bumpers, tires, rust, water — per panel"
+                    "bike" -> "Frame, wheels, tires, paint, rust, lights — transfers from car data until bike-specific set lands"
+                    "furniture" -> "Surface, stain, water rings, wear, fabric tears, structural — honor QC standards"
+                    "appliance" -> "Archimede faults: leaks, rust, noise, door seals — not just cosmetic"
+                    else -> "Damage types tailored to this category — only relevant defects are weighted"
+                },
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(10.dp))
+            // FlowRow of chips
+            androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                defects.forEach { cls ->
+                    Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(6.dp)) {
+                        Text(Defects.label(cls), modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            Text("Listing damage in the score report is filtered to these types — other categories' defects show as “other category” in admin.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

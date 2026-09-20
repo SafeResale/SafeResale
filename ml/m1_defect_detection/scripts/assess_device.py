@@ -49,9 +49,13 @@ except Exception:  # pragma: no cover
 
 WORK_ROOT = Path(os.environ.get("M1_WORK_ROOT", Path.home() / "safresale-ml" / "m1"))
 
-# Severity weight per core class (0..1) used to turn detections into deductions.
+# Severity weight per class (0..1) used to turn detections into deductions.
 # Higher = worse defect. Anything not listed falls back to DEFAULT_SEVERITY.
+# 14 core + 15 category-specific extensions per docs/08-ml-plan.md §3.1 (29 total).
+# Weights grounded in Inspektlabs vehicle checklist (dents/rust/glass) and
+# furniture/appliance inspection standards (stain/wear/structural).
 SEVERITY = {
+    # core — cross-category, best public-data support
     "scratch": 0.30,
     "crack": 0.70,
     "dent": 0.60,
@@ -66,8 +70,47 @@ SEVERITY = {
     "rust": 0.60,
     "corrosion": 0.65,
     "water_damage": 0.95,
+    # extensions — category-specific / data-gated
+    "stain": 0.25,
+    "discoloration": 0.20,
+    "wear": 0.30,
+    "broken_part": 0.70,
+    "missing_part": 0.75,
+    "button_damage": 0.60,
+    "keyboard_damage": 0.65,
+    "hinge_damage": 0.60,
+    "cable_damage": 0.55,
+    "connector_damage": 0.50,
+    "tire_damage": 0.80,
+    "wheel_damage": 0.75,
+    "mirror_damage": 0.55,
+    "light_damage": 0.65,
+    "bumper_damage": 0.70,
 }
 DEFAULT_SEVERITY = 0.5
+
+# Category-aware defect vocabulary — which classes are relevant per product.
+# Used for UI filtering and for reporting (not for hard filtering detections).
+DEFECTS_BY_CATEGORY: dict[str, list[str]] = {
+    "mobile": ["scratch", "crack", "dent", "screen_damage", "glass_damage", "camera_damage", "port_damage", "casing_damage", "chip", "paint_damage", "stain", "discoloration", "wear", "water_damage", "corrosion"],
+    "laptop": ["scratch", "crack", "dent", "screen_damage", "glass_damage", "keyboard_damage", "hinge_damage", "port_damage", "casing_damage", "paint_damage", "stain", "discoloration", "wear", "chip"],
+    "electronics": ["scratch", "dent", "screen_damage", "glass_damage", "port_damage", "cable_damage", "connector_damage", "stain", "discoloration", "wear", "chip", "crack"],
+    "camera": ["scratch", "crack", "dent", "glass_damage", "paint_damage", "discoloration", "wear", "chip", "body_deformation", "stain"],
+    "gaming": ["scratch", "crack", "dent", "button_damage", "port_damage", "casing_damage", "stain", "discoloration", "wear", "chip"],
+    "appliance": ["scratch", "dent", "rust", "corrosion", "water_damage", "stain", "discoloration", "wear", "chip", "crack", "broken_part", "missing_part", "cable_damage"],
+    "furniture": ["scratch", "dent", "stain", "water_damage", "discoloration", "wear", "chip", "crack", "broken_part", "missing_part", "hinge_damage", "rust"],
+    "car": ["scratch", "dent", "paint_damage", "body_deformation", "chip", "rust", "corrosion", "glass_damage", "light_damage", "bumper_damage", "tire_damage", "wheel_damage", "mirror_damage", "water_damage", "stain", "discoloration", "wear", "crack"],
+    "bike": ["scratch", "dent", "paint_damage", "rust", "corrosion", "crack", "tire_damage", "wheel_damage", "body_deformation", "chip", "stain", "discoloration", "wear", "cable_damage", "light_damage"],
+    "accessory": ["scratch", "crack", "stain", "discoloration", "wear", "broken_part", "missing_part", "cable_damage", "connector_damage", "chip"],
+    # legacy alias
+    "vehicle": ["scratch", "dent", "paint_damage", "body_deformation", "chip", "rust", "corrosion", "glass_damage", "light_damage", "bumper_damage", "tire_damage", "wheel_damage", "mirror_damage", "water_damage", "stain", "discoloration", "wear", "crack"],
+    "tablet": ["scratch", "crack", "dent", "screen_damage", "glass_damage", "port_damage", "casing_damage", "chip", "stain", "discoloration", "wear"],
+}
+
+def defects_for(category: str | None) -> list[str]:
+    if not category:
+        return list(SEVERITY.keys())
+    return DEFECTS_BY_CATEGORY.get(category, list(SEVERITY.keys()))
 
 # Classes prone to reflection/glare false positives: they require corroboration.
 HIGH_RISK_CLASSES = {"screen_damage", "glass_damage"}

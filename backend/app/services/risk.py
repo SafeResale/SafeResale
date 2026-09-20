@@ -3,12 +3,19 @@ from typing import Dict, Any
 
 CONFIG_VERSION = "risk-v1"
 
-# Physical: map M1 detections + condition into 0-100
+# Physical: map M1 detections + condition into 0-100 — 29 classes (14 core + 15 extensions)
+# Keep in sync with ml/m1_defect_detection/scripts/assess_device.py:SEVERITY
 SEVERITY = {
     "scratch": 30, "crack": 70, "dent": 60, "screen_damage": 85,
     "glass_damage": 80, "camera_damage": 90, "port_damage": 55,
     "casing_damage": 50, "body_deformation": 75, "paint_damage": 35,
     "chip": 45, "rust": 60, "corrosion": 65, "water_damage": 95,
+    "stain": 25, "discoloration": 20, "wear": 30,
+    "broken_part": 70, "missing_part": 75,
+    "button_damage": 60, "keyboard_damage": 65, "hinge_damage": 60,
+    "cable_damage": 55, "connector_damage": 50,
+    "tire_damage": 80, "wheel_damage": 75, "mirror_damage": 55,
+    "light_damage": 65, "bumper_damage": 70,
 }
 
 def physical_risk(detections: list[dict], condition: dict | None) -> Dict[str, Any]:

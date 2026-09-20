@@ -38,8 +38,56 @@ LEGACY_SLUGS = {"vehicle", "tablet"}
 # Seller-facing form schemas per canonical slug (served by `GET /listings/categories`).
 SCHEMAS = {c["slug"]: c["fields"] for c in CATEGORIES}
 
+# Human-readable labels for the 29 defect classes (core 14 + 15 extensions)
+DEFECT_LABELS: dict[str, str] = {
+    "scratch": "Scratch", "crack": "Crack", "dent": "Dent",
+    "screen_damage": "Screen damage", "glass_damage": "Glass damage",
+    "camera_damage": "Camera damage", "port_damage": "Port damage",
+    "casing_damage": "Casing damage", "body_deformation": "Body deformation",
+    "paint_damage": "Paint damage", "chip": "Chip", "rust": "Rust",
+    "corrosion": "Corrosion", "water_damage": "Water damage",
+    "stain": "Stain", "discoloration": "Discoloration", "wear": "Wear",
+    "broken_part": "Broken part", "missing_part": "Missing part",
+    "button_damage": "Button damage", "keyboard_damage": "Keyboard damage",
+    "hinge_damage": "Hinge damage", "cable_damage": "Cable damage",
+    "connector_damage": "Connector damage", "tire_damage": "Tire damage",
+    "wheel_damage": "Wheel damage", "mirror_damage": "Mirror damage",
+    "light_damage": "Light damage", "bumper_damage": "Bumper damage",
+}
+
+# Category-aware defect vocabulary — which damages are relevant per product.
+# Based on Inspektlabs vehicle checklist (dents/glass/lights/bumpers/tires),
+# furniture inspection standards (stain/water/rust/structural), and
+# appliance failure data (Archimede — water/leak/corrosion).
+# Used for UI filtering and for weighting; not a hard filter on detections.
+DEFECTS_BY_CATEGORY: dict[str, list[str]] = {
+    "mobile": ["scratch", "crack", "dent", "screen_damage", "glass_damage", "camera_damage", "port_damage", "casing_damage", "chip", "paint_damage", "stain", "discoloration", "wear", "water_damage", "corrosion"],
+    "laptop": ["scratch", "crack", "dent", "screen_damage", "glass_damage", "keyboard_damage", "hinge_damage", "port_damage", "casing_damage", "paint_damage", "stain", "discoloration", "wear", "chip"],
+    "electronics": ["scratch", "dent", "screen_damage", "glass_damage", "port_damage", "cable_damage", "connector_damage", "stain", "discoloration", "wear", "chip", "crack"],
+    "camera": ["scratch", "crack", "dent", "glass_damage", "paint_damage", "discoloration", "wear", "chip", "body_deformation", "stain"],
+    "gaming": ["scratch", "crack", "dent", "button_damage", "port_damage", "casing_damage", "stain", "discoloration", "wear", "chip"],
+    "appliance": ["scratch", "dent", "rust", "corrosion", "water_damage", "stain", "discoloration", "wear", "chip", "crack", "broken_part", "missing_part", "cable_damage"],
+    "furniture": ["scratch", "dent", "stain", "water_damage", "discoloration", "wear", "chip", "crack", "broken_part", "missing_part", "hinge_damage", "rust"],
+    "car": ["scratch", "dent", "paint_damage", "body_deformation", "chip", "rust", "corrosion", "glass_damage", "light_damage", "bumper_damage", "tire_damage", "wheel_damage", "mirror_damage", "water_damage", "stain", "discoloration", "wear", "crack"],
+    "bike": ["scratch", "dent", "paint_damage", "rust", "corrosion", "crack", "tire_damage", "wheel_damage", "body_deformation", "chip", "stain", "discoloration", "wear", "cable_damage", "light_damage"],
+    "accessory": ["scratch", "crack", "stain", "discoloration", "wear", "broken_part", "missing_part", "cable_damage", "connector_damage", "chip"],
+    "vehicle": ["scratch", "dent", "paint_damage", "body_deformation", "chip", "rust", "corrosion", "glass_damage", "light_damage", "bumper_damage", "tire_damage", "wheel_damage", "mirror_damage", "water_damage", "stain", "discoloration", "wear", "crack"],
+    "tablet": ["scratch", "crack", "dent", "screen_damage", "glass_damage", "port_damage", "casing_damage", "chip", "stain", "discoloration", "wear"],
+}
+
 
 def fields_for(category_slug: str | None) -> list[str]:
     if not category_slug:
         return SCHEMAS["mobile"]
     return list(SCHEMAS.get(category_slug, SCHEMAS["mobile"]))
+
+
+def defects_for(category_slug: str | None) -> list[str]:
+    """Relevant defect classes for a category (docs/08-ml-plan.md §3.1)."""
+    if not category_slug:
+        return list(DEFECT_LABELS.keys())
+    return DEFECTS_BY_CATEGORY.get(category_slug, list(DEFECT_LABELS.keys()))
+
+
+def defect_label(defect_class: str) -> str:
+    return DEFECT_LABELS.get(defect_class, defect_class.replace("_", " ").title())

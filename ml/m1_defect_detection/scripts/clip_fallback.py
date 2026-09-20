@@ -29,50 +29,154 @@ DEFAULT_MODEL = "openai/clip-vit-base-patch32"
 
 # Prompt bank — 2-3 phrasings per class, averaged at encode time.
 # Keep phrasing photographic / observational (CLIP was trained on captions).
+# Covers full 29-class vocabulary: 14 core + 15 extensions (docs/08-ml-plan.md §3.1)
+# Prompts are category-aware: vehicle/furniture/appliance variants refer to the
+# actual product so CLIP works beyond phones (Inspektlabs, furniture-inspection standards).
 PROMPT_BANK: Dict[str, list[str]] = {
     "clean": [
-        "a photo of a clean undamaged smartphone with no defects, pristine surface",
+        "a photo of a clean undamaged product with no defects, pristine surface",
         "a flawless device with no damage, perfect condition",
-        "a close-up photo of a pristine phone with no scratches or cracks",
-        "a clean phone with only minor fingerprints or smudges from handling, no damage",
-        "a phone with light sweat stains or hand marks on the surface, otherwise intact",
-        "a hand holding a clean phone, dark screen turned off showing reflections, fingerprints and sweat smudges but no damage, intact device",
-        "a phone screen turned off showing glare, reflections and oily hand marks, no cracks or dents, undamaged",
-        "a close-up of a phone held in a hand, skin and fingers visible, glossy black screen with light reflections and smudges, undamaged",
+        "a close-up photo of a pristine product with no scratches or cracks",
+        "a clean product with only minor fingerprints or smudges from handling, no damage",
+        "a product with light handling marks on the surface, otherwise intact",
+        "a hand holding a clean device, dark surface turned off showing reflections, fingerprints and smudges but no damage, intact product",
+        "a product surface showing glare, reflections and oily marks, no cracks or dents, undamaged",
+        "a close-up of a product held in a hand, glossy surface with light reflections and smudges, undamaged",
     ],
+    # core
     "scratch": [
-        "a close-up photo of a phone with thin hairline scratches on the glass",
+        "a close-up photo of a product with thin hairline scratches on the surface",
+        "a car door with visible surface scratches, fine lines on the paint",
         "a device with visible surface scratches, fine lines on the body",
     ],
     "crack": [
-        "a photo of a phone screen with a sharp crack line across the glass",
-        "a device with a clearly visible crack, fractured glass with a line",
+        "a photo of a surface with a sharp crack line across it",
+        "a device with a clearly visible crack, fractured surface with a line",
+        "a car panel with a crack in the bodywork",
     ],
     "dent": [
-        "a phone body with a deep dent where the metal or plastic is visibly pushed inward, structural deformation",
-        "a device with a dented casing, clear physical indentation and deformed metal",
-        "a close-up of a dented phone edge, obvious dent damage with deformed shape",
+        "a product body with a deep dent where the metal or plastic is visibly pushed inward, structural deformation",
+        "a car door with a dented panel, clear physical indentation and deformed metal",
+        "a close-up of a dented edge, obvious dent damage with deformed shape",
     ],
     "screen_damage": [
         "a phone screen visibly cracked and shattered with lines across the display, broken display",
-        "a broken phone display with shattered glass and cracked screen, display damage",
-        "a phone with a clearly broken screen, cracks and shattered display with visible damage",
+        "a broken display with shattered glass and cracked screen, display damage",
+        "a product with a clearly broken screen, cracks and shattered display with visible damage",
     ],
     "glass_damage": [
-        "a photo of a phone with shattered glass back panel, spiderweb cracks on glass",
+        "a photo of a product with shattered glass panel, spiderweb cracks on glass",
+        "a car windshield with shattered glass, spiderweb cracks on glass",
         "a device with broken glass, shattered and cracked glass surface",
     ],
     "rust": [
-        "a close-up photo of rust on metal",
-        "a rusty device surface with reddish rust",
+        "a close-up photo of rust on metal, reddish brown rust patches",
+        "a car body with rust spots on the wheel arch and door edge",
+        "a rusty metal surface with reddish rust, bicycle frame with rust",
     ],
     "corrosion": [
-        "a photo of corroded metal surface",
-        "a device with corrosion and oxidation",
+        "a photo of corroded metal surface, oxidized flaking",
+        "a car underbody with corrosion and oxidation, pitted metal",
+        "a device with corrosion and oxidation on metal contacts",
     ],
     "water_damage": [
-        "a phone that was submerged in water, liquid pooled inside the screen",
+        "a product that was submerged in water, liquid pooled inside",
         "heavy water damage with moisture and cracking from liquid ingress",
+        "a wooden furniture surface with water rings, swelling and discoloration from water damage",
+        "a car interior with water damage, flooded footwell and stained upholstery",
+    ],
+    "camera_damage": [
+        "a camera lens with visible damage, scratched and cracked lens element",
+        "a phone camera module with damaged lens, blurry cracked camera glass",
+    ],
+    "port_damage": [
+        "a close-up of a damaged charging port, bent pins and debris in the connector",
+        "a device port with visible damage, broken USB port",
+    ],
+    "casing_damage": [
+        "a device casing with visible damage, cracked and chipped housing",
+        "a product housing with deformed casing, broken outer shell",
+    ],
+    "body_deformation": [
+        "a car body with visible deformation, crumpled panel and misaligned frame",
+        "a bicycle frame with bent tube, body deformation from impact",
+        "a product body visibly deformed, warped and misshapen from damage",
+    ],
+    "paint_damage": [
+        "a car panel with paint damage, peeling and chipped paint exposing primer",
+        "a product with chipped paint, flaking coating and exposed surface",
+    ],
+    "chip": [
+        "a close-up of a paint chip on a surface, small flake missing",
+        "a car edge with stone chips, small paint chips on the hood",
+        "a device with a chip on the corner, small piece broken off",
+    ],
+    # extensions — category-specific
+    "stain": [
+        "a furniture upholstery with visible stain, dark blotch on fabric",
+        "a car seat with stained upholstery, spill stain on the surface",
+        "a product surface with a stain, discolored blotch from spill",
+    ],
+    "discoloration": [
+        "a product surface with discoloration, faded and yellowed patches",
+        "a car paint with discoloration, sun-faded and uneven color",
+    ],
+    "wear": [
+        "a product surface with wear, worn and faded from heavy use",
+        "a furniture armrest with worn fabric, threadbare and faded",
+        "a car seat with worn leather, cracked and faded from use",
+    ],
+    "broken_part": [
+        "a product with a broken part, snapped and detached component",
+        "a furniture chair with a broken leg, snapped wooden part",
+        "a car with a broken bumper, detached and hanging part",
+    ],
+    "missing_part": [
+        "a product with a missing part, empty hole where component should be",
+        "a car with a missing trim piece, gap where part should be",
+        "a furniture drawer with missing handle, empty screw holes",
+    ],
+    "button_damage": [
+        "a gaming controller with damaged buttons, stuck and cracked buttons",
+        "a device with broken buttons, missing and jammed keys",
+    ],
+    "keyboard_damage": [
+        "a laptop keyboard with damaged keys, missing and broken keycaps",
+        "a keyboard with visible damage, cracked and stuck keys",
+    ],
+    "hinge_damage": [
+        "a laptop hinge with visible damage, broken and loose hinge joint",
+        "a furniture cabinet door with broken hinge, sagging and misaligned",
+    ],
+    "cable_damage": [
+        "a cable with visible damage, frayed and exposed wires",
+        "a bicycle brake cable with frayed and kinked cable",
+        "a device cable with damaged insulation, exposed copper wires",
+    ],
+    "connector_damage": [
+        "a connector with visible damage, bent pins and corrosion",
+        "a cable connector with damaged plug, broken connector housing",
+    ],
+    "tire_damage": [
+        "a car tire with visible damage, flat and cracked sidewall, worn tread",
+        "a bicycle tire with damage, flat tire and cracked rubber",
+        "a tire with deep cuts and bulges, damaged sidewall",
+    ],
+    "wheel_damage": [
+        "a car wheel with damage, bent rim and curb rash, scratched alloy",
+        "a bicycle wheel with bent rim, buckled and wobbling wheel",
+    ],
+    "mirror_damage": [
+        "a car side mirror with damage, cracked and hanging mirror housing",
+        "a mirror with shattered glass and broken housing",
+    ],
+    "light_damage": [
+        "a car headlight with damage, cracked and foggy lens, broken light housing",
+        "a tail light with cracked lens and moisture inside",
+    ],
+    "bumper_damage": [
+        "a car bumper with damage, dented and cracked bumper, scratched and deformed",
+        "a bumper with visible deformation, hanging and misaligned",
     ],
 }
 
@@ -86,6 +190,27 @@ COARSE_FAMILY = {
     "rust": "chemical",
     "corrosion": "chemical",
     "water_damage": "chemical",
+    "paint_damage": "surface",
+    "chip": "surface",
+    "body_deformation": "structural",
+    "camera_damage": "optical",
+    "port_damage": "functional",
+    "casing_damage": "structural",
+    "stain": "cosmetic",
+    "discoloration": "cosmetic",
+    "wear": "cosmetic",
+    "broken_part": "structural",
+    "missing_part": "structural",
+    "button_damage": "functional",
+    "keyboard_damage": "functional",
+    "hinge_damage": "structural",
+    "cable_damage": "functional",
+    "connector_damage": "functional",
+    "tire_damage": "mechanical",
+    "wheel_damage": "mechanical",
+    "mirror_damage": "exterior",
+    "light_damage": "exterior",
+    "bumper_damage": "structural",
     "clean": "clean",
 }
 
