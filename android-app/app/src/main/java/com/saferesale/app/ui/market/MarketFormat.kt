@@ -89,8 +89,17 @@ fun listingStatusLabel(status: String): Pair<String, Color> = when (status) {
 
 fun formatCategory(category: String): String = when (category) {
     "mobile" -> "Mobiles"
-    "vehicle" -> "Vehicles"
+    "laptop" -> "Laptops"
+    "electronics" -> "Electronics"
+    "camera" -> "Cameras"
+    "gaming" -> "Gaming"
+    "appliance" -> "Appliances"
+    "car" -> "Cars"
+    "bike" -> "Bikes"
+    "furniture" -> "Furniture"
     "accessory" -> "Accessories"
+    "vehicle" -> "Vehicles" // legacy
+    "tablet" -> "Tablets" // legacy
     else -> category.replaceFirstChar { it.uppercase(Locale.ROOT) }
 }
 

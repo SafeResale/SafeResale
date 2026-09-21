@@ -134,3 +134,42 @@ data class ContactRequest(
     val subject: String,
     val message: String,
 )
+
+// ── Chat ──
+data class ChatThread(
+    val thread_id: String = "",
+    val listing_id: String = "",
+    val listing: ChatListingBrief? = null,
+    val other_user: ChatUserBrief? = null,
+    val last_message: String = "",
+    val last_message_at: Double = 0.0,
+    val updated_at: Double = 0.0,
+    val unread: Int = 0,
+    val role: String = "buying",
+)
+
+data class ChatListingBrief(
+    val id: String = "",
+    val title: String = "",
+    val price: Double = 0.0,
+    val category: String = "",
+    val status: String = "",
+)
+
+data class ChatUserBrief(
+    val id: String = "",
+    val name: String = "",
+    val email: String = "",
+)
+
+data class ChatMessage(
+    val id: String = "",
+    val thread_id: String = "",
+    val listing_id: String = "",
+    val sender_id: String = "",
+    val message: String = "",
+    val offer_price: Double? = null,
+    val created_at: Double = 0.0,
+    val type: String = "text",
+    val read: Boolean = false,
+)

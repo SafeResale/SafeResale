@@ -36,6 +36,7 @@ fun MarketMainScreen(
     onExplore: (String?) -> Unit,
     onLogout: () -> Unit,
     initialCategory: String?,
+    onOpenThread: (String) -> Unit = onOpenListing,
     modifier: Modifier = Modifier,
 ) {
     val marketNav = rememberNavController()
@@ -76,7 +77,7 @@ fun MarketMainScreen(
                 )
             }
             composable("inbox") {
-                InboxScreen(token = token, onStartCheck = onStartCheck)
+                InboxScreen(token = token, onStartCheck = onStartCheck, onOpenThread = onOpenThread)
             }
             composable("myads") {
                 MyAdsScreen(

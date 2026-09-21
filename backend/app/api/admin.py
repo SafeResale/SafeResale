@@ -92,6 +92,9 @@ async def admin_listings(
     q_doc: dict = {}
     if status:
         q_doc["status"] = status
+    else:
+        # drafts are seller-private; admin catalog should not surface them unless explicitly filtered
+        q_doc["status"] = {"$ne": "draft"}
     if category:
         q_doc["category"] = category
     if seller:

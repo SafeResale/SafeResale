@@ -271,7 +271,14 @@ private fun CategoryHomeCard(label: String, icon: ImageVector, onClick: () -> Un
 
 private fun defaultCategories(): List<MarketCategory> = listOf(
     MarketCategory(category = "mobile"),
-    MarketCategory(category = "vehicle"),
+    MarketCategory(category = "laptop"),
+    MarketCategory(category = "electronics"),
+    MarketCategory(category = "camera"),
+    MarketCategory(category = "gaming"),
+    MarketCategory(category = "appliance"),
+    MarketCategory(category = "car"),
+    MarketCategory(category = "bike"),
+    MarketCategory(category = "furniture"),
     MarketCategory(category = "accessory"),
 )
 

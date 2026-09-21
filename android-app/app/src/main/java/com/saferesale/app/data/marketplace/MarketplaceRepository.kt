@@ -2,6 +2,10 @@ package com.saferesale.app.data.marketplace
 
 import com.saferesale.app.data.ApiClient
 import com.saferesale.app.data.InspectionReq
+import com.saferesale.app.domain.model.ChatListingBrief
+import com.saferesale.app.domain.model.ChatMessage
+import com.saferesale.app.domain.model.ChatThread
+import com.saferesale.app.domain.model.ChatUserBrief
 import com.saferesale.app.domain.model.ContactRequest
 import com.saferesale.app.domain.model.ListingImageInfo
 import com.saferesale.app.domain.model.LatestRisk
@@ -82,4 +86,80 @@ object MarketplaceRepository {
 
     suspend fun createInspection(token: String?, listingId: String, preferredDate: String?, note: String?): Map<String, Any> =
         ApiClient.service.createInspection(InspectionReq(listingId, preferredDate, note), bearer(token))
-}
+
+    // ── Chat ──
+
+    @Suppress("UNCHECKED_CAST")
+    suspend fun getThreads(token: String?): List<ChatThread> {
+        val raw = ApiClient.service.chatThreads(bearer(token))
+        val list = raw["threads"] as? List<*> ?: return emptyList()
+        return list.filterIsInstance<Map<String, Any>>().map { m ->
+            val listingMap = m["listing"] as? Map<String, Any>
+            val otherMap = m["other_user"] as? Map<String, Any>
+            ChatThread(
+                thread_id = m["thread_id"]?.toString() ?: "",
+                listing_id = m["listing_id"]?.toString() ?: "",
+                listing = listingMap?.let {
+                    ChatListingBrief(
+                        id = it["id"]?.toString() ?: m["listing_id"]?.toString() ?: "",
+                        title = it["title"]?.toString() ?: "",
+                        price = (it["price"] as? Number)?.toDouble() ?: 0.0,
+                        category = it["category"]?.toString() ?: "",
+                        status = it["status"]?.toString() ?: "",
+                    )
+                },
+                other_user = otherMap?.let {
+                    ChatUserBrief(
+                        id = it["id"]?.toString() ?: "",
+                        name = it["name"]?.toString() ?: "User",
+                        email = it["email"]?.toString() ?: "",
+                    )
+                },
+                last_message = m["last_message"]?.toString() ?: "",
+                last_message_at = (m["last_message_at"] as? Number)?.toDouble() ?: 0.0,
+                updated_at = (m["updated_at"] as? Number)?.toDouble() ?: 0.0,
+                unread = (m["unread"] as? Number)?.toInt() ?: 0,
+                role = m["role"]?.toString() ?: "buying",
+            )
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    suspend fun getMessages(token: String?, listingId: String, page: Int = 1, pageSize: Int = 50, withUser: String? = null): Pair<List<ChatMessage>, Int> {
+        val raw = ApiClient.service.chatMessages(listingId, page, pageSize, withUser, bearer(token))
+        val list = raw["messages"] as? List<*> ?: emptyList<Any>()
+        val total = (raw["total"] as? Number)?.toInt() ?: 0
+        val msgs = list.filterIsInstance<Map<String, Any>>().map { m ->
+            ChatMessage(
+                id = m["id"]?.toString() ?: m["_id"]?.toString() ?: "",
+                thread_id = m["thread_id"]?.toString() ?: "",
+                listing_id = m["listing_id"]?.toString() ?: listingId,
+                sender_id = m["sender_id"]?.toString() ?: "",
+                message = m["message"]?.toString() ?: m["body"]?.toString() ?: "",
+                offer_price = (m["offer_price"] as? Number)?.toDouble(),
+                created_at = (m["created_at"] as? Number)?.toDouble() ?: 0.0,
+                type = m["type"]?.toString() ?: "text",
+                read = m["read"] as? Boolean ?: false,
+            )
+        }
+        return msgs to total
+    }
+
+    suspend fun sendMessage(token: String?, listingId: String, message: String, offerPrice: Double? = null, recipientId: String? = null): Map<String, Any> {
+        val body = mutableMapOf<String, Any?>("message" to message)
+        if (offerPrice != null) body["offer_price"] = offerPrice
+        if (recipientId != null) body["recipient_id"] = recipientId
+        return ApiClient.service.chatSend(listingId, body, bearer(token))
+    }
+
+    suspend fun blockUser(token: String?, userId: String): Map<String, Any> =
+        ApiClient.service.chatBlock(userId, bearer(token))
+
+    suspend fun unblockUser(token: String?, userId: String): Map<String, Any> =
+        ApiClient.service.chatUnblock(userId, bearer(token))
+
+    @Suppress("UNCHECKED_CAST")
+    suspend fun blockedUsers(token: String?): List<Map<String, Any>> {
+        val raw = ApiClient.service.chatBlocked(bearer(token))
+        return (raw["blocked"] as? List<*>)?.filterIsInstance<Map<String, Any>>() ?: emptyList()
+    }

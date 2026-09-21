@@ -83,6 +83,17 @@ interface ApiService {
     @GET("p/submit/{token}") suspend fun getSubmission(@Path("token") token: String): Map<String, Any>
     @POST("p/submit/{token}") suspend fun postSubmission(@Path("token") token: String, @Body b: SubmissionReq): Map<String, Any>
     @GET("health") suspend fun health(): Map<String, Any>
+
+    // ── Chat (polling) ──
+    @POST("chat/listings/{id}/send") suspend fun chatSend(@Path("id") id: String, @Body b: Map<String, @JvmSuppressWildcards Any?>, @Header("Authorization") auth: String): Map<String, Any>
+    @GET("chat") suspend fun chatThreads(@Header("Authorization") auth: String): Map<String, Any>
+    @GET("chat/listings/{id}/messages") suspend fun chatMessages(@Path("id") id: String, @Query("page") page: Int, @Query("page_size") pageSize: Int, @Query("with") withUser: String?, @Header("Authorization") auth: String): Map<String, Any>
+    @POST("chat/block/{userId}") suspend fun chatBlock(@Path("userId") userId: String, @Header("Authorization") auth: String): Map<String, Any>
+    @POST("chat/block-user/{userId}") suspend fun chatBlockUser(@Path("userId") userId: String, @Header("Authorization") auth: String): Map<String, Any>
+    @POST("chat/unblock/{userId}") suspend fun chatUnblock(@Path("userId") userId: String, @Header("Authorization") auth: String): Map<String, Any>
+    @POST("chat/unblock-user/{userId}") suspend fun chatUnblockUser(@Path("userId") userId: String, @Header("Authorization") auth: String): Map<String, Any>
+    @DELETE("chat/block/{userId}") suspend fun chatUnblockDelete(@Path("userId") userId: String, @Header("Authorization") auth: String): Map<String, Any>
+    @GET("chat/blocked") suspend fun chatBlocked(@Header("Authorization") auth: String): Map<String, Any>
 }
 
 object ApiClient {

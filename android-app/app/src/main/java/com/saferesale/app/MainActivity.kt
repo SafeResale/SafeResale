@@ -45,6 +45,7 @@ import com.saferesale.app.ui.CaptureScreen
 import com.saferesale.app.ui.InspectionRequestScreen
 import com.saferesale.app.ui.NewCheckScreen
 import com.saferesale.app.ui.ScoreScreen
+import com.saferesale.app.ui.market.ChatThreadScreen
 import com.saferesale.app.ui.market.ContactScreen
 import com.saferesale.app.ui.market.ExploreScreen
 import com.saferesale.app.ui.market.ListingDetailScreen
@@ -109,6 +110,7 @@ class MainActivity : ComponentActivity() {
                                 nav.navigate("auth") { popUpTo(0) { inclusive = true } }
                             },
                             initialCategory = null,
+                            onOpenThread = { id -> nav.navigate("chat/$id") },
                         )
                     }
                     composable(
@@ -130,9 +132,16 @@ class MainActivity : ComponentActivity() {
                             listingId = lid.orEmpty(),
                             onBack = { nav.popBackStack() },
                             onReport = { id -> nav.navigate("report/$id") },
-                            onContact = { id -> nav.navigate("contact/$id") },
+                            onContact = { id -> nav.navigate("chat/$id") },
                             onBookInspection = { id -> nav.navigate("inspection/$id") },
                         )
+                    }
+                    composable(
+                        "chat/{lid}",
+                        arguments = listOf(navArgument("lid") { type = NavType.StringType }),
+                    ) { back ->
+                        val lid = back.arguments?.getString("lid").orEmpty()
+                        ChatThreadScreen(token = token, listingId = lid, onBack = { nav.popBackStack() })
                     }
                     composable("inspection/{lid}") { back ->
                         val lid = back.arguments?.getString("lid")

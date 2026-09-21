@@ -92,3 +92,8 @@ try:
     app.include_router(submissions_router)
 except Exception:
     pass
+try:
+    from app.api.chat import router as chat_router  # type: ignore
+    app.include_router(chat_router)
+except Exception:
+    pass
