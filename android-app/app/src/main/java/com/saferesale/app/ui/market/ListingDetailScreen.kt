@@ -252,6 +252,11 @@ fun ListingDetailScreen(
                         )
                     )
 
+                    if (listing.category in listOf("car", "bike", "vehicle")) {
+                        Spacer(Modifier.height(14.dp))
+                        RtoDetailsCard(listing = listing)
+                    }
+
                     Spacer(Modifier.height(14.dp))
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
@@ -676,6 +681,106 @@ private fun DefectsForCategoryCard(category: String?) {
             Spacer(Modifier.height(6.dp))
             Text("Listing damage in the score report is filtered to these types — other categories' defects show as “other category” in admin.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+    }
+}
+
+private fun maskRegNo(reg: String?, category: String?): String {
+    val raw = reg?.ifBlank { null } ?: when (category) {
+        "bike" -> "KA03HY9449"
+        "car" -> "KA03AB1234"
+        else -> "KA01AB1234"
+    }
+    if (raw.length < 6) return "****"
+    return raw.take(4) + "****" + raw.takeLast(4)
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun RtoDetailsCard(listing: MarketListing) {
+    var show by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val reg = listing.registration_no ?: when (listing.category) {
+        "bike" -> "KA03HY9449"
+        "car" -> "KA03AB1234"
+        else -> null
+    }
+    val masked = maskRegNo(reg, listing.category)
+    val comp = listing.compliance
+    // demo fallback if compliance null and is vehicle
+    val demoComp: Map<String, Any> = when {
+        comp != null -> comp
+        listing.category == "bike" -> mapOf(
+            "registration_no" to (reg ?: "KA03HY9449"),
+            "rc_status" to "Active",
+            "insurance" to mapOf("provider" to "ICICI Lombard", "valid_till" to "2025-11-30", "type" to "Comprehensive"),
+            "puc" to mapOf("valid_till" to "2025-12-15", "status" to "Valid"),
+            "challan" to mapOf("pending_amount" to 6000, "count" to 2, "details" to "Signal jump + No helmet"),
+            "demo" to true
+        )
+        listing.category == "car" -> mapOf(
+            "registration_no" to (reg ?: "KA03AB1234"),
+            "rc_status" to "Active",
+            "insurance" to mapOf("provider" to "Bajaj Allianz", "valid_till" to "2025-10-20", "type" to "Comprehensive"),
+            "puc" to mapOf("valid_till" to "2025-09-30", "status" to "Valid"),
+            "challan" to mapOf("pending_amount" to 6000, "count" to 3, "details" to "Over-speed + Seatbelt + Parking"),
+            "fastag" to "Active",
+            "demo" to true
+        )
+        else -> emptyMap()
+    }
+    @Suppress("UNCHECKED_CAST")
+    val challan = demoComp["challan"] as? Map<String, Any>
+    @Suppress("UNCHECKED_CAST")
+    val insurance = demoComp["insurance"] as? Map<String, Any>
+    @Suppress("UNCHECKED_CAST")
+    val puc = demoComp["puc"] as? Map<String, Any>
+
+    Surface(shape = RoundedCornerShape(14.dp), color = Color.White, border = BorderStroke(1.dp, Color(0x21000000))) {
+        Column(Modifier.fillMaxWidth().padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Build, null, tint = TerritoryAccent, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("RTO & Compliance", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(6.dp)) {
+                    Text(masked, modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            Text("Vehicle no. masked for privacy — tap to view RTO, challan, insurance & PUC. Demo no. used for this listing.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(10.dp))
+            // quick chips
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                Surface(color = if ((challan?.get("pending_amount") as? Number)?.toInt() ?: 0 > 0) MaterialTheme.colorScheme.errorContainer else ActivateGreen.copy(alpha = 0.15f), shape = RoundedCornerShape(6.dp)) {
+                    Text("Challan: ₹${(challan?.get("pending_amount") ?: 0)}", modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall, color = if ((challan?.get("pending_amount") as? Number)?.toInt() ?: 0 > 0) MaterialTheme.colorScheme.error else ActivateGreen)
+                }
+                Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(6.dp)) {
+                    Text("Insurance: ${insurance?.get("provider") ?: "—"} till ${insurance?.get("valid_till") ?: "—"}", modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall)
+                }
+                Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(6.dp)) {
+                    Text("PUC: ${puc?.get("valid_till") ?: "—"} (${puc?.get("status") ?: "—"})", modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall)
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            Button(onClick = { show = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp)) {
+                Icon(Icons.Default.Visibility, null, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("View RTO Details")
+            }
+            if (demoComp["demo"] == true) {
+                Spacer(Modifier.height(6.dp))
+                Text("Demo data as per Indian MV Rules — verify at https://vahan.parivahan.gov.in & https://echallan.parivahan.gov.in", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+    if (show) {
+        AlertDialog(onDismissRequest = { show = false }, title = { Text("RTO Details") }, text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Registration: ${reg ?: "—"} (masked: $masked)", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                Text("RC Status: ${demoComp["rc_status"] ?: "—"}", style = MaterialTheme.typography.bodySmall)
+                Text("Insurance: ${insurance?.get("provider") ?: "—"} • ${insurance?.get("policy_no") ?: ""} • Till ${insurance?.get("valid_till") ?: "—"} (${insurance?.get("type") ?: ""})", style = MaterialTheme.typography.bodySmall)
+                Text("PUC: Till ${puc?.get("valid_till") ?: "—"} • ${puc?.get("status") ?: ""}", style = MaterialTheme.typography.bodySmall)
+                Text("Challan: ₹${challan?.get("pending_amount") ?: 0} • ${challan?.get("count") ?: 0} pending • ${challan?.get("details") ?: ""}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                (challan?.get("message") as? String)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+                Text("Note: Clear challan before transfer. This is demo data for testing.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }, confirmButton = { TextButton(onClick = { show = false }) { Text("Close") } })
     }
 }
 

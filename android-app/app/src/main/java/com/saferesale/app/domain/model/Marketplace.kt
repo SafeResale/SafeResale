@@ -14,6 +14,8 @@ data class MarketListing(
     val odometer: Int? = null,
     val seller_condition: String? = null,
     val notes: String? = null,
+    val registration_no: String? = null,
+    val compliance: Map<String, Any>? = null,
     val status: String = "draft",
     val risk: MarketRisk? = null,
     val risk_band: String? = null,

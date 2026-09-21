@@ -5,7 +5,11 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  Car,
+  Bike,
   CheckCircle2,
+  Eye,
+  EyeOff,
   FileSearch,
   Fingerprint,
   Gauge,
@@ -37,6 +41,18 @@ function conditionTone(grade: unknown): "success" | "warning" | "danger" | "neut
   if (/fair|moderate|average/.test(s)) return "warning";
   if (/poor|fail|worn|damaged/.test(s)) return "danger";
   return "neutral";
+}
+
+function maskRegNo(reg?: string | null, category?: string | null) {
+  const raw = (reg && String(reg).trim()) || (category === "bike" ? "KA03HY9449" : category === "car" ? "KA03AB1234" : "KA01AB1234");
+  if (!raw || raw.length < 6) return "****";
+  const r = raw.toUpperCase().replace(/\s+/g, "");
+  return `${r.slice(0, 4)}****${r.slice(-4)}`;
+}
+function demoCompliance(category: string, reg?: string | null) {
+  if (category === "bike") return { registration_no: reg || "KA03HY9449", rc_status: "Active", insurance: { provider: "ICICI Lombard", valid_till: "2025-11-30", type: "Comprehensive" }, puc: { valid_till: "2025-12-15", status: "Valid" }, challan: { pending_amount: 6000, count: 2, details: "Signal jump + No helmet" }, demo: true };
+  if (category === "car") return { registration_no: reg || "KA03AB1234", rc_status: "Active", insurance: { provider: "Bajaj Allianz", valid_till: "2025-10-20", type: "Comprehensive" }, puc: { valid_till: "2025-09-30", status: "Valid" }, challan: { pending_amount: 6000, count: 3, details: "Over-speed + Seatbelt + Parking" }, fastag: "Active", demo: true };
+  return null;
 }
 
 const ACTIONS: { key: string; label: string; variant: "primary" | "secondary" | "danger" }[] = [
@@ -96,6 +112,7 @@ export default function ListingDetailPage() {
   const [reason, setReason] = useState("");
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [pendingConfirm, setPendingConfirm] = useState<string | null>(null);
+  const [showRto, setShowRto] = useState(false);
 
   if (error) {
     return (
@@ -226,6 +243,47 @@ export default function ListingDetailPage() {
             </dl>
           </CardContent>
         </Card>
+        {/* RTO & Compliance — only for vehicle categories, masked demo no */}
+        {(listing.category === "car" || listing.category === "bike" || listing.category === "vehicle") && (
+          <Card className="@container/card overflow-hidden rounded-xl border shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                {listing.category === "car" ? <Car className="size-4" /> : <Bike className="size-4" />} RTO & Compliance
+              </CardTitle>
+              <CardDescription>Masked for privacy — demo vehicle no. used for this listing</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {(() => {
+                const cat = String(listing.category || "");
+                const reg: string | undefined = (listing as any).registration_no || (listing as any).compliance?.registration_no;
+                const masked = maskRegNo(reg, cat);
+                const comp: any = (listing as any).compliance || demoCompliance(cat, reg) || {};
+                const challan = comp?.challan as any;
+                const insurance = comp?.insurance as any;
+                const puc = comp?.puc as any;
+                return (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Vehicle no.</span>
+                      <span className="rounded-md bg-muted px-2 py-1 font-mono text-sm font-bold">{masked}</span>
+                      <Button size="sm" variant="outline" onClick={() => setShowRto(true)} className="gap-1.5">
+                        <Eye className="size-3.5" /> View RTO Details
+                      </Button>
+                      {comp?.demo && <StatusBadge tone="neutral" label="Demo data — Indian MV Rules" className="text-[11px]" />}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      <StatusBadge tone={challan?.pending_amount > 0 ? "danger" : "success"} label={`Challan: ₹${challan?.pending_amount ?? 0}`} />
+                      <StatusBadge tone="neutral" label={`Insurance: ${insurance?.provider ?? "—"} till ${insurance?.valid_till ?? "—"}`} />
+                      <StatusBadge tone="neutral" label={`PUC: ${puc?.valid_till ?? "—"} (${puc?.status ?? "—"})`} />
+                      {comp?.fastag && <StatusBadge tone="success" label={`FASTag: ${comp.fastag}`} />}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">Demo: {challan?.details ?? "—"} — {challan?.message ?? "Clear challan before transfer. Verify at https://echallan.parivahan.gov.in and VAHAN."}</p>
+                  </>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Main grid — constrained inside @container/main to avoid SidebarInset overflow */}
@@ -604,6 +662,51 @@ export default function ListingDetailPage() {
               {pendingAction !== null ? <Loader2 className="size-4 animate-spin" /> : null}
               {pendingAction !== null ? "Working…" : pendingConfirm ? actionLabel(pendingConfirm) : "Confirm"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* RTO Details — masked demo, Indian MV Rules */}
+      <Dialog open={showRto} onOpenChange={setShowRto}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">{listing.category === "car" ? <Car className="size-4" /> : <Bike className="size-4" />} RTO Details</DialogTitle>
+            <DialogDescription>Demo data as per Indian MV Rules — verify at VAHAN & e-Challan. Masked for privacy.</DialogDescription>
+          </DialogHeader>
+          {(() => {
+            const cat = String(listing.category || "");
+            const reg: string | undefined = (listing as any).registration_no || (listing as any).compliance?.registration_no;
+            const masked = maskRegNo(reg, cat);
+            const comp: any = (listing as any).compliance || demoCompliance(cat, reg) || {};
+            const challan = comp?.challan as any;
+            const insurance = comp?.insurance as any;
+            const puc = comp?.puc as any;
+            return (
+              <div className="space-y-3 py-1 text-sm">
+                <div className="grid gap-2 rounded-lg border bg-muted/20 p-3">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Vehicle no. (masked)</span><span className="font-mono font-bold">{masked}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Full (demo)</span><span className="font-mono text-xs">{reg || (cat === "bike" ? "KA03HY9449" : "KA03AB1234")} (demo)</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">RC Status</span><span>{comp?.rc_status || "Active"}</span></div>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-medium">Insurance</p>
+                  <p className="text-muted-foreground text-xs">{insurance?.provider ?? "—"} • {insurance?.policy_no ?? ""} • Till {insurance?.valid_till ?? "—"} ({insurance?.type ?? ""}) {comp?.insurance?.idv ? `• IDV ₹${comp.insurance.idv}` : ""}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-medium">PUC & Fitness</p>
+                  <p className="text-muted-foreground text-xs">PUC till {puc?.valid_till ?? "—"} ({puc?.status ?? "—"}) {comp?.fitness_valid_till ? `• Fitness till ${comp.fitness_valid_till}` : ""} {comp?.fastag ? `• FASTag ${comp.fastag}` : ""}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-medium">Challan</p>
+                  <p className="text-xs text-destructive">₹{challan?.pending_amount ?? 0} • {challan?.count ?? 0} pending • {challan?.details ?? "—"}</p>
+                  {challan?.message && <p className="text-xs text-destructive">{challan.message}</p>}
+                </div>
+                <p className="text-[11px] text-muted-foreground">Note: Demo data per Indian Motor Vehicle Rules. Verify RC at https://vahan.parivahan.gov.in and challan at https://echallan.parivahan.gov.in. Clear dues before transfer.</p>
+              </div>
+            );
+          })()}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRto(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

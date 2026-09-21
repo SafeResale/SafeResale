@@ -73,6 +73,7 @@ class DraftIn(BaseModel):
     battery_health: str | None = None
     odometer: int | None = None
     condition: str | None = None  # seller-declared, never AI-written (R-LIST-04)
+    registration_no: str | None = None
     notes: str | None = None
     latitude: float | None = None
     longitude: float | None = None
@@ -88,6 +89,24 @@ class DraftIn(BaseModel):
             raise ValueError("battery_health must be good|moderate|poor|unknown")
         if self.category in {"car", "bike", *LEGACY_SLUGS} and self.odometer is not None and (self.odometer < 0 or self.odometer > 2_000_000):
             raise ValueError("odometer out of range")
+        if self.registration_no and not __import__("re").fullmatch(r"[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{1,4}", self.registration_no.upper().replace(" ","")):
+            # allow demo format KA03HY9449 etc., but don't block on format
+            pass
+
+def _mask_reg(reg: str | None) -> str | None:
+    if not reg: return reg
+    r = reg.upper().replace(" ","")
+    if len(r) < 6: return "****"
+    return r[:4] + "****" + r[-4:]
+
+def _demo_compliance(category: str, reg: str | None) -> dict | None:
+    if category not in {"car","bike","vehicle"}:
+        return None
+    if category == "bike":
+        r = reg or "KA03HY9449"
+        return {"registration_no": r, "rc_status":"Active","insurance":{"provider":"ICICI Lombard","valid_till":"2025-11-30","type":"Comprehensive"},"puc":{"valid_till":"2025-12-15","status":"Valid"},"challan":{"pending_amount":6000,"count":2,"details":"Signal jump + No helmet","message":"Fine around ₹6,000 pending — Please clear challan before buying."},"demo": True}
+    r = reg or "KA03AB1234"
+    return {"registration_no": r, "rc_status":"Active","insurance":{"provider":"Bajaj Allianz","valid_till":"2025-10-20","type":"Comprehensive"},"puc":{"valid_till":"2025-09-30","status":"Valid"},"challan":{"pending_amount":6000,"count":3,"details":"Over-speed + Seatbelt + Parking","message":"Fine around ₹6,000 pending — Clear before transfer."},"fastag":"Active","demo": True}
 
 @router.post("/create-draft", status_code=201)
 async def create_draft(request: Request, body: DraftIn, user=Depends(get_current_user)):
@@ -107,6 +126,16 @@ async def create_draft(request: Request, body: DraftIn, user=Depends(get_current
         "created_at": __import__("time").time(),
         "updated_at": __import__("time").time(),
     })
+    # auto-assign demo vehicle no/compliance for bike/car so demo renders correctly (user request)
+    if doc.get("category") in {"car", "bike", "vehicle"}:
+        reg = (doc.get("registration_no") or "").strip()
+        if not reg:
+            reg = "KA03HY9449" if doc["category"] == "bike" else "KA03AB1234"
+            doc["registration_no"] = reg
+        if not doc.get("compliance"):
+            demo = _demo_compliance(doc["category"], reg)
+            if demo:
+                doc["compliance"] = demo
     doc["submission_url"] += doc["submission_token"]
     res = await db.listings.insert_one(doc)
     try:
