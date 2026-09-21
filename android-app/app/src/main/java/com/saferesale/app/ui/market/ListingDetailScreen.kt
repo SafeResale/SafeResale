@@ -2,6 +2,7 @@ package com.saferesale.app.ui.market
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
@@ -632,6 +633,7 @@ private fun AiModelRow(model: MlModelVerdict) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DefectsForCategoryCard(category: String?) {
     val defects = Defects.forCategory(category)
