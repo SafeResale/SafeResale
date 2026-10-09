@@ -49,17 +49,23 @@ an auditable reason. Approved listings carry a buyer-facing verification report 
 
 ## Getting started
 
-See `docs/10-setup-guide.md`. Quick start (once implemented):
+See `docs/10-setup-guide.md`. Quick start:
 
 ```
-# Backend (from backend/)
-python -m venv .venv && .venv\Scripts\activate
+# Backend (from backend/) — FastAPI on :8000, OpenAPI at /docs
+py -m venv .venv && .venv\Scripts\activate
 pip install -r requirements.txt
-python -m app.main            # FastAPI on :8000, docs at /docs
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+# Firebase Admin (real, byte-proven):
+#   .env line FIREBASE_SERVICE_ACCOUNT_FILE=...\.credentials\saferesale-firebase-adminsdk-fbsvc-bb426a13a3.json
+#   already wired; firebase-admin boots against it. Never commit the .credentials/ dir.
+
+# Admin web (from web/admin) — Next.js on :3000
+npm install
+npm run dev                     # = next dev -p 3000  ->  http://127.0.0.1:3000/login
 
 # Android app: open android-app/ in Android Studio and run on device/emulator
-# Admin web (from web/admin)
-npm install && npm run dev    # Next.js on :3000
 ```
 
 MongoDB must be running locally (see setup guide).

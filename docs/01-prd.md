@@ -63,10 +63,12 @@ pipeline that produces evidence before a listing is trusted.
 ## 6. Core End-to-End Flow
 
 1. Seller registers and verifies contact information (email/phone via dev mailer).
-2. Seller creates a category-specific listing draft.
+2. Seller creates a category-specific listing draft (category → sub-category → custom fields, per 8.1).
 3. App validates required fields and asking price.
 4. App guides seller through eight required camera views (Android CameraX).
 5. On-device checks reject blurry, over/under-exposed or duplicate images; retake only the failed angle. Live-capture-only — no gallery uploads — blocks stolen/AI-generated photos at the source.
+5b. Buyer can save listings to wishlist (favorites) — offline queue, sync on login.
+5c. Buyer ↔ seller chat tied to listing (text + price offer + block/unblock) — keeps negotiation on-platform and auditable.
 6. Images are securely uploaded to backend storage (local storage now, S3-ready). Each image is sealed with a SHA-256 hash + server-side timestamp; upload integrity is verified against the client checksum.
 7. Backend queues preprocessing and AI inference.
 8. OpenCV standardizes images (real, server-side).
@@ -78,6 +80,7 @@ pipeline that produces evidence before a listing is trusted.
 14. Decision engine returns Approved, Review/Warning or Blocked with reason codes.
 15. Admin receives flagged cases and can override with an auditable reason; inspection can trigger re-scoring.
 16. Approved listings carry a buyer-safe verification report, one unified trust badge, and a tamper-evident evidence summary.
+17. Buyer receives in-app + push notifications on chat/offer/verification status; verified-transaction reviews (1-5 + text) are allowed only after escrow release, seller verification badge shown.
 
 ## 7. Recommended Technology Stack — 2026
 
@@ -129,10 +132,11 @@ Detailed component view: `03-architecture.md`.
 - Register sends a **hashed device fingerprint** (device identifier hashed with a server salt; raw ID never stored) used for multi-account/ban-evasion detection.
 
 ### 9.2 Listing Creation
-- Category-driven dynamic forms for mobile, vehicle and accessory.
+- Category-driven dynamic forms for mobile, vehicle and accessory — now generic: **Category → Sub-category → Custom Fields** (text/number/dropdown/radio/checkbox/file, per-language values, required/min/max) — scales without code change (ported from eClassify `custom_fields`).
 - Draft autosave and resume.
 - Validation for price, year, battery health, odometer and required fields.
 - Seller-declared condition stored separately from AI condition.
+- Free-tier listing limits (e.g. 3 active) without real payments; gateway abstraction kept for later.
 
 ### 9.3 Guided 8-Angle Capture
 - Front, back, left, right, top, bottom/charging port, front 45°, back 45°.
@@ -158,6 +162,12 @@ Detailed component view: `03-architecture.md`.
 ### 9.5 Buyer Experience
 - Browse listings and open listing detail.
 - View verification summary, condition/diagnostic evidence and trust badge.
+- **Full-text search + filters:** `?search=`, category/sub-category, `minPrice/maxPrice`, `posted_since` (today/week/month), `radius+lat/lng` + sort, pagination; map view on detail and search (google_maps_flutter + Leaflet parity).
+- **Wishlist:** save/unsave listing, offline queue, sync on login.
+- **Chat:** listing-tied 1-1 chat (text + price offer + file/audio) + block/unblock + blocked list — keeps negotiation on-platform (vs WhatsApp) and auditable.
+- **Notifications:** in-app list + FCM push on chat/offer/verification status (`get-notification-list`).
+- **Reviews:** verified-transaction reviews only (1-5 + text, gated to `escrow=released`), seller profile aggregate; report listing (reason picker + free text) and report review.
+- **Seller verification badge:** optional doc upload (verification-field) → `pending/approved/rejected` (lite KYC, no Aadhaar).
 
 ## 10. AI/ML Requirements
 

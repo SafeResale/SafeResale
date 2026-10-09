@@ -192,22 +192,43 @@ Covered in detail in `06-security.md`.
 | R-NFR-08 | Testability | CI runs lint + backend tests + web build | One command runs all checks. |
 | R-NFR-09 | Accessibility | Admin web usable with keyboard; contrast AA | Basic a11y checks in web lint. |
 
+## 15. Marketplace Polish — v1.1 (ported from eClassify for trust/retention)
+
+| ID | Priority | Requirement | Acceptance criterion |
+|---|---|---|---|
+| R-FAV-01 | M | Buyer can favorite/unfavorite a listing. | `POST /favorites/{id}/toggle` + `GET /favorites` works; heart persists offline and syncs on login. |
+| R-FAV-02 | M | Favorites survive logout/login and show count. | Count matches `GET /favorites` after re-login. |
+| R-CHAT-01 | M | Buyer ↔ seller chat is tied to a listing (1-1). | `POST /chat/{listing_id}/send` + `GET /chat/{listing_id}` returns threaded messages; only parties can read. |
+| R-CHAT-02 | M | Chat supports price offer field. | Offer `{amount}` stored on message; offer history visible. |
+| R-CHAT-03 | M | User can block/unblock another user; blocked users cannot message. | `POST /chat/block` → blocked list; blocked sender gets 403. |
+| R-SEARCH-01 | M | Full-text search + filters: `?search=`, category/sub-category, `minPrice/maxPrice`, `posted_since` (today/week/month), `radius+lat/lng`, sort, pagination. | `GET /listings?search=&category=&minPrice=&maxPrice=&posted_since=&radius=` returns filtered results. |
+| R-MAPS-01 | M | Listing detail + search show map pin. | Detail renders `lat/lng` on Leaflet/Google map; search map toggle works. |
+| R-NOTIF-01 | M | In-app notification list + push on chat/offer/verification status. | `GET /notifications` + FCM on those events. |
+| R-REVIEW-01 | M | Verified-transaction reviews only (1-5 + text) gated to `escrow=released`. | Review rejected if not released; seller aggregate updates. |
+| R-REPORT-ITEM-01 | M | User can report a listing (reason picker + free text). | `POST /reports` with `reason_id` stored; appears in admin `user-reports` queue. |
+| R-VERIFY-SELLER-01 | S | Seller can submit lite KYC docs via dynamic verification fields. | `POST /verification/request` with files → `pending/approved/rejected` badge. |
+| R-CAT-01 | M | Category → Sub-category → Custom Fields (text/number/dropdown/radio/checkbox/file) generic, per-language values. | Admin can add category + fields without code; `GET /listings/categories` returns tree. |
+| R-LIMITS-01 | S | Free-tier listing limits (e.g. 3 active, no charge). | `GET /limits` enforced on `create-draft` (429 when exceeded); gateway abstraction kept. |
+
 ## 16. Out of Scope (Won't Have for MVP)
 
-- Real money escrow / payment custody.
-- Real KYC / government ID verification.
+- Real money escrow / payment custody (beyond simulated FSM — see 01-prd.md:17).
+- Real KYC / government ID verification (lite verification above is sufficient).
 - Semantic search and recommendations.
 - Model monitoring dashboards and automated retraining.
 - Microservice decomposition.
 - Public mobile web app for buyers (buyer experience lives in the Android app; admin lives on web).
+- Ads monetization (`google_mobile_ads` banner/interstitial) — explicitly deferred.
+- Job applications (niche to employment listings) — not in SafeResale scope.
 
 ## 17. Requirements Traceability Matrix (summary)
 
 | PRD section | Requirement IDs |
 |---|---|
 | 9.1 Authentication | R-AUTH-01..11 |
-| 9.2 Listing creation | R-LIST-01..08 |
+| 9.2 Listing creation | R-LIST-01..08, R-CAT-01, R-LIMITS-01 |
 | 9.3 8-angle capture | R-CAPTURE-01..07 |
+| 9.5 Buyer experience | R-FAV-01..02, R-CHAT-01..03, R-SEARCH-01, R-MAPS-01, R-NOTIF-01, R-REVIEW-01, R-REPORT-ITEM-01, R-VERIFY-SELLER-01 |
 | 10.1 Image quality | R-QUALITY-01..04 |
 | 10.2/10.3 Vision | R-VISION-01..07 |
 | 9.4/11 Diagnostics | R-DIAG-01..09 |

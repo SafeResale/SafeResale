@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SafeResale</string>
+    <string name="dashboard">Dashboard</string>
+    <string name="device_info">Device Info</string>
+    <string name="cpu">CPU</string>
+    <string name="ram">RAM</string>
+    <string name="storage">Storage</string>
+    <string name="battery">Battery</string>
+    <string name="sensors">Sensors</string>
+    <string name="network">Network</string>
+    <string name="network_tools">Network Tools</string>
+    <string name="camera">Camera</string>
+    <string name="audio">Audio</string>
+    <string name="display">Display</string>
+    <string name="security">Security</string>
+    <string name="installed_apps">Installed Apps</string>
+    <string name="gps">GPS</string>
+    <string name="benchmark">Benchmark</string>
+    <string name="hardware_tests">Hardware Tests</string>
+    <string name="export_report">Export Report</string>
+</resources>

@@ -149,14 +149,25 @@ Base URL (dev): `http://localhost:8000` · OpenAPI at `/docs`
 | `request_inspection` | status inspection_pending |
 | `suspend_seller` | seller suspended; their listings restricted |
 
-## 8. Reports & Buyer
+## 8. Reports & Buyer + Marketplace Polish (v1.1)
 
 | Method | Path | Auth | Returns |
 |---|---|---|---|
 | GET | `/listings/{id}/report` | any | `{badge, verified_at, visual_summary, diagnostic_summary, seller_trust_tier, risk_band, breakdown, reasons[], annotated_images[]}` |
 | GET | `/listings/{id}/report/export` | any | PDF/HTML download |
+| POST | `/favorites/{id}/toggle` | buyer | `{favorited, count}` |
+| GET | `/favorites` | buyer | `[listing]` |
+| GET | `/listings` | any | `?search=&category=&minPrice=&maxPrice=&posted_since=&radius=&lat=&lng=&sort=` |
+| POST | `/chat/{listing_id}/send` | buyer/seller | `{message, offer?}` |
+| GET | `/chat/{listing_id}` | party | `[message]` |
+| POST | `/chat/block` | any | `{blocked}` |
+| GET | `/sellers/{id}` | any | `{seller, ratings, listings, verification_badge}` |
+| POST | `/reports` | any | `{report, reason_id}` |
+| GET | `/verification/fields` | any | `[field]` |
+| POST | `/verification/request` | seller | `{request, status:pending}` |
+| GET | `/limits` | seller | `{active, limit, remaining}` |
 
-**Badge states:** `verified` · `review_passed` · `inspection_pending` · `restricted`
+**Badge states:** `verified` · `review_passed` · `inspection_pending` · `restricted` (+ seller `verification_badge` pending/approved/rejected)
 
 ## 9. Audit Log Schema (write-only via API)
 

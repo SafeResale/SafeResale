@@ -21,8 +21,12 @@ datasets/
 *.tflite
 *.safetensors
 
-# Environment
+# Environment (local secrets — templates like .env.example stay tracked)
 .env
+.env.local
+
+# Backend runtime uploads (created by upload-token/PUT flow)
+backend/uploads/
 
 # IDE / OS
 .idea/
@@ -34,3 +38,36 @@ Thumbs.db
 # Node
 node_modules/
 .next/
+_refs/
+
+# Logs
+*.log
+backend_uvicorn*.log
+
+# Temp / scratch files at repo root
+1
+best
+
+# Android build artifacts
+android-app/.gradle/
+android-app/.kotlin/
+android-app/app/build/
+android-app/build/
+android-app/*.hprof
+android-app/local.properties
+
+# Web build output
+web/*/dist/
+
+# Firebase service-account (secret - never commit)
+backend/config/firebase-service-account.json
+backend/config/
+backend/.credentials/
+
+# Local generated documents and build metadata
+*.docx
+~$*.docx
+*.tsbuildinfo
+
+# Local runtime output
+logs/

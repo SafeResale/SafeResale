@@ -1,6 +1,8 @@
 # M1 dataset merge config — copy to dataset_merge.yaml and adjust per acquisition pass.
 # Sources are relative to M1_WORK_ROOT (~/safresale-ml/m1) unless absolute.
 # class_map: source-class -> core class (docs/08-ml-plan.md §3.1). Omit/blank to drop a class.
+# caps: per-source {core_class: max_boxes} to stop a huge source swamping smaller classes.
+# split_dirs: override split folder names for yolo sources (e.g. mobile_damage uses "valid").
 # Only classes with >= min_instances boxes are kept in the final data.yaml.
 # format: "yolo" (default) | "voc" (Pascal VOC XML; needs images_dir + annotations_dir).
 output_name: defects
@@ -26,3 +28,68 @@ sources:
       cracked_screen: screen_damage
       damaged: ""            # whole-phone image label, not a damage box
       good: ""               # whole-phone image label, not a damage box
+
+  - name: mobile_damage
+    path: data/raw/mobile_damage/Mobile Damage Diagnosis.yolov11
+    split_dirs:
+      train: train
+      val: valid
+    class_map:
+      scratch: scratch
+      screen_crack: screen_damage
+      dead_pixel: ""
+
+  - name: corrosion_v1
+    path: data/raw/corrosion_v1
+    class_map:
+      corrosion: corrosion
+
+  - name: water_damage
+    path: data/raw/water_damage
+    class_map:
+      water_damage: water_damage
+
+  - name: rust
+    path: data/raw/rust
+    class_map:
+      corrosion: corrosion
+      moderate_corrosion: corrosion
+      severe_corrosion: corrosion
+      rust: rust
+    caps:
+      corrosion: 3000
+
+  - name: laptop_newv
+    path: data/raw/laptop_newv
+    class_map:
+      scratch: scratch
+      damaged_screen: screen_damage
+      adhesive_residue: ""
+      adhesive_residue_with_sticker: ""
+      button_is_missing: ""
+    caps:
+      scratch: 3000
+
+  - name: laptop_crack
+    path: data/raw/laptop_crack
+    class_map:
+      crack: crack
+      lines: scratch
+      normal: ""
+      fade: ""
+      spot: ""
+      undefined: ""
+
+  - name: mvtec_yolo
+    path: data/raw/mvtec_yolo
+    class_map:
+      scratch: scratch
+      crack: crack
+      dent: dent
+
+  - name: negatives_kaggle
+    path: data/raw/negatives_kaggle
+    split_dirs:
+      train: train
+    class_map:
+      good: ""        # no boxes — images are background negatives

@@ -36,6 +36,8 @@ Version 1.0 • August 2026
 │  services/       storage · image_quality(OpenCV) · mailer(dev) ·       │
 │                  vision_provider · diagnostics · anomaly · risk ·      │
 │                  decision · verification orchestrator · explainability │
+│                  favorites · chat · notifications · reviews · reports ·│
+│                  seller_verification · limits · categories             │
 │                                                                        │
 │  Verification Orchestrator:                                            │
 │   validate → quality → vision → diagnostics → anomaly → risk →        │
@@ -66,6 +68,11 @@ Version 1.0 • August 2026
 | `api/inspections` | Inspection workflow + evidence upload | services.risk (rescore) |
 | `api/reports` | Buyer verification report + badge | services.explainability, services.risk |
 | `api/audit` | Read/export audit logs | models |
+| `api/favorites` | Toggle/list favorites, offline sync | services.favorites |
+| `api/chat` | Listing-tied 1-1 chat + offers + block | services.chat |
+| `api/sellers` | Seller profile, ratings, verification badge | services.seller_verification |
+| `api/reviews` | Verified-transaction reviews (gate escrow) | services.reviews |
+| `api/categories` | Category tree + custom fields (generic) | services.categories |
 
 ## 4. Key Flows
 

@@ -1,0 +1,10 @@
+{
+  "device": {
+    "model": "Karbon A52 Plus",
+    "os_version": "Android 13",
+    "sdk": 33
+  },
+  "category": "mobile",
+  "skipped": true,
+  "tests": []
+}
