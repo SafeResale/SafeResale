@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Kitchen
 import androidx.compose.material.icons.filled.Laptop
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Search
