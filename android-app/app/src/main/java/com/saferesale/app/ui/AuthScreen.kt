@@ -215,11 +215,14 @@ fun AuthScreen(onAuthed: (String) -> Unit) {
         Column(
             Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(64.dp))
+            Spacer(Modifier.height(28.dp))
             // Brand header (glass tile like the reference app)
             Image(
                 painter = painterResource(R.mipmap.ic_launcher_round),

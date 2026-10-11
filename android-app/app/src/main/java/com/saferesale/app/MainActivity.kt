@@ -72,6 +72,7 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         ApiClient.init(applicationContext)
         setContent {
             var darkTheme by remember { mutableStateOf(false) }
