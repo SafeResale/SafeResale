@@ -27,7 +27,7 @@ Each requirement has an acceptance criterion so it can be objectively verified. 
 
 | ID | Priority | Requirement | Acceptance criterion |
 |---|---|---|---|
-| R-LIST-01 | M | Seller creates a category-specific listing draft (mobile, vehicle, accessory). | Dynamic form schema per category; draft persisted. |
+| R-LIST-01 | M | Seller creates a category-specific listing draft across 16 categories (mobile, laptop, electronics, camera, gaming, appliance, accessory, car, bike, bicycle, furniture, watch, books, sports, toys, instruments). | Dynamic form schema per category; draft persisted. |
 | R-LIST-02 | M | Draft autosave and resume. | Unsaved form edits are recoverable; draft list shows resumable items. |
 | R-LIST-03 | M | Validation for price, year, battery health (mobile), odometer (vehicle) and required fields. | Invalid values produce field-level errors and no save. |
 | R-LIST-04 | M | Seller-declared condition stored separately from AI condition. | Listing stores `seller_condition` and AI writes to `condition_predictions` only. |
@@ -36,11 +36,11 @@ Each requirement has an acceptance criterion so it can be objectively verified. 
 | R-LIST-07 | S | PATCH listing fields after creation (with draft/resubmission). | Owner can edit drafts; published listings require re-verification. |
 | R-LIST-08 | S | Browse/public listing view with filter by category, condition band, price. | `GET /listings` returns only published listings with verified badge info. |
 
-## 3. 8-Angle Capture (R-CAPTURE)
+## 3. Angle Capture (R-CAPTURE)
 
 | ID | Priority | Requirement | Acceptance criterion |
 |---|---|---|---|
-| R-CAPTURE-01 | M | App enforces exactly eight angles: front, back, left, right, top, bottom/charging port, front 45°, back 45°. | UI progress checklist shows all eight; capture state machine prevents skipping. |
+| R-CAPTURE-01 | M | App enforces six required angles: front, back, left, right, top, bottom/charging port; front 45° and back 45° are optional bonus angles. | UI progress checklist shows all 8 with the 2 optional marked; capture completes once the 6 required are present; the state machine prevents skipping a required angle. |
 | R-CAPTURE-02 | M | Live guide overlay shows product alignment for each angle. | Overlay drawn with CameraX preview; angle label + guidance shown. |
 | R-CAPTURE-03 | M | On-device quality checks run before upload: blur (edge/Laplacian), exposure (luminance), glare (saturated-pixel ratio), duplicate (perceptual hash). | Each captured image gets a pass/fail result; failures trigger retake of only that angle. |
 | R-CAPTURE-04 | M | Retake only the failed angle, keeping passed angles. | State machine marks individual angle status; upload proceeds with passed set. |
@@ -65,7 +65,7 @@ Each requirement has an acceptance criterion so it can be objectively verified. 
 | R-VISION-02 | M | Stub provider returns deterministic, clearly-labeled outputs. | `run-vision` returns valid structured output; `simulated: true` flag set. |
 | R-VISION-03 | S | Real provider (YOLO11) returns boxes for the core defect classes (14: scratch, crack, dent, screen_damage, glass_damage, camera_damage, port_damage, casing_damage, body_deformation, paint_damage, chip, rust, corrosion, water_damage — see docs/08-ml-plan.md §3.1). | Provider returns `{class, bbox, confidence, severity, angle}` per detection. |
 | R-VISION-04 | S | Condition classifier returns Good/Moderate/Defective with probabilities. | `condition_predictions` doc stores class probabilities + model version. |
-| R-VISION-05 | M | Detections merged across the eight views (duplicate/overlap suppression). | Same physical defect appearing in multiple angles yields one merged entry. |
+| R-VISION-05 | M | Detections merged across the captured views (6 required + optional 45°); duplicate/overlap suppression. | Same physical defect appearing in multiple angles yields one merged entry. |
 | R-VISION-06 | M | Annotated evidence (boxes overlaid) stored for admin review. | Admin listing detail renders annotations. |
 | R-VISION-07 | M | Inference failure is handled gracefully (timeout, retry, error evidence). | Failure returns structured error; listing stays in capturing state with retry. |
 
@@ -82,6 +82,7 @@ Each requirement has an acceptance criterion so it can be objectively verified. 
 | R-DIAG-07 | M | Timeouts, retry controls, permission fallbacks. | A denied permission yields a clear `permission_required` result, not a crash. |
 | R-DIAG-08 | M | Diagnostics can be skipped; missing data triggers a risk penalty (not a block by itself). | Risk engine applies missing-data penalty (see R-RISK-06). |
 | R-DIAG-09 | M | Diagnostics report syncs to backend as `diagnostics` document. | Backend persists structured report and computes diagnostic score. |
+| R-DIAG-10 | M | The native hardware bench runs only for **diagnostic-capable categories** (mobile, laptop, electronics, camera, gaming, appliance, accessory); other categories skip it. | Non-capable categories route capture → score with no bench step; the capable set is config-driven and documented. |
 
 ## 7. Anomaly Detection (R-ANOM)
 
@@ -114,10 +115,11 @@ Each requirement has an acceptance criterion so it can be objectively verified. 
 | ID | Priority | Requirement | Acceptance criterion |
 |---|---|---|---|
 | R-DECISION-01 | M | Decision returns Approved / Review / Blocked based on risk band. | Band mapping verified by tests. |
-| R-DECISION-02 | M | Hard-stop rules can override/block regardless of score: duplicate images, missing required angles, critical defect, invalid metadata. | Each hard-stop rule unit-tested. |
+| R-DECISION-02 | M | Hard-stop rules can override/block regardless of score: duplicate images (byte-identical SHA-256), fewer than 6 required angles, critical defect, invalid metadata. | Each hard-stop rule unit-tested; the 2 optional 45° views never count toward the 6-angle requirement. |
 | R-DECISION-03 | M | Machine-readable reason codes + friendly explanations. | Response contains both `reason_code` and friendly text. |
 | R-DECISION-04 | M | Decisions persisted with actor/timestamp; changes audited. | `admin_reviews`/decision record + audit entry. |
 | R-DECISION-05 | M | Approved listings publish only if hard-stop rules pass. | Published listing guarantees hard-stops passed. |
+| R-DECISION-06 | M | The decision is written back onto the listing status (`blocked` → `blocked`, `review` → `review`); approved listings await an explicit publish. | Listing document reflects the latest decision; flagged items are admin-visible without a manual status edit. |
 
 ## 10. Explainability (R-EXPLAIN)
 
@@ -151,6 +153,7 @@ Each requirement has an acceptance criterion so it can be objectively verified. 
 | R-ADMIN-06 | M | Model/evaluation page shows current model versions + validation metrics from real measurements. | Data read from `model_metrics` (no fabricated values). |
 | R-ADMIN-07 | M | Export moderation logs and evaluation data. | Export endpoints return CSV/JSON. |
 | R-ADMIN-08 | M | Admin-only RBAC enforced. | Non-admin gets 403. |
+| R-ADMIN-09 | M | Admin catalog lists all statuses including drafts (no default draft exclusion), with a status filter. | `GET /admin/listings` with no filter returns drafts; a `status=draft` filter narrows to drafts only. |
 
 ## 13. Audit & Observability (R-AUDIT)
 
@@ -186,7 +189,7 @@ Covered in detail in `06-security.md`.
 | R-NFR-02 | Performance | AI inference latency | Reported per provider (stub < 50 ms; real model measured and documented). |
 | R-NFR-03 | Reliability | End-to-end success rate across test listings | ≥ 95% on seeded demo listings. |
 | R-NFR-04 | Reliability | Upload resumability | Interrupted upload resumes without data loss. |
-| R-NFR-05 | Usability | 8-angle capture completion | All eight angles capturable with retakes; UI progress visible. |
+| R-NFR-05 | Usability | Angle capture completion | 6 required angles capturable with retakes; the 2 optional 45° views are skippable; UI progress visible. |
 | R-NFR-06 | Maintainability | Modular monolith; AI behind provider interface | Documented module boundaries; provider swap via config. |
 | R-NFR-07 | Portability | Backend runs on Windows dev machine + Docker reference | Setup guide reproduced on a clean machine. |
 | R-NFR-08 | Testability | CI runs lint + backend tests + web build | One command runs all checks. |
@@ -227,16 +230,16 @@ Covered in detail in `06-security.md`.
 |---|---|
 | 9.1 Authentication | R-AUTH-01..11 |
 | 9.2 Listing creation | R-LIST-01..08, R-CAT-01, R-LIMITS-01 |
-| 9.3 8-angle capture | R-CAPTURE-01..07 |
+| 9.3 Angle capture (6 required + 2 optional) | R-CAPTURE-01..07 |
 | 9.5 Buyer experience | R-FAV-01..02, R-CHAT-01..03, R-SEARCH-01, R-MAPS-01, R-NOTIF-01, R-REVIEW-01, R-REPORT-ITEM-01, R-VERIFY-SELLER-01 |
 | 10.1 Image quality | R-QUALITY-01..04 |
 | 10.2/10.3 Vision | R-VISION-01..07 |
-| 9.4/11 Diagnostics | R-DIAG-01..09 |
+| 9.4/11 Diagnostics | R-DIAG-01..10 |
 | 12 Anomaly | R-ANOM-01..08 |
 | 13 Risk engine | R-RISK-01..08 |
-| 13 Decision engine | R-DECISION-01..05 |
+| 13 Decision engine | R-DECISION-01..06 |
 | 14 Explainability | R-EXPLAIN-01..06 |
 | 16 Verification report | R-REPORT-01..04 |
-| 15 Admin dashboard | R-ADMIN-01..08 |
+| 15 Admin dashboard | R-ADMIN-01..09 |
 | 24 Security | R-SEC-01..10 |
 | 25 Testing strategy | R-NFR-01..09 + `07-testing-plan.md` |

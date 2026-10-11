@@ -14,13 +14,19 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed as gridItemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsBike
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material.icons.filled.Watch
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -51,6 +57,12 @@ private fun categoryIcon(category: String): ImageVector = when (category) {
     "mobile" -> Icons.Default.PhoneAndroid
     "vehicle" -> Icons.Default.DirectionsCar
     "accessory" -> Icons.Default.Headphones
+    "bicycle" -> Icons.AutoMirrored.Filled.DirectionsBike
+    "watch" -> Icons.Default.Watch
+    "books" -> Icons.AutoMirrored.Filled.MenuBook
+    "sports" -> Icons.Default.FitnessCenter
+    "toys" -> Icons.Default.SportsEsports
+    "instruments" -> Icons.Default.MusicNote
     else -> Icons.Default.GridView
 }
 
@@ -280,6 +292,12 @@ private fun defaultCategories(): List<MarketCategory> = listOf(
     MarketCategory(category = "bike"),
     MarketCategory(category = "furniture"),
     MarketCategory(category = "accessory"),
+    MarketCategory(category = "bicycle"),
+    MarketCategory(category = "watch"),
+    MarketCategory(category = "books"),
+    MarketCategory(category = "sports"),
+    MarketCategory(category = "toys"),
+    MarketCategory(category = "instruments"),
 )
 
 @Composable

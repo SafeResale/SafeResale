@@ -236,7 +236,7 @@ async def latest_scores(listing_id: str, user=Depends(get_current_user)):
         "risk": _oid_str(risk),
         "decision": _oid_str(decision),
         "condition": _oid_str(cond),
-        "images": {"count": len(images), "angles": angles, "required": 8},
+        "images": {"count": len(images), "angles": angles, "required": 6, "optional": ["front_45", "back_45"]},
         "ml_models": await models_report(listing_id),
     }
     return out
@@ -321,6 +321,15 @@ async def score_listing(listing_id: str):
         if "diagnostic_score" in upsert:
             snapshot["diagnostic_score"] = upsert["diagnostic_score"]
         upsert["trust"] = _trust_rating(snapshot)
+        # Reflect the moderation decision back onto the listing status. Without
+        # this, a flagged listing stays a seller-private "draft" and never
+        # surfaces to admins (the admin catalog hides drafts by default).
+        # Approved items keep their current status until an explicit publish.
+        decision_status = decision.get("status")
+        if decision_status == "blocked":
+            upsert["status"] = "blocked"
+        elif decision_status == "review" and listing.get("status") in ("draft", "capturing", "submitted", "verifying"):
+            upsert["status"] = "review"
         await db.listings.update_one({"_id": oid}, {"$set": upsert})
     return {**risk, "decision": decision, "badge": badge}, listing
 

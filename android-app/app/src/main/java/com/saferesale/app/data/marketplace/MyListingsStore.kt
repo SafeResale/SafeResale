@@ -14,6 +14,15 @@ object MyListingsStore {
             .apply()
     }
 
+    fun remove(context: Context, listingId: String) {
+        val ids = get(context).toMutableSet()
+        ids.remove(listingId)
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putStringSet("ids", ids)
+            .apply()
+    }
+
     fun get(context: Context): List<String> =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getStringSet("ids", emptySet())

@@ -36,6 +36,7 @@ data class DraftReq(
     val storage: String? = null,
     val battery_health: String? = null,
     val condition: String? = null,
+    val registration_no: String? = null,
     val notes: String? = null,
     val latitude: Double? = null,
     val longitude: Double? = null,
@@ -53,6 +54,12 @@ data class UploadTokenReq(val angle: String, val filename: String, val content_t
 // Concrete body: Retrofit forbids Map<String, Any> (wildcard) as a @Body parameter.
 data class ConfirmReq(val upload_token: String, val stored_key: String, val angle: String, val quality: Map<String, Any?>? = null)
 data class DiagReportReq(val device: Map<String, Any?>, val category: String, val skipped: Boolean, val tests: List<Map<String, Any?>>)
+data class KycReq(
+    val full_name: String,
+    val id_type: String,           // "aadhaar" | "pan" | "passport" | "voter_id" | "driving_licence"
+    val id_number_hash: String,    // SHA-256 hex — raw ID number is never sent
+    val address: String? = null,
+)
 
 interface ApiService {
     @POST("auth/login") suspend fun login(@Body b: LoginReq): LoginRes
@@ -73,10 +80,13 @@ interface ApiService {
     @GET("listings/my") suspend fun myListings(@Header("Authorization") auth: String): ListingsResponse
     @GET("listings/categories") suspend fun categories(): List<MarketCategory>
     @GET("listings/{id}") suspend fun listing(@Path("id") id: String, @Header("Authorization") auth: String): ListingResponse
+    @PATCH("listings/{id}") suspend fun patchListing(@Path("id") id: String, @Body b: Map<String, Any?>, @Header("Authorization") auth: String): ListingResponse
+    @DELETE("listings/{id}") suspend fun deleteListing(@Path("id") id: String, @Header("Authorization") auth: String): Map<String, Any>
     @POST("listings/{id}/report") suspend fun reportListing(@Path("id") id: String, @Body b: ReportRequest, @Header("Authorization") auth: String): Map<String, Any>
     @POST("contact") suspend fun contact(@Body b: ContactRequest): Map<String, Any>
     @GET("auth/me") suspend fun me(@Header("Authorization") auth: String): UserProfile
     @PATCH("auth/me") suspend fun updateMe(@Body b: Map<String, String>, @Header("Authorization") auth: String): UserProfile
+    @POST("auth/kyc") suspend fun submitKyc(@Body b: KycReq, @Header("Authorization") auth: String): Map<String, Any>
     @POST("inspections") suspend fun createInspection(@Body b: InspectionReq, @Header("Authorization") auth: String): Map<String, Any>
     @GET("inspections") suspend fun listInspections(@Header("Authorization") auth: String): Map<String, Any>
     @PATCH("inspections/{id}") suspend fun patchInspection(@Path("id") id: String, @Body b: Map<String, String>, @Header("Authorization") auth: String): Map<String, Any>

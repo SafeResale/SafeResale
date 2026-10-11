@@ -40,7 +40,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.atan2
 
-val ANGLES = listOf("front", "back", "left", "right", "top", "bottom", "front_45", "back_45")
+/** Required angles — every listing needs these six. */
+val REQUIRED_ANGLES = listOf("front", "back", "left", "right", "top", "bottom")
+/** Optional bonus angles — the 45° shots add coverage but are not required. */
+val OPTIONAL_ANGLES = listOf("front_45", "back_45")
+val ANGLES = REQUIRED_ANGLES + OPTIONAL_ANGLES
+
+fun isOptionalAngle(angle: String): Boolean = angle in OPTIONAL_ANGLES
 
 private data class AngleGuide(val label: String, val hint: String)
 
@@ -228,8 +234,9 @@ fun CaptureScreen(token: String?, listingId: String?, onDone: () -> Unit) {
         } else {
             msg = "Uploading $angle…"
             uploadCurrent(bytes, angle, mime, filename)
-            msg = "$angle uploaded."
-            if (idx < 7) idx++ else msg = "All 8 angles uploaded — press Done."
+            val requiredDone = REQUIRED_ANGLES.all { a -> states.any { it.angle == a && it.status == "uploaded" } }
+            msg = if (requiredDone) "$angle uploaded — all required angles done, press Done." else "$angle uploaded."
+            if (idx < ANGLES.lastIndex) idx++
         }
     }
 
@@ -298,9 +305,15 @@ fun CaptureScreen(token: String?, listingId: String?, onDone: () -> Unit) {
     }
 
     val uploaded = states.count { it.status == "uploaded" }
+    val requiredUploaded = states.count { it.status == "uploaded" && it.angle in REQUIRED_ANGLES }
+    val requiredDone = requiredUploaded >= REQUIRED_ANGLES.size
     Column(Modifier.fillMaxSize()) {
-        Text("Capture ${idx + 1}/8 — ${ANGLES[idx]}", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleLarge)
-        Text("Uploaded $uploaded/8", modifier = Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodyMedium)
+        val optionalTag = if (isOptionalAngle(ANGLES[idx])) "  (optional)" else ""
+        Text("Capture ${idx + 1}/8 — ${ANGLES[idx]}$optionalTag", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.titleLarge)
+        Text(
+            "Uploaded $requiredUploaded/${REQUIRED_ANGLES.size} required · $uploaded/8 with 45° bonus",
+            modifier = Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodyMedium
+        )
         if (!hasCamPerm) {
             Text("Camera permission is required for capture.", modifier = Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error)
             Button(onClick = { permLauncher.launch(Manifest.permission.CAMERA) }, modifier = Modifier.padding(horizontal = 16.dp)) { Text("Grant camera") }
@@ -330,7 +343,7 @@ fun CaptureScreen(token: String?, listingId: String?, onDone: () -> Unit) {
                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                 }
                 ListItem(
-                    headlineContent = { Text(s.angle) },
+                    headlineContent = { Text(if (isOptionalAngle(s.angle)) "${s.angle} (optional)" else s.angle) },
                     supportingContent = { s.detail.takeIf { it.isNotEmpty() }?.let { Text(it) } },
                     trailingContent = { Badge(containerColor = color) { Text(s.status) } }
                 )
@@ -342,7 +355,7 @@ fun CaptureScreen(token: String?, listingId: String?, onDone: () -> Unit) {
                 Text(if (busy) "Working…" else "Capture")
             }
             Button(onClick = { galleryLauncher.launch("image/*") }, enabled = !busy) { Text("Gallery") }
-            Button(onClick = onDone, enabled = uploaded >= 8) { Text("Done") }
+            Button(onClick = onDone, enabled = requiredDone) { Text("Done") }
         }
     }
 }

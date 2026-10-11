@@ -123,6 +123,7 @@ data class UserProfileDetails(
     val role: String = "seller",
     val verified: Boolean = false,
     val phone: String? = null,
+    val kyc_status: String? = "pending",
 )
 
 data class ReportRequest(

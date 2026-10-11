@@ -20,6 +20,14 @@ async def request_id_middleware(request: Request, call_next):
 app.include_router(health_router)
 app.include_router(auth_router)
 
+@app.on_event("startup")
+async def startup_event():
+    try:
+        from app.core.db import ensure_indexes
+        await ensure_indexes()
+    except Exception as e:
+        print(f"[startup] index creation skipped: {e}")
+
 # placeholders for next phases — imported lazily to keep Phase 0 green
 try:
     from app.api.listings import router as listings_router  # type: ignore

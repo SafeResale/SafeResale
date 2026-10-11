@@ -53,11 +53,16 @@ fun ProfileScreen(
     var saving by remember { mutableStateOf(false) }
     var savedTick by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(Unit) {
+    val cachedKycName = remember { TokenStore.getKycName(ctx) }
+
+    LaunchedEffect(token) {
         val p = runCatching { MarketplaceRepository.profile(token) }.getOrNull()
         if (p != null) {
-            profileState = ProfileDisplay(p.id, p.email ?: p.phone, p.name, p.verified)
-            if (name.isBlank()) name = p.name
+            val resolvedName = p.name.ifBlank { cachedKycName.orEmpty() }
+            profileState = ProfileDisplay(p.id, p.email ?: p.phone, resolvedName, p.verified)
+            name = resolvedName
+        } else if (!cachedKycName.isNullOrBlank()) {
+            name = cachedKycName
         }
     }
 

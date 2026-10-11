@@ -31,7 +31,7 @@ DEFAULT_SETTINGS: dict[str, dict[str, Any]] = {
     "marketplace": {
         "risk_approve_band": {"value": 30, "type": "number", "description": "Adjusted risk <= threshold auto-approves"},
         "risk_review_band": {"value": 60, "type": "number", "description": "Risk above threshold enters moderation"},
-        "required_angles": {"value": 8, "type": "number", "description": "Photo angles expected per listing"},
+        "required_angles": {"value": 6, "type": "number", "description": "Required photo angles per listing (45° bonus angles are optional)"},
         "min_price": {"value": 1, "type": "number", "description": "Minimum listing price"},
         "allow_accessories": {"value": True, "type": "boolean", "description": "Enable accessory category listings"},
     },

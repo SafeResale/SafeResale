@@ -28,12 +28,13 @@ def test_slugify_normalizes():
 def test_default_categories_are_valid_and_distinct():
     from app.core.catalog import LEGACY_SLUGS
     slugs = [c["slug"] for c in DEFAULTS]
-    assert len(slugs) == len(set(slugs)) == 10
+    assert len(slugs) == len(set(slugs)) == 16
     for c in DEFAULTS:
         assert re_full_slug(c["slug"])
         assert isinstance(c["fields"], list) and c["fields"]
-    # PRD product scope (docs/08-ml-plan.md §3.1) + furniture/accessory
+    # PRD product scope (docs/08-ml-plan.md §3.1) + furniture/accessory/extended
     assert {"mobile", "electronics", "camera", "gaming", "appliance", "car", "bike", "furniture", "accessory"} <= set(slugs)
+    assert {"bicycle", "watch", "books", "sports", "toys", "instruments"} <= set(slugs)
     assert not (LEGACY_SLUGS & set(slugs))
 
 

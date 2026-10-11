@@ -42,6 +42,7 @@ import com.saferesale.app.data.marketplace.MyListingsStore
 import com.saferesale.app.diagnostics.CoreVScoreReport
 import com.saferesale.app.ui.AuthScreen
 import com.saferesale.app.ui.CaptureScreen
+import com.saferesale.app.ui.SellerKycScreen
 import com.saferesale.app.ui.InspectionRequestScreen
 import com.saferesale.app.ui.NewCheckScreen
 import com.saferesale.app.ui.ScoreScreen
@@ -56,6 +57,14 @@ import com.saferesale.app.ui.navigation.Screen
 import com.saferesale.app.ui.theme.CoreVTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+
+/** Categories whose product is an electronic device, so the on-device CoreV
+ *  hardware bench is meaningful. Every other category (books, furniture,
+ *  bicycle, sports, toys, instruments, vehicles…) skips diagnostics entirely. */
+val DIAGNOSTIC_CATEGORIES = setOf(
+    "mobile", "laptop", "electronics", "camera", "gaming", "appliance", "accessory",
+)
+
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -98,7 +107,15 @@ class MainActivity : ComponentActivity() {
                     composable("main") {
                         MarketMainScreen(
                             token = token,
-                            onStartCheck = { nav.navigate("newcheck") },
+                            onStartCheck = {
+                                // Gate the sell flow behind a one-time seller KYC step.
+                                // Buyers who never sell are not affected.
+                                if (TokenStore.kycDone(context)) {
+                                    nav.navigate("newcheck")
+                                } else {
+                                    nav.navigate("seller_kyc")
+                                }
+                            },
                             onOpenListing = { id -> nav.navigate("listing/$id") },
                             onExplore = { cat ->
                                 nav.navigate(if (cat == null) "explore" else "explore?cat=$cat") {
@@ -111,6 +128,18 @@ class MainActivity : ComponentActivity() {
                             },
                             initialCategory = null,
                             onOpenThread = { id -> nav.navigate("chat/$id") },
+                        )
+                    }
+                    // ── Seller KYC — shown once before the first listing ──
+                    composable("seller_kyc") {
+                        SellerKycScreen(
+                            token = token,
+                            onDone = {
+                                nav.navigate("newcheck") {
+                                    popUpTo("seller_kyc") { inclusive = true }
+                                }
+                            },
+                            onBack = { nav.popBackStack() },
                         )
                     }
                     composable(
@@ -171,40 +200,62 @@ class MainActivity : ComponentActivity() {
                     // The listingId created in newcheck travels through every step,
                     // so uploads + diagnostics + scores all land on the same listing.
                     composable("newcheck") {
-                        NewCheckScreen(token = token, onCreated = { lid ->
-                            MyListingsStore.add(context, lid)
-                            nav.navigate("capture/$lid")
+                        NewCheckScreen(
+                            token = token,
+                            onBack = { nav.popBackStack() },
+                            onCreated = { lid, category ->
+                                MyListingsStore.add(context, lid)
+                                nav.navigate("capture/$lid/$category")
+                            }
+                        )
+                    }
+                    composable(
+                        "capture/{lid}/{category}",
+                        arguments = listOf(
+                            navArgument("lid") { type = NavType.StringType },
+                            navArgument("category") { type = NavType.StringType },
+                        )
+                    ) { back ->
+                        val lid = back.arguments?.getString("lid")
+                        val category = back.arguments?.getString("category").orEmpty()
+                        CaptureScreen(token = token, listingId = lid, onDone = {
+                            // Device categories run the CoreV hardware bench; the rest
+                            // go straight from photos to scoring.
+                            if (category in DIAGNOSTIC_CATEGORIES) nav.navigate("inspect/$lid/$category")
+                            else nav.navigate("score/$lid/$category")
                         })
                     }
-                    composable(
-                        "capture/{lid}",
-                        arguments = listOf(navArgument("lid") { type = NavType.StringType })
-                    ) { back ->
-                        val lid = back.arguments?.getString("lid")
-                        CaptureScreen(token = token, listingId = lid, onDone = { nav.navigate("inspect/$lid") })
-                    }
                     // Device inspection = CoreV's real bench (all 18 modules), opened
-                    // in check-flow mode with a sync bar. No custom diagnostics UI.
+                    // in check-flow mode with a sync bar. Only for device categories.
                     composable(
-                        "inspect/{lid}",
-                        arguments = listOf(navArgument("lid") { type = NavType.StringType })
+                        "inspect/{lid}/{category}",
+                        arguments = listOf(
+                            navArgument("lid") { type = NavType.StringType },
+                            navArgument("category") { type = NavType.StringType },
+                        )
                     ) { back ->
                         val lid = back.arguments?.getString("lid")
+                        val category = back.arguments?.getString("category").orEmpty()
                         BenchScaffold(
                             darkTheme = darkTheme,
                             onToggleTheme = { darkTheme = !darkTheme },
                             onBack = { nav.popBackStack() },
                             flowListingId = lid,
                             flowToken = token,
-                            onFlowScore = { id -> nav.navigate("score/$id") }
+                            flowCategory = category,
+                            onFlowScore = { id -> nav.navigate("score/$id/$category") }
                         )
                     }
                     composable(
-                        "score/{lid}",
-                        arguments = listOf(navArgument("lid") { type = NavType.StringType })
+                        "score/{lid}/{category}",
+                        arguments = listOf(
+                            navArgument("lid") { type = NavType.StringType },
+                            navArgument("category") { type = NavType.StringType },
+                        )
                     ) { back ->
                         val lid = back.arguments?.getString("lid")
-                        ScoreScreen(token = token, listingId = lid, onDone = {
+                        val category = back.arguments?.getString("category").orEmpty()
+                        ScoreScreen(token = token, listingId = lid, category = category, onDone = {
                             nav.navigate("main") { popUpTo("main") { inclusive = false } }
                         })
                     }
@@ -231,6 +282,7 @@ fun BenchScaffold(
     // bottom bar collects the touch check + syncs CoreV results to the score.
     flowListingId: String? = null,
     flowToken: String? = null,
+    flowCategory: String? = null,
     onFlowScore: ((String) -> Unit)? = null
 ) {
     val benchNav = rememberNavController()
@@ -264,7 +316,7 @@ fun BenchScaffold(
             try {
                 // Same CoreV repositories the bench screens display, mapped to
                 // the scoring contract (CoreVScoreReport) — no custom probes.
-                val report = CoreVScoreReport.build(ctx, "mobile", touchCovered.size)
+                val report = CoreVScoreReport.build(ctx, flowCategory ?: "mobile", touchCovered.size)
                 val passed = report.tests.count { it.status == "passed" }
                 syncMsg = "Syncing ${report.tests.size} CoreV results ($passed passed)…"
                 val body = DiagReportReq(

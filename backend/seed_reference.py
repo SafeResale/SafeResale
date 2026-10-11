@@ -20,7 +20,7 @@ DEFAULT_SETTINGS = {
         "languages": "en",
     },
     "marketplace": {
-        "risk_approve_band": 30, "risk_review_band": 60, "required_angles": 8, "min_price": 1,
+        "risk_approve_band": 30, "risk_review_band": 60, "required_angles": 6, "min_price": 1,
         "allow_accessories": True,
     },
     "notifications": {

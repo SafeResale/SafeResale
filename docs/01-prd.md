@@ -1,10 +1,15 @@
 # 01 — Product Requirements Document (PRD)
 
 **SafeResale** — AI-powered second-hand product verification, fraud detection and trust platform
-Version 1.0 • August 2026
+Version 1.1 • August 2026
 
 > This document is the product source of truth. It refines the original `prd.pdf` and records confirmed project decisions.
 > Requirement IDs referenced here (`R-AUTH-01`, etc.) are defined and detailed in `02-requirements.md`.
+>
+> **v1.1 (confirmed) — reflects implemented decisions:** capture is **6 required angles + 2 optional 45° views**
+> (was 8 required); the catalog covers **16 categories**, of which **7 are diagnostic-capable** and run the native
+> hardware bench; the verification decision is **written back onto the listing status**; and the admin catalog
+> **lists drafts** (no default draft exclusion).
 
 ---
 
@@ -27,7 +32,7 @@ pipeline that produces evidence before a listing is trusted.
 ## 3. Project Objectives
 
 - Provide a polished Android application for sellers and buyers.
-- Force structured 8-angle evidence capture before visual verification.
+- Enforce structured evidence capture — 6 required angles plus 2 optional 45° views — before visual verification.
 - Detect visible defects and estimate overall physical condition.
 - Run supported device diagnostics on Android.
 - Detect behavioral and pricing anomalies without requiring labeled fraud data.
@@ -43,7 +48,7 @@ pipeline that produces evidence before a listing is trusted.
 
 | Priority | Features |
 |---|---|
-| **P0 — Mandatory** | Authentication, listings, 8-angle capture, image quality checks, image preprocessing, defect detection, condition classification, device diagnostics, risk score, decision engine, admin dashboard, audit logs, tamper-evident image hashing (SHA-256 + server timestamp), upload integrity checksums |
+| **P0 — Mandatory** | Authentication, listings, 6 required-angle capture (+2 optional 45° views), image quality checks, image preprocessing, defect detection, condition classification, device diagnostics (diagnostic-capable categories), risk score, decision engine, admin dashboard, audit logs, tamper-evident image hashing (SHA-256 + server timestamp), upload integrity checksums |
 | **P1 — Strong marks** | Seller anomaly detection, price anomaly, duplicate-image detection, text similarity, explainability, verification report, inspection workflow, unified "SafeResale Verified" badge + above-the-fold trust summary, device fingerprinting, AI-generated-image detection (pre-publish gate), simulated escrow + protection, structured dispute workflow |
 | **P2 — Extension (out of MVP)** | Semantic search/recommendations, model monitoring, automated retraining pipeline, OCR phone-number scanning, verified-transaction reviews, trust-aware ranking |
 | **Avoid for MVP** | Real money escrow, real KYC, production payment custody, unnecessary microservices |
@@ -65,7 +70,7 @@ pipeline that produces evidence before a listing is trusted.
 1. Seller registers and verifies contact information (email/phone via dev mailer).
 2. Seller creates a category-specific listing draft (category → sub-category → custom fields, per 8.1).
 3. App validates required fields and asking price.
-4. App guides seller through eight required camera views (Android CameraX).
+4. App guides the seller through six required camera views plus two optional 45° views (Android CameraX); capture completes once all six required angles are captured, with the 45° views kept as optional bonus coverage.
 5. On-device checks reject blurry, over/under-exposed or duplicate images; retake only the failed angle. Live-capture-only — no gallery uploads — blocks stolen/AI-generated photos at the source.
 5b. Buyer can save listings to wishlist (favorites) — offline queue, sync on login.
 5c. Buyer ↔ seller chat tied to listing (text + price offer + block/unblock) — keeps negotiation on-platform and auditable.
@@ -132,14 +137,16 @@ Detailed component view: `03-architecture.md`.
 - Register sends a **hashed device fingerprint** (device identifier hashed with a server salt; raw ID never stored) used for multi-account/ban-evasion detection.
 
 ### 9.2 Listing Creation
-- Category-driven dynamic forms for mobile, vehicle and accessory — now generic: **Category → Sub-category → Custom Fields** (text/number/dropdown/radio/checkbox/file, per-language values, required/min/max) — scales without code change (ported from eClassify `custom_fields`).
+- 16 top-level categories — mobile, laptop, electronics, camera, gaming, appliance, accessory, car, bike, bicycle, furniture, watch, books, sports, toys, instruments — served by a generic **Category → Sub-category → Custom Fields** form model (text/number/dropdown/radio/checkbox/file, per-language values, required/min/max) so the taxonomy scales without code change (ported from eClassify `custom_fields`).
 - Draft autosave and resume.
 - Validation for price, year, battery health, odometer and required fields.
 - Seller-declared condition stored separately from AI condition.
 - Free-tier listing limits (e.g. 3 active) without real payments; gateway abstraction kept for later.
 
-### 9.3 Guided 8-Angle Capture
-- Front, back, left, right, top, bottom/charging port, front 45°, back 45°.
+### 9.3 Guided Capture — 6 Required Angles + 2 Optional
+- **Required (6):** front, back, left, right, top, bottom/charging port.
+- **Optional (2):** front 45°, back 45° — bonus coverage that improves the physical-confidence weighting but is never required to finish capture.
+- Capture completes once all 6 required angles are captured; the UI reads "X/6 required · Y/8 with 45° bonus" and tags optional angles.
 - Live guide overlay and progress checklist.
 - **Live-capture-only**: the app camera must be used; gallery uploads are blocked (anti stolen/AI-image measure).
 - On-device blur, brightness, glare and duplicate checks before upload.
@@ -149,6 +156,8 @@ Detailed component view: `03-architecture.md`.
 - **Tamper-evidence**: every uploaded image is sealed with a SHA-256 hash and a server-side capture timestamp; any edit invalidates the hash and is visible on the verification report.
 
 ### 9.4 Device Diagnostics (native, real)
+- Runs only for **diagnostic-capable categories**: mobile, laptop, electronics, camera, gaming, appliance, accessory.
+- Categories without a hardware bench (car, bike, bicycle, furniture, watch, books, sports, toys, instruments) skip this step; the flow proceeds capture → score and the missing-data penalty (see §13) still applies.
 - Battery percentage/health where Android exposes it; clearly label unavailable metrics.
 - Wi-Fi, Bluetooth and GPS functionality.
 - Camera capture test.
@@ -177,7 +186,7 @@ Detailed component view: `03-architecture.md`.
 
 ### 10.2 Defect Detection (pluggable provider)
 - Core classes: scratch, crack, dent, screen damage, glass damage, camera damage, port damage, casing damage, body deformation, paint damage, chip, rust, corrosion, water damage (full vocabulary + category extensions in docs/08-ml-plan.md §3.1).
-- Inference over all eight views; bounding boxes, confidence, severity, capture angle.
+- Inference over all captured views (6 required + optional 45°); bounding boxes, confidence, severity, capture angle.
 - Merge repeated detections across views.
 - Store annotated evidence for admin review.
 - Report precision, recall, mAP50, mAP50-95 and per-class results.
@@ -187,7 +196,7 @@ Detailed component view: `03-architecture.md`.
 - Transfer learning with Keras/TensorFlow; compare at least two backbones.
 - Train/validation/test split and augmentation.
 - Report accuracy, precision, recall, F1 and confusion matrix.
-- Aggregate eight-view probabilities using image-quality weights.
+- Aggregate multi-view probabilities (6 required + optional 45°) using image-quality weights.
 
 ### 10.4 Research Upgrade
 - Train a YOLOv8 baseline and compare with YOLO11 on the same held-out test set.
@@ -233,9 +242,15 @@ Risk = 0.40 × Physical Risk + 0.40 × Diagnostic Risk + 0.20 × Behavioral Risk
 
 | Risk | Decision | Action |
 |---|---|---|
-| 0–30 | Approved | Publish if hard-stop rules pass |
+| 0–30 | Approved | Eligible to publish once hard-stop rules pass (publishing is an explicit step) |
 | 31–60 | Review / Warning | Manual review or inspection |
 | 61–100 | Blocked | Do not publish; show seller-safe reason |
+
+**Decision → status write-back (confirmed):** the computed decision is persisted onto the listing itself —
+`blocked` → listing `blocked`, `review` → listing `review` — so flagged items surface in the admin catalog without a
+manual status edit. Approved listings stay in their pre-publish state until an explicit publish action, so nothing is
+auto-published. Hard stops: byte-identical duplicate images (SHA-256), fewer than 6 required angles, critical defect,
+invalid metadata (price/year).
 
 ## 14. Explainability — High-Mark Feature
 
@@ -251,6 +266,7 @@ Risk = 0.40 × Physical Risk + 0.40 × Diagnostic Risk + 0.20 × Behavioral Risk
 
 - KPIs: total listings, pending review, high-risk listings, approval rate, average risk score, model confidence, diagnostic failure rate.
 - Flagged-listing queue with filters.
+- Catalog lists **all statuses including drafts** (no default draft exclusion); a status filter narrows the view.
 - Listing detail: images, defect boxes, condition probabilities, diagnostics, anomaly factors, risk history, audit trail.
 - Actions: approve, warn, block, request inspection, suspend seller.
 - Inspection workflow with evidence upload (triggers re-scoring).
@@ -300,7 +316,7 @@ Covered fully in `04-api-contract.md`.
 | Phase | Outcome |
 |---|---|
 | 1. Foundation | Repo, architecture, API contract, database schema, Android skeleton, CI |
-| 2. Core app | Auth, listing draft, 8-angle capture, upload and listing storage |
+| 2. Core app | Auth, listing draft, capture (6 required + 2 optional angles), upload and listing storage |
 | 3. AI v1 | OpenCV quality pipeline + baseline detector/classifier |
 | 4. Diagnostics | Android tests + diagnostic score + backend sync |
 | 5. Trust engine | Isolation Forest, price anomaly, duplicate/text similarity, risk engine |
@@ -316,7 +332,7 @@ Covered fully in `04-api-contract.md`.
 - Own dataset/annotation process where licensing permits.
 - Baseline vs improved model comparison.
 - mAP, precision, recall, F1, confusion matrix and inference latency.
-- Ablation experiments: raw vs preprocessed; single-view vs eight-view aggregation.
+- Ablation experiments: raw vs preprocessed; single-view vs multi-view (6 required + optional 45°) aggregation.
 - Explainability and failure cases.
 - Clean architecture, API documentation, automated tests.
 - Git branches, PRs/issues, commit history.

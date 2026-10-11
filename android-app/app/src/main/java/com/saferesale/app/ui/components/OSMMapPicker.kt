@@ -40,8 +40,9 @@ import org.osmdroid.views.overlay.Overlay
 /**
  * OpenStreetMap location picker (osmdroid, no API key).
  * Tap the map to drop a pin; the position is reported via onLocationChange.
- * A "use my location" button snaps the pin to the device GPS location.
- * Auto-requests FINE_LOCATION permission on first composition if not granted.
+ * A "use my location" button requests FINE_LOCATION permission on first use
+ * and snaps the pin to the device GPS location (only on explicit tap — the
+ * initial pin is never auto-overridden).
  */
 @Composable
 fun OSMMapPicker(
@@ -66,20 +67,53 @@ fun OSMMapPicker(
     fun fetchMyLocation() {
         if (!hasPermission.value) return
         @SuppressLint("MissingPermission")
-        val task = fusedClient.getCurrentLocation(
-            Priority.PRIORITY_BALANCED_POWER_ACCURACY,
-            CancellationTokenSource().token,
-        )
-        task.addOnSuccessListener { loc ->
-            if (loc != null) myLocation.value = GeoPoint(loc.latitude, loc.longitude)
-        }
-        // Fallback: try LocationManager if FusedLocation fails (no Google Play Services)
-        task.addOnFailureListener {
-            val lm = ctx.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return@addOnFailureListener
+        try {
+            // Try high accuracy first for correct pickup
+            val task = fusedClient.getCurrentLocation(
+                Priority.PRIORITY_HIGH_ACCURACY,
+                CancellationTokenSource().token,
+            )
+            task.addOnSuccessListener { loc ->
+                if (loc != null) {
+                    myLocation.value = GeoPoint(loc.latitude, loc.longitude)
+                } else {
+                    // null from fused — fallback to last known
+                    val lm = ctx.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return@addOnSuccessListener
+                    val fallback = listOfNotNull(
+                        runCatching { lm.getLastKnownLocation(LocationManager.GPS_PROVIDER) }.getOrNull(),
+                        runCatching { lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER) }.getOrNull(),
+                        runCatching { lm.getLastKnownLocation(LocationManager.FUSED_PROVIDER) }.getOrNull(),
+                    ).maxByOrNull { it.time }
+                    fallback?.let { myLocation.value = GeoPoint(it.latitude, it.longitude) }
+                }
+            }
+            task.addOnFailureListener {
+                val lm = ctx.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return@addOnFailureListener
+                val loc = listOfNotNull(
+                    runCatching { lm.getLastKnownLocation(LocationManager.GPS_PROVIDER) }.getOrNull(),
+                    runCatching { lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER) }.getOrNull(),
+                    runCatching { lm.getLastKnownLocation(LocationManager.FUSED_PROVIDER) }.getOrNull(),
+                ).maxByOrNull { it.time } ?: return@addOnFailureListener
+                myLocation.value = GeoPoint(loc.latitude, loc.longitude)
+            }
+            // Also immediately try lastKnown as fast path
+            val lm = ctx.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+            lm?.let {
+                val last = listOfNotNull(
+                    runCatching { it.getLastKnownLocation(LocationManager.GPS_PROVIDER) }.getOrNull(),
+                    runCatching { it.getLastKnownLocation(LocationManager.NETWORK_PROVIDER) }.getOrNull(),
+                ).maxByOrNull { f -> f.time }
+                // Only use fallback if fused hasn't returned quickly; set after 400ms if still null
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    if (myLocation.value == null && last != null) myLocation.value = GeoPoint(last.latitude, last.longitude)
+                }, 400)
+            }
+        } catch (_: Exception) {
+            val lm = ctx.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return
             val loc = listOfNotNull(
                 runCatching { lm.getLastKnownLocation(LocationManager.GPS_PROVIDER) }.getOrNull(),
                 runCatching { lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER) }.getOrNull(),
-            ).maxByOrNull { it.time } ?: return@addOnFailureListener
+            ).maxByOrNull { it.time } ?: return
             myLocation.value = GeoPoint(loc.latitude, loc.longitude)
         }
     }
@@ -88,14 +122,6 @@ fun OSMMapPicker(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         hasPermission.value = granted
-        if (granted) fetchMyLocation()
-    }
-
-    // Auto-request permission when the map loads (non-read-only mode only)
-    LaunchedEffect(Unit) {
-        if (!readOnly && !hasPermission.value) {
-            permLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
     }
 
     fun placePin(map: MapView, geo: GeoPoint) {
@@ -129,8 +155,8 @@ fun OSMMapPicker(
                 val start = GeoPoint(initialLat, initialLng)
                 map.controller.setCenter(start)
                 placePin(map, start)
+                // Do NOT call onLocationChange with default (New Delhi) — wait for real My location or user tap
                 if (!readOnly) {
-                    onLocationChange(initialLat, initialLng)
                     val tap = object : Overlay() {
                         override fun onSingleTapConfirmed(e: android.view.MotionEvent?, mapView: MapView?): Boolean {
                             if (e == null || mapView == null) return false

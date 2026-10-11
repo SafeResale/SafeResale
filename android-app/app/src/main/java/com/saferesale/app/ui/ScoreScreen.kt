@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.saferesale.app.DIAGNOSTIC_CATEGORIES
 import com.saferesale.app.data.ApiClient
 import com.saferesale.app.data.marketplace.MarketplaceRepository
 import com.saferesale.app.diagnostics.BenchScore
@@ -35,7 +36,7 @@ import kotlinx.coroutines.launch
  * latest-scores display.
  */
 @Composable
-fun ScoreScreen(token: String?, listingId: String?, onDone: () -> Unit) {
+fun ScoreScreen(token: String?, listingId: String?, category: String = "mobile", onDone: () -> Unit) {
     val ctx = LocalContext.current
     var phase by remember { mutableStateOf("Starting…") }
     var vision by remember { mutableStateOf<Map<String, Any>?>(null) }
@@ -59,15 +60,22 @@ fun ScoreScreen(token: String?, listingId: String?, onDone: () -> Unit) {
                 risk = ApiClient.service.computeRisk(listingId, auth)
                 phase = "3/4 Fetching synced results…"
                 scores = ApiClient.service.latestScores(listingId, auth)
-                phase = "4/4 Grading hardware modules…"
-                // Touch count comes from the synced CoreV inspection report.
-                val diag = (scores?.get("diagnostics") as? Map<*, *>)?.get("tests") as? List<*>
-                val touchCovered = ((diag?.firstOrNull {
-                    (it as? Map<*, *>)?.get("id") == "touch"
-                } as? Map<*, *>)?.get("meta") as? Map<*, *>)?.get("covered_cells")
-                    .let { (it as? Number)?.toInt() ?: 0 }
-                val report = CoreVScoreReport.build(ctx, "mobile", touchCovered)
-                bench = BenchScore.grade(report)
+                // The hardware bench only applies to device categories; other
+                // categories (books, furniture, sports…) are scored on photos,
+                // vision and risk alone.
+                if (category in DIAGNOSTIC_CATEGORIES) {
+                    phase = "4/4 Grading hardware modules…"
+                    // Touch count comes from the synced CoreV inspection report.
+                    val diag = (scores?.get("diagnostics") as? Map<*, *>)?.get("tests") as? List<*>
+                    val touchCovered = ((diag?.firstOrNull {
+                        (it as? Map<*, *>)?.get("id") == "touch"
+                    } as? Map<*, *>)?.get("meta") as? Map<*, *>)?.get("covered_cells")
+                        .let { (it as? Number)?.toInt() ?: 0 }
+                    val report = CoreVScoreReport.build(ctx, category, touchCovered)
+                    bench = BenchScore.grade(report)
+                } else {
+                    phase = "4/4 Finalizing…"
+                }
                 phase = "Done"
             } catch (e: Exception) {
                 error = "Failed at ${phase}: ${e.message}"
@@ -129,7 +137,7 @@ fun ScoreScreen(token: String?, listingId: String?, onDone: () -> Unit) {
         Card(Modifier.fillMaxWidth().padding(top = 4.dp)) {
             Column(Modifier.padding(16.dp)) {
                 Text("Photos & vision", style = MaterialTheme.typography.titleMedium)
-                Text("Photos: ${images["count"] ?: 0}/8 angles (${((images["angles"] as? List<*>) ?: emptyList<Any>()).size} covered)")
+                Text("Photos: ${images["count"] ?: 0}/8 angles (${((images["angles"] as? List<*>) ?: emptyList<Any>()).size} covered — 6 required, 45° optional)")
                 Text("Condition: ${condition["class"] ?: condition["label"] ?: "…"}")
             }
         }

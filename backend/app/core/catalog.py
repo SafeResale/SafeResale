@@ -29,6 +29,18 @@ CATEGORIES = [
      "fields": ["price", "year", "brand", "material", "condition", "notes"], "active": True, "sort": 9},
     {"name": "Accessory", "slug": "accessory", "description": "Cases, chargers, parts and add-ons", "icon": "package",
      "fields": ["price", "brand", "type", "condition", "notes"], "active": True, "sort": 10},
+    {"name": "Bicycle", "slug": "bicycle", "description": "Cycles, e-cycles and bike gear", "icon": "bike",
+     "fields": ["price", "year", "brand", "model", "wheel_size", "frame_material", "condition", "notes"], "active": True, "sort": 11},
+    {"name": "Watch", "slug": "watch", "description": "Wristwatches and smartwatches", "icon": "watch",
+     "fields": ["price", "year", "brand", "model", "movement_type", "condition", "notes"], "active": True, "sort": 12},
+    {"name": "Books & Media", "slug": "books", "description": "Books, magazines and media", "icon": "book",
+     "fields": ["price", "year", "brand", "model", "edition", "condition", "notes"], "active": True, "sort": 13},
+    {"name": "Sports & Fitness", "slug": "sports", "description": "Gym gear and sports equipment", "icon": "fitness",
+     "fields": ["price", "year", "brand", "model", "condition", "notes"], "active": True, "sort": 14},
+    {"name": "Toys & Games", "slug": "toys", "description": "Toys, puzzles and board games", "icon": "gamepad",
+     "fields": ["price", "year", "brand", "model", "condition", "notes"], "active": True, "sort": 15},
+    {"name": "Instruments", "slug": "instruments", "description": "Musical instruments and gear", "icon": "music",
+     "fields": ["price", "year", "brand", "model", "type", "condition", "notes"], "active": True, "sort": 16},
 ]
 
 # Legacy slugs that old drafts/listings may still carry. Kept valid so the
@@ -71,6 +83,12 @@ DEFECTS_BY_CATEGORY: dict[str, list[str]] = {
     "car": ["scratch", "dent", "paint_damage", "body_deformation", "chip", "rust", "corrosion", "glass_damage", "light_damage", "bumper_damage", "tire_damage", "wheel_damage", "mirror_damage", "water_damage", "stain", "discoloration", "wear", "crack"],
     "bike": ["scratch", "dent", "paint_damage", "rust", "corrosion", "crack", "tire_damage", "wheel_damage", "body_deformation", "chip", "stain", "discoloration", "wear", "cable_damage", "light_damage"],
     "accessory": ["scratch", "crack", "stain", "discoloration", "wear", "broken_part", "missing_part", "cable_damage", "connector_damage", "chip"],
+    "bicycle": ["scratch", "dent", "paint_damage", "rust", "corrosion", "crack", "tire_damage", "wheel_damage", "body_deformation", "chip", "stain", "discoloration", "wear", "cable_damage", "broken_part", "missing_part"],
+    "watch": ["scratch", "crack", "dent", "glass_damage", "casing_damage", "button_damage", "stain", "discoloration", "wear", "chip", "corrosion", "water_damage"],
+    "books": ["stain", "discoloration", "wear", "crack", "broken_part", "missing_part", "water_damage"],
+    "sports": ["scratch", "dent", "crack", "chip", "rust", "corrosion", "stain", "discoloration", "wear", "broken_part", "missing_part", "cable_damage"],
+    "toys": ["scratch", "chip", "crack", "stain", "discoloration", "wear", "broken_part", "missing_part", "button_damage", "water_damage"],
+    "instruments": ["scratch", "crack", "dent", "chip", "stain", "discoloration", "wear", "broken_part", "missing_part", "casing_damage", "water_damage"],
     "vehicle": ["scratch", "dent", "paint_damage", "body_deformation", "chip", "rust", "corrosion", "glass_damage", "light_damage", "bumper_damage", "tire_damage", "wheel_damage", "mirror_damage", "water_damage", "stain", "discoloration", "wear", "crack"],
     "tablet": ["scratch", "crack", "dent", "screen_damage", "glass_damage", "port_damage", "casing_damage", "chip", "stain", "discoloration", "wear"],
 }
