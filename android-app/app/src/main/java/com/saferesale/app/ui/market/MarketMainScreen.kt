@@ -146,37 +146,30 @@ private fun MarketBottomBar(
                 modifier = Modifier.weight(1f)
             )
 
-            // Prominent Center "Sell" Action
+            // Prominent Center "+" Circle Action
             Box(
                 modifier = Modifier
-                    .weight(1.1f)
+                    .weight(1f)
                     .padding(horizontal = 4.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Surface(
                     onClick = onSell,
-                    shape = RoundedCornerShape(16.dp),
+                    shape = CircleShape,
                     color = TerritoryAccent,
-                    shadowElevation = 4.dp,
-                    modifier = Modifier.height(46.dp)
+                    shadowElevation = 6.dp,
+                    tonalElevation = 4.dp,
+                    modifier = Modifier.size(50.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             Icons.Default.Add,
                             contentDescription = "Post an ad",
                             tint = Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            "Sell",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            modifier = Modifier.size(28.dp)
                         )
                     }
                 }

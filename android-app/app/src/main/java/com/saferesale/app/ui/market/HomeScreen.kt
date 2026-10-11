@@ -126,10 +126,11 @@ fun HomeScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 10.dp)
             ) {
                 // Brand Header
-                HomeHeader(onSell = actions.onSell)
+                HomeHeader()
 
                 Spacer(Modifier.height(8.dp))
 
@@ -270,7 +271,7 @@ fun HomeScreen(
 
 // ── Modern Brand Top Header ─────────────────────────────────────────────────────
 @Composable
-private fun HomeHeader(onSell: () -> Unit) {
+private fun HomeHeader() {
     Row(
         Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -279,7 +280,7 @@ private fun HomeHeader(onSell: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier
-                    .size(40.dp)
+                    .size(42.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(TerritoryAccent.copy(alpha = 0.10f))
                     .border(1.dp, TerritoryAccent.copy(alpha = 0.25f), RoundedCornerShape(12.dp)),
@@ -289,63 +290,59 @@ private fun HomeHeader(onSell: () -> Unit) {
                     painter = painterResource(R.mipmap.ic_launcher_round),
                     contentDescription = "SafeResale",
                     modifier = Modifier
-                        .size(34.dp)
+                        .size(36.dp)
                         .clip(RoundedCornerShape(10.dp)),
                     contentScale = ContentScale.Crop,
                 )
             }
             Spacer(Modifier.width(10.dp))
             Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "SafeResale",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.ExtraBold,
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = TerritoryAccent.copy(alpha = 0.12f)
-                    ) {
-                        Text(
-                            "AI VERIFIED",
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                            fontWeight = FontWeight.Bold,
-                            color = TerritoryAccent
-                        )
-                    }
-                }
                 Text(
-                    "Certified pre-owned marketplace",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    "SafeResale",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-0.5).sp
                 )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.LocationOn,
+                        contentDescription = null,
+                        tint = TerritoryAccent,
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Spacer(Modifier.width(2.dp))
+                    Text(
+                        "Bengaluru · Verified Hub",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
 
-        // Quick Sell Pill in top bar
+        // Trust Shield Badge on the right
         Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = TerritoryAccent,
-            modifier = Modifier.clickable(onClick = onSell)
+            shape = RoundedCornerShape(50),
+            color = ActivateGreen.copy(alpha = 0.12f),
+            border = BorderStroke(1.dp, ActivateGreen.copy(alpha = 0.35f))
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    Icons.Default.Add,
+                    Icons.Default.Shield,
                     contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(16.dp)
+                    tint = ActivateGreen,
+                    modifier = Modifier.size(14.dp)
                 )
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    "Sell",
-                    style = MaterialTheme.typography.labelMedium,
+                    "100% Inspected",
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = ActivateGreen
                 )
             }
         }
@@ -358,16 +355,16 @@ private fun HomeSearchBar(onClick: () -> Unit) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp)
+            .height(50.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.40f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        shape = RoundedCornerShape(25.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 14.dp),
+                .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
@@ -385,16 +382,16 @@ private fun HomeSearchBar(onClick: () -> Unit) {
             )
             Box(
                 modifier = Modifier
-                    .size(28.dp)
+                    .size(32.dp)
                     .clip(CircleShape)
-                    .background(TerritoryAccent.copy(alpha = 0.10f)),
+                    .background(TerritoryAccent.copy(alpha = 0.12f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Tune,
                     contentDescription = "Filter",
                     tint = TerritoryAccent,
-                    modifier = Modifier.size(15.dp)
+                    modifier = Modifier.size(16.dp)
                 )
             }
         }
