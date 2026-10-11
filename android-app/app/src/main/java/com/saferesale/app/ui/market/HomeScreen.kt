@@ -98,7 +98,7 @@ fun HomeScreen(
 ) {
     var reloadKey by remember { mutableIntStateOf(0) }
     var refreshing by remember { mutableStateOf(false) }
-    var selectedFilterCategory by remember { mutableStateOf<String?>(null) }
+    var selectedCategoryFilter by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(reloadKey) {
         refreshing = true
@@ -115,78 +115,81 @@ fun HomeScreen(
         }
     }
 
-    PullToRefreshBox(
-        isRefreshing = refreshing,
-        onRefresh = { reloadKey++ },
-        modifier = modifier.fillMaxSize(),
-    ) {
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+    Column(modifier = modifier.fillMaxSize()) {
+        // ── FIXED TOP BAR: Brand Header + Sticky Search + Sticky Categories ──────────
+        Surface(
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 2.dp,
+            shadowElevation = 3.dp,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            // ── Modern Brand Header ─────────────────────────────────────────────
-            item(span = { GridItemSpan(2) }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 10.dp)
+            ) {
+                // Brand Header
                 HomeHeader(onSell = actions.onSell)
-            }
 
-            // ── Floating Search Pill ────────────────────────────────────────────
-            item(span = { GridItemSpan(2) }) {
+                Spacer(Modifier.height(8.dp))
+
+                // Sticky Search Bar
                 HomeSearchBar(onClick = { actions.onExplore(null) })
-            }
 
-            // ── AI Verification Hero Banner ─────────────────────────────────────
-            item(span = { GridItemSpan(2) }) {
-                HomeHeroBanner(onSell = actions.onSell, onExplore = { actions.onExplore(null) })
-            }
+                Spacer(Modifier.height(10.dp))
 
-            // ── Trust & Safety Highlights Strip ─────────────────────────────────
-            item(span = { GridItemSpan(2) }) {
-                HomeTrustHighlights()
-            }
-
-            // ── Categories Section ──────────────────────────────────────────────
-            item(span = { GridItemSpan(2) }) {
-                Column {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "Categories",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                // Sticky Horizontal Categories Row
+                when (val c = categoriesState) {
+                    is ApiState.Success -> {
+                        val cats = c.data.ifEmpty { defaultCategories() }
+                        HomeCategoryRow(
+                            cats = cats,
+                            selected = selectedCategoryFilter,
+                            onSelect = { selectedCategoryFilter = it }
                         )
-                        TextButton(
-                            onClick = { actions.onExplore(null) },
-                            contentPadding = PaddingValues(horizontal = 4.dp)
-                        ) {
-                            Text("See all", color = TerritoryAccent, fontWeight = FontWeight.SemiBold)
-                        }
                     }
-
-                    when (val c = categoriesState) {
-                        is ApiState.Success -> {
-                            val cats = c.data.ifEmpty { defaultCategories() }
-                            HomeCategoryRow(cats = cats, onExplore = actions.onExplore)
-                        }
-                        else -> {
-                            HomeCategoryRow(cats = defaultCategories(), onExplore = actions.onExplore)
-                        }
+                    else -> {
+                        HomeCategoryRow(
+                            cats = defaultCategories(),
+                            selected = selectedCategoryFilter,
+                            onSelect = { selectedCategoryFilter = it }
+                        )
                     }
                 }
             }
+        }
 
-            // ── Section Title & Filter Chips ────────────────────────────────────
-            item(span = { GridItemSpan(2) }) {
-                Column(modifier = Modifier.padding(top = 4.dp)) {
+        // ── SCROLLABLE LISTINGS FEED ──────────────────────────────────────────────────
+        PullToRefreshBox(
+            isRefreshing = refreshing,
+            onRefresh = { reloadKey++ },
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+        ) {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 28.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                // AI Verification Hero Banner
+                item(span = { GridItemSpan(2) }) {
+                    HomeHeroBanner(onSell = actions.onSell, onExplore = { actions.onExplore(null) })
+                }
+
+                // Trust & Safety Highlights Strip
+                item(span = { GridItemSpan(2) }) {
+                    HomeTrustHighlights()
+                }
+
+                // Section Title
+                item(span = { GridItemSpan(2) }) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -207,89 +210,56 @@ fun HomeScreen(
                             }
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                "Freshly Verified",
+                                if (selectedCategoryFilter == null) "Freshly Verified" else "${selectedCategoryFilter?.replaceFirstChar { it.uppercase() }} Listings",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                             )
                         }
 
                         TextButton(
-                            onClick = { actions.onExplore(selectedFilterCategory) },
+                            onClick = { actions.onExplore(selectedCategoryFilter) },
                             contentPadding = PaddingValues(horizontal = 4.dp)
                         ) {
-                            Text("View all", color = TerritoryAccent, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
-
-                    // Category filter tabs
-                    val filterChips = listOf(
-                        null to "All",
-                        "mobile" to "Phones",
-                        "laptop" to "Laptops",
-                        "vehicle" to "Vehicles",
-                        "electronics" to "Electronics",
-                        "gaming" to "Gaming"
-                    )
-
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp)
-                    ) {
-                        items(filterChips) { (catKey, label) ->
-                            val isSelected = selectedFilterCategory == catKey
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = { selectedFilterCategory = catKey },
-                                label = { Text(label, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = TerritoryAccent,
-                                    selectedLabelColor = Color.White,
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
-                                ),
-                                shape = RoundedCornerShape(12.dp),
-                                border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-                            )
+                            Text("See all", color = TerritoryAccent, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
-            }
 
-            // ── Listings Grid ───────────────────────────────────────────────────
-            when (val s = listingsState) {
-                is ApiState.Loading -> items(6) { ShimmerCard() }
-                is ApiState.Error -> item(span = { GridItemSpan(2) }) {
-                    ErrorBox(s.message) { reloadKey++ }
-                }
-                is ApiState.Success -> {
-                    val (allItems, covers) = s.data
-                    val items = if (selectedFilterCategory == null) {
-                        allItems
-                    } else {
-                        allItems.filter { it.category.equals(selectedFilterCategory, ignoreCase = true) }
+                // Listings Grid
+                when (val s = listingsState) {
+                    is ApiState.Loading -> items(6) { ShimmerCard() }
+                    is ApiState.Error -> item(span = { GridItemSpan(2) }) {
+                        ErrorBox(s.message) { reloadKey++ }
                     }
-
-                    if (items.isEmpty()) {
-                        item(span = { GridItemSpan(2) }) {
-                            EmptyMarketBox(
-                                title = "No listings found",
-                                subtitle = if (selectedFilterCategory != null) {
-                                    "No items verified in this category yet."
-                                } else {
-                                    "Be the first to list a device with AI verified inspection."
-                                },
-                                actionLabel = "Sell an item",
-                                onAction = actions.onSell,
-                            )
+                    is ApiState.Success -> {
+                        val (allItems, covers) = s.data
+                        val items = if (selectedCategoryFilter == null) {
+                            allItems
+                        } else {
+                            allItems.filter { it.category.equals(selectedCategoryFilter, ignoreCase = true) }
                         }
-                    } else {
-                        gridItemsIndexed(items) { _, listing ->
-                            ListingCard(
-                                listing = listing,
-                                coverKey = covers[listing._id],
-                                onClick = { actions.onOpenListing(listing._id) },
-                            )
+
+                        if (items.isEmpty()) {
+                            item(span = { GridItemSpan(2) }) {
+                                EmptyMarketBox(
+                                    title = "No listings found",
+                                    subtitle = if (selectedCategoryFilter != null) {
+                                        "No items found for this category yet. Be the first to post!"
+                                    } else {
+                                        "Be the first to list a device with AI verified inspection."
+                                    },
+                                    actionLabel = "Sell an item",
+                                    onAction = actions.onSell,
+                                )
+                            }
+                        } else {
+                            gridItemsIndexed(items) { _, listing ->
+                                ListingCard(
+                                    listing = listing,
+                                    coverKey = covers[listing._id],
+                                    onClick = { actions.onOpenListing(listing._id) },
+                                )
+                            }
                         }
                     }
                 }
@@ -302,16 +272,14 @@ fun HomeScreen(
 @Composable
 private fun HomeHeader(onSell: () -> Unit) {
     Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(top = 4.dp, bottom = 4.dp),
+        Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier
-                    .size(42.dp)
+                    .size(40.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(TerritoryAccent.copy(alpha = 0.10f))
                     .border(1.dp, TerritoryAccent.copy(alpha = 0.25f), RoundedCornerShape(12.dp)),
@@ -321,7 +289,7 @@ private fun HomeHeader(onSell: () -> Unit) {
                     painter = painterResource(R.mipmap.ic_launcher_round),
                     contentDescription = "SafeResale",
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(34.dp)
                         .clip(RoundedCornerShape(10.dp)),
                     contentScale = ContentScale.Crop,
                 )
@@ -390,9 +358,9 @@ private fun HomeSearchBar(onClick: () -> Unit) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp)
+            .height(48.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.40f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
@@ -406,7 +374,7 @@ private fun HomeSearchBar(onClick: () -> Unit) {
                 Icons.Default.Search,
                 contentDescription = null,
                 tint = TerritoryAccent,
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(20.dp)
             )
             Spacer(Modifier.width(10.dp))
             Text(
@@ -417,7 +385,7 @@ private fun HomeSearchBar(onClick: () -> Unit) {
             )
             Box(
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(28.dp)
                     .clip(CircleShape)
                     .background(TerritoryAccent.copy(alpha = 0.10f)),
                 contentAlignment = Alignment.Center
@@ -426,7 +394,7 @@ private fun HomeSearchBar(onClick: () -> Unit) {
                     Icons.Default.Tune,
                     contentDescription = "Filter",
                     tint = TerritoryAccent,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(15.dp)
                 )
             }
         }
@@ -447,8 +415,8 @@ private fun HomeHeroBanner(onSell: () -> Unit, onExplore: () -> Unit) {
                 .background(
                     Brush.linearGradient(
                         colors = listOf(
-                            Color(0xFF0F172A), // Deep navy
-                            Color(0xFF1E293B), // Slate 800
+                            Color(0xFF0F172A),
+                            Color(0xFF1E293B),
                             TerritoryAccent.copy(alpha = 0.85f)
                         )
                     )
@@ -596,64 +564,72 @@ private fun HomeTrustHighlights() {
     }
 }
 
-// ── Horizontal Categories Row ───────────────────────────────────────────────────
+// ── Horizontal Categories Sticky Bar ────────────────────────────────────────────
 @Composable
-private fun HomeCategoryRow(cats: List<MarketCategory>, onExplore: (String?) -> Unit) {
+private fun HomeCategoryRow(
+    cats: List<MarketCategory>,
+    selected: String?,
+    onSelect: (String?) -> Unit
+) {
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         item {
-            CategoryHomeCard("All", Icons.Default.GridView, onClick = { onExplore(null) })
+            CategoryChipItem(
+                label = "All",
+                icon = Icons.Default.GridView,
+                isSelected = selected == null,
+                onClick = { onSelect(null) }
+            )
         }
         itemsIndexed(cats) { _, cat ->
-            CategoryHomeCard(
-                formatCategory(cat.category),
-                categoryIcon(cat.category),
-                onClick = { onExplore(cat.category) },
+            CategoryChipItem(
+                label = formatCategory(cat.category),
+                icon = categoryIcon(cat.category),
+                isSelected = selected == cat.category,
+                onClick = { onSelect(if (selected == cat.category) null else cat.category) }
             )
         }
     }
 }
 
 @Composable
-private fun CategoryHomeCard(label: String, icon: ImageVector, onClick: () -> Unit) {
-    Column(
-        Modifier
-            .width(78.dp)
-            .clickable(onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally,
+private fun CategoryChipItem(
+    label: String,
+    icon: ImageVector,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val bg = if (isSelected) TerritoryAccent else TerritoryAccent.copy(alpha = 0.08f)
+    val contentColor = if (isSelected) Color.White else TerritoryAccent
+    val border = if (isSelected) TerritoryAccent else TerritoryAccent.copy(alpha = 0.16f)
+
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = bg,
+        border = BorderStroke(1.dp, border),
+        modifier = Modifier.clickable(onClick = onClick)
     ) {
-        Surface(
-            shape = RoundedCornerShape(18.dp),
-            color = TerritoryAccent.copy(alpha = 0.08f),
-            border = BorderStroke(1.dp, TerritoryAccent.copy(alpha = 0.16f)),
-            modifier = Modifier.size(66.dp)
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.fillMaxSize()
-            ) {
-                Icon(
-                    icon,
-                    contentDescription = label,
-                    tint = TerritoryAccent,
-                    modifier = Modifier.size(28.dp),
-                )
-            }
+            Icon(
+                icon,
+                contentDescription = label,
+                tint = contentColor,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+            )
         }
-        Spacer(Modifier.height(6.dp))
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
     }
 }
 
