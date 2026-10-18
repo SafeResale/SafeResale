@@ -342,10 +342,46 @@ async def review(listing_id: str, body: dict, request=None, user=Depends(require
     await db.listings.update_one({"_id": lid}, {"$set": {"status": new_status, "updated_at": time.time()}})
     await db.admin_reviews.insert_one({"listing_id": lid, "admin_id": ObjectId(user["sub"]), "action": action, "reason": reason, "note": body.get("note"), "prev_status": prev, "new_status": new_status, "created_at": time.time()})
     await db.audit_logs.insert_one({"actor_id": ObjectId(user["sub"]), "actor_role": "admin", "action": f"admin.{action}", "target_type": "listing", "target_id": lid, "detail": {"reason": reason, "prev_status": prev, "new_status": new_status}, "created_at": time.time()})
+    # Requesting an inspection must create a real queue item, otherwise the
+    # inspector dashboard (GET /inspections) never shows the listing.
+    inspection_id = None
+    if action == "request_inspection":
+        from app.core.fcm import send_notification
+        now_i = time.time()
+        note_i = body.get("note") or reason
+        order_i = await db.inspections.count_documents({"listing_id": lid}) + 1
+        doc_i = {
+            "listing_id": lid,
+            "buyer_id": None,
+            "seller_id": listing.get("seller_id"),
+            "requested_by_admin_id": str(ObjectId(user["sub"])),
+            "status": "requested",
+            "preferred_date": body.get("preferred_date"),
+            "note": note_i,
+            "order": order_i,
+            "created_at": now_i,
+            "updated_at": now_i,
+            "timeline": [{
+                "status": "requested",
+                "label": "Inspection Requested",
+                "description": f"Admin requested an on-site inspection: {note_i}",
+                "timestamp": now_i,
+            }],
+        }
+        res_i = await db.inspections.insert_one(doc_i)
+        inspection_id = str(res_i.inserted_id)
+        if listing.get("seller_id"):
+            await send_notification(
+                user_id=str(listing["seller_id"]),
+                title="Inspection Requested",
+                body=f"An admin requested physical inspection for your listing: '{listing.get('title', 'Item')}'.",
+                data={"type": "inspection_request", "inspection_id": inspection_id, "listing_id": listing_id},
+                notification_type="inspection",
+            )
     # suspend seller side-effect
     if action == "suspend_seller":
         await db.users.update_one({"_id": listing["seller_id"]}, {"$set": {"status": "suspended"}})
-    return {"listing": {"id": listing_id, "status": new_status}, "review": body}
+    return {"listing": {"id": listing_id, "status": new_status}, "review": body, "inspection_id": inspection_id}
 
 @router.get("/audit-logs")
 async def audit_logs(page: int = 1, page_size: int = 50, user=Depends(require_role("admin"))):

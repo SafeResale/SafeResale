@@ -1,5 +1,18 @@
 export const API = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
+/**
+ * Same-origin proxy prefix.
+ *
+ * API calls must NOT use bare paths like `/inspections` or `/listings`: those
+ * collide with App Router page routes of the same name. `rewrites()` in
+ * next.config.mjs are `afterFiles` rewrites, so the filesystem route always wins
+ * and the browser receives the page's HTML instead of JSON. `api()` would then
+ * hand back an HTML string, `data.items` would be undefined and the screen would
+ * silently render "no results". Prefixing with `/api` (rewritten to the backend
+ * root in next.config.mjs) keeps API and page routes in separate namespaces.
+ */
+export const API_PREFIX = "/api";
+
 export class ApiError extends Error {
   status: number;
   code?: string;
@@ -138,13 +151,13 @@ export async function api<T = any>(path: string, opts: ApiOpts = {}): Promise<T>
   const tok = token("access_token");
   if (!opts.skipAuth && tok) headers.Authorization = `Bearer ${tok}`;
 
-  let res = await fetch(`${API}${path}`, { ...opts, headers });
+  let res = await fetch(`${API}${API_PREFIX}${path}`, { ...opts, headers });
 
   if (res.status === 401 && opts.skipAuth === undefined) {
     const refreshed = await tryRefresh();
     if (refreshed) {
       const retry = { ...opts, headers: { ...headers, Authorization: `Bearer ${token("access_token")}` } };
-      res = await fetch(`${API}${path}`, retry);
+      res = await fetch(`${API}${API_PREFIX}${path}`, retry);
     }
   }
 
@@ -198,7 +211,7 @@ async function tryRefresh(): Promise<boolean> {
   }
 
   try {
-    const res = await fetch(`${API}/auth/refresh`, {
+    const res = await fetch(`${API}${API_PREFIX}/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: rt }),

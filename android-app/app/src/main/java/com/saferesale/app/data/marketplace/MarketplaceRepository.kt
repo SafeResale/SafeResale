@@ -105,6 +105,18 @@ object MarketplaceRepository {
         (ApiClient.service.listInspections(bearer(token))["items"] as? List<*>)?.filterIsInstance<Map<String, Any>>()
             ?: emptyList()
 
+    /**
+     * Inspection state for one listing, regardless of who raised it.
+     *
+     * [inspections] is scoped to the caller's own requests, so an inspection
+     * raised by an admin (no buyer_id) never appears there and the listing looks
+     * un-bookable. This endpoint is listing-scoped and buyer-safe.
+     */
+    suspend fun inspectionForListing(token: String?, listingId: String): Map<String, Any>? =
+        runCatching {
+            ApiClient.service.inspectionForListing(listingId, bearer(token))["inspection"] as? Map<String, Any>
+        }.getOrNull()
+
     suspend fun createInspection(
         token: String?,
         listingId: String,

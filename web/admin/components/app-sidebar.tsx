@@ -8,6 +8,7 @@ import {
   Package,
   FolderTree,
   Wallet,
+  ClipboardCheck,
   Users,
   Flag,
   Mail,
@@ -48,6 +49,7 @@ const navGroups = [
     label: "Marketplace",
     items: [
       { title: "Listings", url: "/listings", icon: Package },
+      { title: "Inspections", url: "/inspections", icon: ClipboardCheck },
       { title: "Categories", url: "/categories", icon: FolderTree },
       { title: "Escrow", url: "/escrow", icon: Wallet },
     ],
@@ -79,23 +81,43 @@ const navGroups = [
   },
 ]
 
+const inspectorNavGroups = [
+  {
+    label: "Device Inspections",
+    items: [
+      { title: "Inspection Tasks", url: "/inspections", icon: ClipboardCheck },
+    ],
+  },
+  {
+    label: "Account",
+    items: [
+      { title: "Profile", url: "/profile", icon: UserCircle },
+    ],
+  },
+]
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const [user, setUser] = useState<{ name: string; email: string; avatar: string }>({
-    name: "Admin",
+  const [user, setUser] = useState<{ name: string; email: string; avatar: string; role?: string }>({
+    name: "User",
     email: "signed in",
     avatar: "",
+    role: "admin",
   })
 
   useEffect(() => {
     const u: any = getSessionUser()
     if (u) {
       setUser({
-        name: u.name || u.displayName || "Admin",
+        name: u.name || u.displayName || (u.role === "inspector" ? "Inspector" : "Admin"),
         email: u.email || "signed in",
         avatar: u.avatar || "",
+        role: u.role || "admin",
       })
     }
   }, [])
+
+  const isInspector = user.role === "inspector"
+  const currentNav = isInspector ? inspectorNavGroups : navGroups
 
   return (
     <Sidebar {...props}>
@@ -103,13 +125,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href="/dashboard">
+              <Link href={isInspector ? "/inspections" : "/dashboard"}>
                 <div className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg border bg-card shadow-sm">
                   <img src="/app_logo.png" alt="SafeResale" className="size-8 object-contain" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">SafeResale</span>
-                  <span className="truncate text-xs">Admin Dashboard</span>
+                  <span className="truncate text-xs">
+                    {isInspector ? "Certified Inspector Portal" : "Admin Console"}
+                  </span>
                 </div>
               </Link>
             </SidebarMenuButton>
@@ -117,7 +141,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        {navGroups.map((group) => (
+        {currentNav.map((group) => (
           <NavMain key={group.label} label={group.label} items={group.items} />
         ))}
       </SidebarContent>

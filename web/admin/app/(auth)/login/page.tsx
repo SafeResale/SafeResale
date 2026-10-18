@@ -17,14 +17,18 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
-  function redirect() {
-    window.location.href = "/dashboard";
+  function redirect(userRole?: string) {
+    if (userRole === "inspector") {
+      window.location.href = "/inspections";
+    } else {
+      window.location.href = "/dashboard";
+    }
   }
 
   async function exchangeIdToken(idToken: string) {
     const data = await post("/auth/firebase", { id_token: idToken });
     storeTokens(data);
-    redirect();
+    redirect(data?.user?.role);
   }
 
   async function onEmailLogin(e: React.FormEvent) {
@@ -39,7 +43,7 @@ export default function LoginPage() {
       } else {
         const data = await post("/auth/login", { email, password });
         storeTokens(data);
-        redirect();
+        redirect(data?.user?.role);
       }
     } catch (ex: any) {
       setErr(ex?.message || String(ex));
@@ -70,9 +74,9 @@ export default function LoginPage() {
         </span>
         <div className="space-y-1">
           <h1 className="text-xl font-bold tracking-tight">
-            SafeResale <span className="bg-accent text-accent-foreground px-1.5 py-0.5 rounded-lg">Admin</span>
+            SafeResale <span className="bg-accent text-accent-foreground px-1.5 py-0.5 rounded-lg">Portal</span>
           </h1>
-          <p className="text-sm text-muted-foreground">Verification Trust Engine console</p>
+          <p className="text-sm text-muted-foreground">Admin & Certified Inspector console</p>
         </div>
       </div>
 
@@ -80,7 +84,7 @@ export default function LoginPage() {
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Sign in</CardTitle>
           <CardDescription>
-            {fbReady ? "Use your Firebase admin account or Google." : "Dev mode — backend credentials."}
+            {fbReady ? "Use your Firebase account or Google." : "Dev mode — sign in with Admin or Inspector credentials."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -90,16 +94,40 @@ export default function LoginPage() {
             </div>
           )}
 
+          {/* Quick Demo Credentials */}
+          <div className="mb-4 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setEmail("inspector@gmail.com");
+                setPassword("Rahul@980");
+              }}
+              className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors border border-primary/20 cursor-pointer"
+            >
+              🔍 Quick Inspector
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEmail("rahul.legend345@gmail.com");
+                setPassword("Rahul@980");
+              }}
+              className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground transition-colors border border-border cursor-pointer"
+            >
+              🛡️ Quick Admin
+            </button>
+          </div>
+
           <form className="space-y-4" onSubmit={onEmailLogin}>
             <div className="space-y-1.5">
               <Label>Email</Label>
-              <Input type="email" placeholder="admin@example.com" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
+              <Input type="email" placeholder="inspector@gmail.com" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
             </div>
             <div className="space-y-1.5">
               <Label>Password</Label>
               <Input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
             </div>
-            <Button type="submit" className="w-full" disabled={busy}>
+            <Button type="submit" className="w-full cursor-pointer" disabled={busy}>
               {busy ? <Loader2 className="size-4 animate-spin" /> : null}
               {busy ? "Signing in..." : "Sign in"}
             </Button>

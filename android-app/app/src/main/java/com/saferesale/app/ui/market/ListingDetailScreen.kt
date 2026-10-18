@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.LocationOn
@@ -30,6 +31,7 @@ import androidx.compose.runtime.*
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.ui.geometry.Offset
@@ -76,6 +78,12 @@ fun ListingDetailScreen(
         MarketplaceRepository.latestScores(token, listingId)
     }
 
+    val currentUserId = remember(token) { extractUserId(token) }
+    val inspectionState = rememberApi("inspection-$listingId") { MarketplaceRepository.inspections(token) }
+    val activeInspection = (inspectionState as? ApiState.Success)?.data?.firstOrNull { it["listing_id"] == listingId }
+    val hasInspection = activeInspection != null
+    val inspStatus = activeInspection?.get("status")?.toString() ?: ""
+
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -94,28 +102,73 @@ fun ListingDetailScreen(
             )
         },
         bottomBar = {
+            val listing = (listingState as? ApiState.Success)?.data
+            val isOwnListing = currentUserId != null && listing != null && currentUserId == listing.seller_id
+
             Surface(color = Color.White, shadowElevation = 8.dp) {
-                Row(
-                    Modifier.fillMaxWidth().padding(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    OutlinedButton(
-                        onClick = { onBookInspection(listingId) },
-                        modifier = Modifier.weight(1f).height(52.dp),
-                        shape = RoundedCornerShape(26.dp),
+                if (isOwnListing) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(12.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(Icons.Default.Build, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Inspection")
+                        Surface(
+                            color = TerritoryAccent.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(12.dp),
+                        ) {
+                            Text(
+                                "This is your listing",
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = TerritoryAccent,
+                            )
+                        }
                     }
-                    Button(
-                        onClick = { onContact(listingId) },
-                        modifier = Modifier.weight(1.4f).height(52.dp),
-                        shape = RoundedCornerShape(26.dp),
+                } else {
+                    Row(
+                        Modifier.fillMaxWidth().padding(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Contact seller", fontWeight = FontWeight.Bold)
+                        OutlinedButton(
+                            onClick = { onBookInspection(listingId) },
+                            modifier = Modifier.weight(1.1f).height(52.dp),
+                            shape = RoundedCornerShape(26.dp),
+                            border = BorderStroke(
+                                1.5.dp,
+                                if (hasInspection) {
+                                    if (inspStatus == "completed") ActivateGreen else TerritoryAccent
+                                } else MaterialTheme.colorScheme.outline
+                            ),
+                        ) {
+                            Icon(
+                                if (inspStatus == "completed") Icons.Default.Check
+                                else if (hasInspection) Icons.Default.Shield
+                                else Icons.Default.Build,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = if (inspStatus == "completed") ActivateGreen else TerritoryAccent
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                when {
+                                    inspStatus == "completed" -> "Report Ready ✅"
+                                    hasInspection -> "Track Order 🛵"
+                                    else -> "Inspection"
+                                },
+                                fontWeight = FontWeight.Bold,
+                                color = if (inspStatus == "completed") ActivateGreen else TerritoryAccent
+                            )
+                        }
+                        Button(
+                            onClick = { onContact(listingId) },
+                            modifier = Modifier.weight(1.3f).height(52.dp),
+                            shape = RoundedCornerShape(26.dp),
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Contact seller", fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
@@ -221,6 +274,9 @@ fun ListingDetailScreen(
                     )
 
                     Spacer(Modifier.height(14.dp))
+                    InspectionStatusCard(token, listingId, onTrack = { onBookInspection(listingId) })
+
+                    Spacer(Modifier.height(14.dp))
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
                     Spacer(Modifier.height(14.dp))
@@ -306,9 +362,6 @@ fun ListingDetailScreen(
                             }
                         }
                     }
-
-                    Spacer(Modifier.height(14.dp))
-                    InspectionStatusCard(token, listingId)
 
                     Spacer(Modifier.height(14.dp))
                     SubmissionStatusBlock(listing)
@@ -1119,53 +1172,229 @@ private fun ReportAdBlock(onReport: () -> Unit) {
 }
 
 @Composable
-private fun InspectionStatusCard(token: String?, listingId: String) {
-    val state = rememberApi("inspection-$listingId") { MarketplaceRepository.inspections(token) }
-    val mine = (state as? ApiState.Success)?.data?.firstOrNull { it["listing_id"] == listingId }
+private fun InspectionStatusCard(token: String?, listingId: String, onTrack: (() -> Unit)? = null) {
+    val state = rememberApi("inspection-$listingId") { MarketplaceRepository.inspectionForListing(token, listingId) }
+    val mine = (state as? ApiState.Success)?.data
     val insp = mine ?: return
     val status = insp["status"]?.toString() ?: "requested"
-    val color = when (status) {
-        "completed" -> ActivateGreen
-        "cancelled", "rejected" -> MaterialTheme.colorScheme.error
-        else -> MaterialTheme.colorScheme.tertiary
+    val inspectorName = insp["inspector_name"]?.toString() ?: "Certified Inspector"
+
+    val statusIndex = when (status) {
+        "requested" -> 1
+        "assigned" -> 2
+        "travelling" -> 3
+        "arrived", "in_progress" -> 4
+        "completed" -> 5
+        else -> 1
     }
+
+    val score = (insp["score"] as? Number)?.toDouble()
+        ?: ((insp["findings"] as? Map<*, *>)?.get("score") as? Number)?.toDouble()
+
     Surface(
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
         color = Color.White,
         border = BorderStroke(1.dp, Color(0x21000000)),
+        shadowElevation = 2.dp,
     ) {
-        Column(Modifier.fillMaxWidth().padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.Event,
-                    contentDescription = null,
-                    tint = color,
-                    modifier = Modifier.size(20.dp),
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    "Inspection",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f),
-                )
-                ScorePill(statusLabel(status), color)
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            // Header
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(TerritoryAccent.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Shield,
+                        contentDescription = null,
+                        tint = TerritoryAccent,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "Live Inspection Status",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        when (status) {
+                            "requested" -> "Awaiting inspector pickup"
+                            "assigned" -> "Inspector assigned: $inspectorName"
+                            "travelling" -> "Inspector is on the way 🛵"
+                            "arrived" -> "Inspector arrived at location 📍"
+                            "in_progress" -> "Hardware & screen test underway ⚙️"
+                            "completed" -> "Inspection certified & scored ✅"
+                            else -> status.replace("_", " ").replaceFirstChar { it.uppercase() }
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (status == "completed") ActivateGreen else TerritoryAccent,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+                if (score != null) {
+                    Surface(
+                        color = ActivateGreen.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            "${score.toInt()}/100",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = ActivateGreen
+                        )
+                    }
+                }
             }
-            insp["preferred_date"]?.toString()?.let { date ->
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    "Preferred date: $date",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            Spacer(Modifier.height(14.dp))
+
+            // Delivery-App Style Timeline Steps
+            val steps = listOf(
+                Triple("Request Placed", "Your inspection request was registered", 1),
+                Triple("Inspector Assigned", if (statusIndex >= 2) "$inspectorName confirmed" else "Assigning certified technician", 2),
+                Triple("On the Way", if (statusIndex >= 3) "Travelling to seller location" else "Transit to device address", 3),
+                Triple("Physical Diagnostic", if (statusIndex >= 4) "18-point hardware & screen check" else "On-site testing & AI analysis", 4),
+                Triple("Certified & Scored", if (statusIndex >= 5) "Report ready: ${score?.toInt() ?: 85}/100" else "Trust certificate generation", 5),
+            )
+
+            steps.forEachIndexed { idx, (stepTitle, stepDesc, stepNum) ->
+                val isCompleted = statusIndex > stepNum || (statusIndex == 5 && stepNum == 5)
+                val isCurrent = statusIndex == stepNum && statusIndex < 5
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.width(28.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    when {
+                                        isCompleted -> ActivateGreen
+                                        isCurrent -> TerritoryAccent
+                                        else -> Color(0xFFE2E2E8)
+                                    }
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isCompleted) {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            } else {
+                                Text(
+                                    "$stepNum",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isCurrent) Color.White else Color.Gray
+                                )
+                            }
+                        }
+
+                        if (idx < steps.lastIndex) {
+                            Box(
+                                modifier = Modifier
+                                    .width(2.dp)
+                                    .height(26.dp)
+                                    .background(
+                                        if (isCompleted) ActivateGreen else Color(0xFFE2E2E8)
+                                    )
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.width(10.dp))
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(bottom = if (idx < steps.lastIndex) 10.dp else 0.dp)
+                    ) {
+                        Text(
+                            stepTitle,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (isCurrent || isCompleted) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isCurrent) TerritoryAccent else MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            stepDesc,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
-            insp["note"]?.toString()?.takeIf { it.isNotBlank() }?.let { note ->
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    note,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+
+            if (status == "completed") {
+                Spacer(Modifier.height(12.dp))
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = ActivateGreen.copy(alpha = 0.08f),
+                    border = BorderStroke(1.dp, ActivateGreen.copy(alpha = 0.25f))
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Verified,
+                            contentDescription = null,
+                            tint = ActivateGreen,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Verified Device — Safe to buy with Escrow protection!",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = ActivateGreen
+                        )
+                    }
+                }
+            }
+
+            if (onTrack != null) {
+                Spacer(Modifier.height(14.dp))
+                Button(
+                    onClick = onTrack,
+                    modifier = Modifier.fillMaxWidth().height(44.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (status == "completed") ActivateGreen else TerritoryAccent
+                    )
+                ) {
+                    Icon(
+                        if (status == "completed") Icons.Default.CheckCircle else Icons.Default.Shield,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = Color.White
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        if (status == "completed") "View AI Inspection Certificate ➔" else "Open Live Delivery Tracker 🛵",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
             }
         }
     }
@@ -1226,6 +1455,20 @@ private fun statusLabel(status: String): String = when (status) {
     "cancelled" -> "Cancelled"
     "rejected" -> "Rejected"
     else -> status
+}
+
+private fun extractUserId(token: String?): String? {
+    if (token.isNullOrBlank()) return null
+    return try {
+        val parts = token.split(".")
+        if (parts.size >= 2) {
+            val decoded = android.util.Base64.decode(parts[1], android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP or android.util.Base64.NO_PADDING)
+            val json = org.json.JSONObject(String(decoded, Charsets.UTF_8))
+            json.optString("sub", null).takeIf { !it.isNullOrBlank() }
+        } else null
+    } catch (_: Exception) {
+        null
+    }
 }
 
 @Preview(showBackground = true, widthDp = 400)

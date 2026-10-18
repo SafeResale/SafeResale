@@ -89,6 +89,7 @@ interface ApiService {
     @POST("auth/kyc") suspend fun submitKyc(@Body b: KycReq, @Header("Authorization") auth: String): Map<String, Any>
     @POST("inspections") suspend fun createInspection(@Body b: InspectionReq, @Header("Authorization") auth: String): Map<String, Any>
     @GET("inspections") suspend fun listInspections(@Header("Authorization") auth: String): Map<String, Any>
+    @GET("inspections/for-listing/{listingId}") suspend fun inspectionForListing(@Path("listingId") listingId: String, @Header("Authorization") auth: String): Map<String, Any>
     @PATCH("inspections/{id}") suspend fun patchInspection(@Path("id") id: String, @Body b: Map<String, String>, @Header("Authorization") auth: String): Map<String, Any>
     @GET("p/submit/{token}") suspend fun getSubmission(@Path("token") token: String): Map<String, Any>
     @POST("p/submit/{token}") suspend fun postSubmission(@Path("token") token: String, @Body b: SubmissionReq): Map<String, Any>
