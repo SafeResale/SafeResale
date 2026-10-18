@@ -54,6 +54,13 @@ class PhoneVerifyIn(BaseModel):
 class GoogleIdTokenIn(BaseModel):
     id_token: str
 
+class KycIn(BaseModel):
+    full_name: str
+    id_type: str
+    id_number_hash: str
+    address: str | None = None
+
+
 def _code() -> str:
     return f"{secrets.randbelow(900000)+100000}"
 
@@ -207,18 +214,74 @@ async def me(user=Depends(get_current_user)):
     doc = await db.users.find_one({"_id": ObjectId(user["sub"])})
     if not doc:
         raise HTTPException(status_code=404, detail={"code":"not_found","message":"User not found"})
-    return {"user": {"id": str(doc["_id"]), "email": doc["email"], "name": doc["name"], "role": doc.get("role","seller"), "verified": doc.get("verified", False), "phone": doc.get("phone")}}
+    return {
+        "user": {
+            "id": str(doc["_id"]),
+            "email": doc["email"],
+            "name": doc["name"],
+            "role": doc.get("role", "seller"),
+            "verified": doc.get("verified", False),
+            "phone": doc.get("phone"),
+            "kyc_status": doc.get("kyc_status", "pending"),
+            "address": doc.get("address"),
+        }
+    }
 
 @router.patch("/me")
 async def patch_me(body: dict, user=Depends(get_current_user), request: Request = None):
     db = get_db()
-    allowed = {"name", "phone"}
+    allowed = {"name", "phone", "address"}
     patch = {k: v for k, v in body.items() if k in allowed}
     if not patch:
         raise HTTPException(status_code=400, detail={"code":"no_fields","message":"No updatable fields"})
     await db.users.update_one({"_id": ObjectId(user["sub"])}, {"$set": {**patch, "updated_at": time.time()}})
     doc = await db.users.find_one({"_id": ObjectId(user["sub"])})
-    return {"user": {"id": str(doc["_id"]), "email": doc["email"], "name": doc["name"], "role": doc.get("role","seller")}}
+    return {
+        "user": {
+            "id": str(doc["_id"]),
+            "email": doc["email"],
+            "name": doc["name"],
+            "role": doc.get("role", "seller"),
+            "verified": doc.get("verified", False),
+            "phone": doc.get("phone"),
+            "kyc_status": doc.get("kyc_status", "pending"),
+            "address": doc.get("address"),
+        }
+    }
+
+@router.post("/kyc")
+async def submit_kyc(body: KycIn, request: Request, user=Depends(get_current_user)):
+    db = get_db()
+    allowed_types = {"aadhaar", "pan", "passport", "voter_id", "driving_licence"}
+    if body.id_type.lower() not in allowed_types:
+        raise HTTPException(status_code=422, detail={"code": "invalid_id_type", "message": "Unsupported ID type"})
+    if len(body.id_number_hash) != 64 or not all(c in "0123456789abcdefABCDEF" for c in body.id_number_hash):
+        raise HTTPException(status_code=422, detail={"code": "invalid_hash", "message": "ID hash must be a 64-character SHA-256 hex string"})
+    now = time.time()
+    update_data = {
+        "name": body.full_name.strip(),
+        "verified": True,
+        "kyc_status": "approved",
+        "kyc_id_type": body.id_type.lower(),
+        "kyc_id_hash": body.id_number_hash.lower(),
+        "kyc_submitted_at": now,
+        "updated_at": now,
+    }
+    if body.address:
+        update_data["address"] = body.address.strip()
+    await db.users.update_one({"_id": ObjectId(user["sub"])}, {"$set": update_data})
+    await audit_log(
+        action="auth.kyc_submit",
+        actor_id=user["sub"],
+        actor_role=user.get("role", "seller"),
+        target_type="user",
+        target_id=ObjectId(user["sub"]),
+        detail={"id_type": body.id_type.lower()},
+        ip=request.client.host if request.client else None,
+        request_id=request.headers.get("X-Request-ID"),
+    )
+    return {"kyc_status": "submitted", "message": "KYC details submitted successfully"}
+
 from app.services.firebase import verify_id_token
 
 class FirebaseIn(BaseModel):

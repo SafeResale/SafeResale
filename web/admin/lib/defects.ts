@@ -47,6 +47,12 @@ export const DEFECTS_BY_CATEGORY: Record<string, string[]> = {
   car: ["scratch", "dent", "paint_damage", "body_deformation", "chip", "rust", "corrosion", "glass_damage", "light_damage", "bumper_damage", "tire_damage", "wheel_damage", "mirror_damage", "water_damage", "stain", "discoloration", "wear", "crack"],
   bike: ["scratch", "dent", "paint_damage", "rust", "corrosion", "crack", "tire_damage", "wheel_damage", "body_deformation", "chip", "stain", "discoloration", "wear", "cable_damage", "light_damage"],
   accessory: ["scratch", "crack", "stain", "discoloration", "wear", "broken_part", "missing_part", "cable_damage", "connector_damage", "chip"],
+  bicycle: ["scratch", "dent", "paint_damage", "rust", "corrosion", "crack", "tire_damage", "wheel_damage", "body_deformation", "chip", "stain", "discoloration", "wear", "cable_damage", "broken_part", "missing_part"],
+  watch: ["scratch", "crack", "dent", "glass_damage", "casing_damage", "button_damage", "stain", "discoloration", "wear", "chip", "corrosion", "water_damage"],
+  books: ["stain", "discoloration", "wear", "crack", "broken_part", "missing_part", "water_damage"],
+  sports: ["scratch", "dent", "crack", "chip", "rust", "corrosion", "stain", "discoloration", "wear", "broken_part", "missing_part", "cable_damage"],
+  toys: ["scratch", "chip", "crack", "stain", "discoloration", "wear", "broken_part", "missing_part", "button_damage", "water_damage"],
+  instruments: ["scratch", "crack", "dent", "chip", "stain", "discoloration", "wear", "broken_part", "missing_part", "casing_damage", "water_damage"],
   vehicle: ["scratch", "dent", "paint_damage", "body_deformation", "chip", "rust", "corrosion", "glass_damage", "light_damage", "bumper_damage", "tire_damage", "wheel_damage", "mirror_damage", "water_damage", "stain", "discoloration", "wear", "crack"],
   tablet: ["scratch", "crack", "dent", "screen_damage", "glass_damage", "port_damage", "casing_damage", "chip", "stain", "discoloration", "wear"],
 };

@@ -18,3 +18,12 @@ async def ping_db() -> bool:
         return True
     except Exception:
         return False
+
+async def ensure_indexes():
+    """Ensure indexes for users including KYC fields."""
+    try:
+        db = get_db()
+        await db.users.create_index("kyc_status", background=True)
+        await db.users.create_index("kyc_submitted_at", background=True, sparse=True)
+    except Exception as e:
+        print(f"[db] Warning: failed to ensure indexes: {e}")

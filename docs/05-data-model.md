@@ -29,9 +29,14 @@ Identity, roles, verification and account-risk metadata.
 | `account_created_at` | datetime | for feature engineering |
 | `region` | string? | declared region (not EXIF) |
 | `listing_frequency` | meta | computed/updated by anomaly feature builder |
+| `kyc_status` | string | `pending` | `submitted` | `approved` | `rejected` (default: `pending`) |
+| `kyc_id_type` | string? | `aadhaar` | `pan` | `passport` | `voter_id` | `driving_licence` |
+| `kyc_id_hash` | string? | SHA-256 of seller-entered ID number (raw ID never stored) |
+| `kyc_address` | string? | Optional address provided during KYC |
+| `kyc_submitted_at` | datetime? | Timestamp when KYC was submitted |
 | `created_at`, `updated_at` | datetime | |
 
-**Indexes:** `email` (unique), `roles`
+**Indexes:** `email` (unique), `roles`, `kyc_status`, `kyc_submitted_at` (sparse)
 
 ### 2.2 `refresh_tokens`
 Rotating refresh tokens (hashed).

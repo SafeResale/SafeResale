@@ -23,9 +23,20 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -319,6 +330,8 @@ fun ListingDetailScreen(
 private fun PhotoPagerCard(keys: List<String>) {
     val full = keys.map { "${ApiClient.baseUrl}/uploads/$it" }
     val pagerState = rememberPagerState(pageCount = { if (full.isEmpty()) 1 else full.size })
+    var fullscreenIndex by remember { mutableStateOf<Int?>(null) }
+
     Card(
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -327,9 +340,9 @@ private fun PhotoPagerCard(keys: List<String>) {
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(300.dp)
+                .height(320.dp)
                 .clip(RoundedCornerShape(17.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .background(Color(0xFF0F172A)),
         ) {
             if (full.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -346,20 +359,59 @@ private fun PhotoPagerCard(keys: List<String>) {
                     key = { full[it] },
                     modifier = Modifier.fillMaxSize(),
                 ) { page ->
-                    AsyncImage(
-                        model = full[page],
-                        contentDescription = "Listing photo ${page + 1}",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clickable { fullscreenIndex = page },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        AsyncImage(
+                            model = full[page],
+                            contentDescription = "Listing photo ${page + 1}",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                }
+
+                // Tap to Zoom / View Full hint button on top right
+                Surface(
+                    onClick = { fullscreenIndex = pagerState.currentPage },
+                    color = Color.Black.copy(alpha = 0.65f),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(12.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Default.ZoomIn,
+                            contentDescription = "Zoom photo",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            "Tap to Zoom",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = Color.White,
+                        )
+                    }
                 }
             }
+
+            // Image counter & dots
             if (full.size > 1) {
+                // Bottom center pagination dots
                 Row(
                     Modifier
                         .align(Alignment.BottomCenter)
                         .padding(bottom = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     repeat(full.size) { i ->
                         Box(
@@ -372,10 +424,163 @@ private fun PhotoPagerCard(keys: List<String>) {
                         )
                     }
                 }
+
+                // Image index badge (e.g. 1 / 4)
+                Surface(
+                    color = Color.Black.copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = 12.dp, bottom = 10.dp),
+                ) {
+                    Text(
+                        "${pagerState.currentPage + 1} / ${full.size}",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    )
+                }
             }
         }
     }
+
+    // Fullscreen Pinch-to-Zoom & Pan Modal Dialog
+    if (fullscreenIndex != null) {
+        val initialPage = fullscreenIndex ?: 0
+        FullscreenPhotoViewerDialog(
+            urls = full,
+            initialIndex = initialPage,
+            onDismiss = { fullscreenIndex = null },
+        )
+    }
 }
+
+/**
+ * Fullscreen Photo Viewer Dialog with:
+ * - Full resolution rendering without cropping (ContentScale.Fit)
+ * - Two-finger pinch-to-zoom (1.0x to 5.0x scale)
+ * - Pan/drag when zoomed in
+ * - Horizontal swipe across all posted photos
+ * - Top close button and photo counter
+ */
+@Composable
+private fun FullscreenPhotoViewerDialog(
+    urls: List<String>,
+    initialIndex: Int,
+    onDismiss: () -> Unit,
+) {
+    val fullPagerState = rememberPagerState(initialPage = initialIndex, pageCount = { urls.size })
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+        ) {
+            HorizontalPager(
+                state = fullPagerState,
+                key = { urls[it] },
+                modifier = Modifier.fillMaxSize(),
+            ) { page ->
+                ZoomablePhotoItem(url = urls[page])
+            }
+
+            // Top Bar with Close button and Page counter
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(
+                    onClick = onDismiss,
+                    colors = IconButtonDefaults.iconButtonColors(containerColor = Color.White.copy(alpha = 0.2f)),
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Close full view",
+                        tint = Color.White,
+                    )
+                }
+
+                if (urls.size > 1) {
+                    Surface(
+                        color = Color.White.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(16.dp),
+                    ) {
+                        Text(
+                            "${fullPagerState.currentPage + 1} of ${urls.size}",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        )
+                    }
+                }
+            }
+
+            // Bottom hint
+            Text(
+                "Pinch with two fingers to zoom in / out",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.5f),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 16.dp),
+            )
+        }
+    }
+}
+
+/**
+ * Zoomable image element handling pinch-to-zoom scale and drag offset
+ */
+@Composable
+private fun ZoomablePhotoItem(url: String) {
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectTransformGestures { _, pan, zoom, _ ->
+                    scale = (scale * zoom).coerceIn(1f, 5f)
+                    if (scale > 1f) {
+                        val maxOffsetX = (size.width * (scale - 1)) / 2f
+                        val maxOffsetY = (size.height * (scale - 1)) / 2f
+                        offset = Offset(
+                            x = (offset.x + pan.x).coerceIn(-maxOffsetX, maxOffsetX),
+                            y = (offset.y + pan.y).coerceIn(-maxOffsetY, maxOffsetY),
+                        )
+                    } else {
+                        offset = Offset.Zero
+                    }
+                }
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        AsyncImage(
+            model = url,
+            contentDescription = "Full photo",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer(
+                    scaleX = scale,
+                    scaleY = scale,
+                    translationX = offset.x,
+                    translationY = offset.y,
+                ),
+        )
+    }
+}
+
 
 @Composable
 private fun VerifiedPill() {
@@ -761,7 +966,7 @@ private fun RtoDetailsCard(listing: MarketListing) {
             }
             Spacer(Modifier.height(10.dp))
             Button(onClick = { show = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp)) {
-                Icon(Icons.Default.Visibility, null, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("View RTO Details")
+                Icon(Icons.Filled.Visibility, null, modifier = Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("View RTO Details")
             }
             if (demoComp["demo"] == true) {
                 Spacer(Modifier.height(6.dp))

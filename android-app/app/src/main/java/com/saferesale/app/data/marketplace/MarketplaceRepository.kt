@@ -22,7 +22,12 @@ object MarketplaceRepository {
 
     fun bearer(token: String?) = "Bearer ${token.orEmpty()}"
 
-    suspend fun listings(token: String?, category: String?, page: Int, pageSize: Int): ListingsResponse =
+    suspend fun listings(
+        token: String?,
+        category: String?,
+        page: Int,
+        pageSize: Int
+    ): ListingsResponse =
         ApiClient.service.listings(category, page, pageSize, bearer(token))
 
     suspend fun myListings(token: String?): List<MarketListing> =
@@ -32,6 +37,13 @@ object MarketplaceRepository {
 
     suspend fun listing(token: String?, id: String): MarketListing =
         ApiClient.service.listing(id, bearer(token)).listing
+
+    suspend fun updateListing(token: String?, id: String, body: Map<String, Any?>): MarketListing =
+        ApiClient.service.patchListing(id, body, bearer(token)).listing
+
+    suspend fun deleteListing(token: String?, id: String): Unit {
+        ApiClient.service.deleteListing(id, bearer(token))
+    }
 
     suspend fun images(token: String?, listingId: String): List<ListingImageInfo> =
         ApiClient.service.listImages(listingId, bearer(token)).map { m ->
@@ -70,8 +82,17 @@ object MarketplaceRepository {
         return resp.user
     }
 
-    suspend fun report(token: String?, listingId: String, reason: String, description: String): String {
-        val resp = ApiClient.service.reportListing(listingId, ReportRequest(reason, description), bearer(token))
+    suspend fun report(
+        token: String?,
+        listingId: String,
+        reason: String,
+        description: String
+    ): String {
+        val resp = ApiClient.service.reportListing(
+            listingId,
+            ReportRequest(reason, description),
+            bearer(token)
+        )
         return (resp["report"] as? Map<*, *>)?.get("status")?.toString() ?: "pending"
     }
 
@@ -84,8 +105,16 @@ object MarketplaceRepository {
         (ApiClient.service.listInspections(bearer(token))["items"] as? List<*>)?.filterIsInstance<Map<String, Any>>()
             ?: emptyList()
 
-    suspend fun createInspection(token: String?, listingId: String, preferredDate: String?, note: String?): Map<String, Any> =
-        ApiClient.service.createInspection(InspectionReq(listingId, preferredDate, note), bearer(token))
+    suspend fun createInspection(
+        token: String?,
+        listingId: String,
+        preferredDate: String?,
+        note: String?
+    ): Map<String, Any> =
+        ApiClient.service.createInspection(
+            InspectionReq(listingId, preferredDate, note),
+            bearer(token)
+        )
 
     // ── Chat ──
 
@@ -125,7 +154,13 @@ object MarketplaceRepository {
     }
 
     @Suppress("UNCHECKED_CAST")
-    suspend fun getMessages(token: String?, listingId: String, page: Int = 1, pageSize: Int = 50, withUser: String? = null): Pair<List<ChatMessage>, Int> {
+    suspend fun getMessages(
+        token: String?,
+        listingId: String,
+        page: Int = 1,
+        pageSize: Int = 50,
+        withUser: String? = null
+    ): Pair<List<ChatMessage>, Int> {
         val raw = ApiClient.service.chatMessages(listingId, page, pageSize, withUser, bearer(token))
         val list = raw["messages"] as? List<*> ?: emptyList<Any>()
         val total = (raw["total"] as? Number)?.toInt() ?: 0
@@ -145,7 +180,13 @@ object MarketplaceRepository {
         return msgs to total
     }
 
-    suspend fun sendMessage(token: String?, listingId: String, message: String, offerPrice: Double? = null, recipientId: String? = null): Map<String, Any> {
+    suspend fun sendMessage(
+        token: String?,
+        listingId: String,
+        message: String,
+        offerPrice: Double? = null,
+        recipientId: String? = null
+    ): Map<String, Any> {
         val body = mutableMapOf<String, Any?>("message" to message)
         if (offerPrice != null) body["offer_price"] = offerPrice
         if (recipientId != null) body["recipient_id"] = recipientId
@@ -163,3 +204,4 @@ object MarketplaceRepository {
         val raw = ApiClient.service.chatBlocked(bearer(token))
         return (raw["blocked"] as? List<*>)?.filterIsInstance<Map<String, Any>>() ?: emptyList()
     }
+}

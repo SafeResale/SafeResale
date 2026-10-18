@@ -2,10 +2,14 @@
 
 def hard_stops(listing: dict, images: list[dict], detections: list[dict]) -> list[dict]:
     stops = []
-    # missing required angles (need 8)
+    # missing required angles: the six canonical faces are mandatory, the two
+    # 45° angles are optional bonus coverage (front_45 / back_45 do not count
+    # towards the requirement, so a 6-angle capture is complete).
+    required_angles = {"front", "back", "left", "right", "top", "bottom"}
     angles = {img.get("angle") for img in images}
-    if len(angles) < 8:
-        stops.append({"code": "HARD_MISSING_ANGLES", "level": "danger", "message": f"Only {len(angles)}/8 angles captured"})
+    covered = angles & required_angles
+    if len(covered) < len(required_angles):
+        stops.append({"code": "HARD_MISSING_ANGLES", "level": "danger", "message": f"Only {len(covered)}/6 required angles captured (45° optional)"})
     # duplicate photos across angles: only byte-identical frames (same sha256
     # content hash) are real duplicates. Different sides/angles never collide,
     # so this cannot false-positive on a full 8-angle capture set.

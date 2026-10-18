@@ -82,7 +82,7 @@ fun formatDate(ts: Double?): String {
 fun listingStatusLabel(status: String): Pair<String, Color> = when (status) {
     "published", "approved" -> "Active" to ActivateGreen
     "verifying", "inspection_pending", "submitted" -> "In review" to PendingBlue
-    "sold_out", "soldOut" -> "Sold out" to SoldOutAmber
+    "sold", "sold_out", "soldOut" -> "Sold" to SoldOutAmber
     "blocked", "restricted", "deactivated" -> "Inactive" to DeactivateRed
     else -> "Draft" to StatusNeutral
 }
@@ -98,6 +98,12 @@ fun formatCategory(category: String): String = when (category) {
     "bike" -> "Bikes"
     "furniture" -> "Furniture"
     "accessory" -> "Accessories"
+    "bicycle" -> "Bicycles"
+    "watch" -> "Watches"
+    "books" -> "Books & Media"
+    "sports" -> "Sports & Fitness"
+    "toys" -> "Toys & Games"
+    "instruments" -> "Instruments"
     "vehicle" -> "Vehicles" // legacy
     "tablet" -> "Tablets" // legacy
     else -> category.replaceFirstChar { it.uppercase(Locale.ROOT) }

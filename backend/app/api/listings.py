@@ -165,7 +165,7 @@ async def categories():
 async def my_listings(user=Depends(get_current_user)):
     """Current user's own listings (any status), newest first."""
     db = get_db()
-    items = await db.listings.find({"seller_id": ObjectId(user["sub"])}).sort("created_at", -1).to_list(100)
+    items = await db.listings.find({"seller_id": ObjectId(user["sub"]), "status": {"$ne": "deleted"}}).sort("created_at", -1).to_list(100)
     for it in items:
         it["_id"] = str(it["_id"])
         it["seller_id"] = str(it["seller_id"])
@@ -200,7 +200,7 @@ async def list_listings(category: str | None = None, page: int = 1, page_size: i
     # sellers additionally see their own listings regardless of status.
     if user.get("role") not in ("admin", "inspector"):
         q["$or"] = [
-            {"status": {"$nin": ["draft", "blocked", "restricted", "deactivated", "rejected"]}},
+            {"status": {"$nin": ["draft", "blocked", "restricted", "deactivated", "rejected", "sold", "sold_out", "soldOut"]}},
             {"seller_id": ObjectId(user["sub"])},
         ]
     total = await db.listings.count_documents(q)
@@ -236,3 +236,22 @@ async def submit(listing_id: str, request: Request, user=Depends(get_current_use
     await db.listings.update_one({"_id": ObjectId(listing_id)}, {"$set": {"status": "submitted", "updated_at": __import__("time").time()}})
     await audit_log(actor_id=ObjectId(user["sub"]), actor_role=user.get("role"), action="listing.submit", target_type="listing", target_id=ObjectId(listing_id), ip=request.client.host if request.client else None, request_id=request.headers.get("X-Request-ID"))
     return {"listing": {"id": listing_id, "status": "submitted"}}
+
+@router.delete("/{listing_id}")
+async def delete_listing(listing_id: str, request: Request, user=Depends(get_current_user)):
+    db = get_db()
+    doc = await db.listings.find_one({"_id": ObjectId(listing_id), "seller_id": ObjectId(user["sub"])})
+    if not doc:
+        raise HTTPException(status_code=404, detail={"code": "not_found", "message": "Listing not found or not owner"})
+    # Soft delete or hard delete: remove or mark as deleted
+    await db.listings.delete_one({"_id": ObjectId(listing_id)})
+    await audit_log(
+        actor_id=ObjectId(user["sub"]),
+        actor_role=user.get("role"),
+        action="listing.delete",
+        target_type="listing",
+        target_id=ObjectId(listing_id),
+        ip=request.client.host if request.client else None,
+        request_id=request.headers.get("X-Request-ID"),
+    )
+    return {"message": "Listing deleted successfully", "id": listing_id}
