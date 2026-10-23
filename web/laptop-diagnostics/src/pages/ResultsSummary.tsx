@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'wouter';
 import { motion } from 'framer-motion';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft, RefreshCw, CheckCircle2, ShieldCheck, Laptop } from 'lucide-react';
 import { useTestContext, type TestId, type TestStatus } from '@/context/TestContext';
+import { usePairing, getApiBase } from '@/context/PairingContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import confetti from 'canvas-confetti';
@@ -42,15 +43,20 @@ function syncStatus(status: TestStatus): string {
   return 'skipped';
 }
 
-const EASE = [0.22, 1, 0.36, 1] as const;
-
 export function ResultsSummary() {
   const { results, resetAll } = useTestContext();
-  const [listingId, setListingId] = useState(localStorage.getItem('saferesale-listing-id') || '');
-  const [token, setToken] = useState('');
+  const { token: pairToken, sessionId, listingId: pairListingId, isPaired, submitResults } = usePairing();
+
+  const [listingId, setListingId] = useState(pairListingId || localStorage.getItem('saferesale-listing-id') || '');
+  const [token, setToken] = useState(pairToken || '');
   const [syncResult, setSyncResult] = useState<{ score: number } | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (pairListingId) setListingId(pairListingId);
+    if (pairToken) setToken(pairToken);
+  }, [pairListingId, pairToken]);
 
   const total = Object.keys(results).length;
   const passed = Object.values(results).filter(v => v === 'working').length;
@@ -64,10 +70,10 @@ export function ResultsSummary() {
     if (passed > 0 && failed === 0 && untested === 0) {
       const end = Date.now() + 3000;
       const frame = () => {
-          confetti({ particleCount: 4, angle: 60,  spread: 55, origin: { x: 0 }, colors: ['#0F8B8D', '#2FA84F'] });
-          confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#0F8B8D', '#2FA84F'] });
-          if (Date.now() < end) requestAnimationFrame(frame);
-        };
+        confetti({ particleCount: 4, angle: 60,  spread: 55, origin: { x: 0 }, colors: ['#0F8B8D', '#2FA84F'] });
+        confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#0F8B8D', '#2FA84F'] });
+        if (Date.now() < end) requestAnimationFrame(frame);
+      };
       frame();
     }
   }, [passed, failed, untested]);
@@ -83,32 +89,52 @@ export function ResultsSummary() {
     { key: 'UNTESTED',  value: untested,    color: 'var(--color-status-idle)' },
   ];
 
-  const sync = async () => {
-    if (!listingId) { setSyncError('Enter listing ID first (from seller draft)'); return; }
-    const apiBase = (import.meta.env as any).VITE_API_BASE || 'http://localhost:8000';
+  const prepareTestsPayload = () => {
+    const now = new Date().toISOString();
+    const tests: { id: string; status: string; value: any; unit: any; simulated: boolean; meta: any }[] = [];
+    for (const [id, status] of Object.entries(results)) {
+      if (id === 'sensors') continue;
+      const mapped = contractIdMap[id] ?? id;
+      let outStatus = syncStatus(status as TestStatus);
+      if ((mapped === 'camera' || mapped === 'microphone') && status === 'issue') {
+        outStatus = 'permission_required';
+      }
+      const value = status === 'working' ? 'verified' : status === 'issue' ? 'failed' : status === 'unsupported' ? 'unsupported' : null;
+      tests.push({ id: mapped, status: outStatus, value, unit: null, simulated: false, meta: { measured_at: now } });
+    }
+    // bluetooth/ports cannot be probed from a browser tab -> unsupported (not penalized)
+    for (const extra of ['bluetooth', 'ports']) {
+      if (!tests.some((t) => t.id === extra)) {
+        tests.push({ id: extra, status: 'unsupported', value: 'unsupported', unit: null, simulated: false, meta: { reason: 'not testable from browser' } });
+      }
+    }
+    return tests;
+  };
+
+  const syncViaPairing = async () => {
     setSyncing(true);
     setSyncError(null);
     setSyncResult(null);
     try {
-      const now = new Date().toISOString();
-      const tests: { id: string; status: string; value: any; unit: any; simulated: boolean; meta: any }[] = [];
-      for (const [id, status] of Object.entries(results)) {
-        if (id === 'sensors') continue; // no laptop contract id; backend would ignore
-        const mapped = contractIdMap[id] ?? id;
-        // camera/mic denied by user -> permission_required (not failed)
-        let outStatus = syncStatus(status as TestStatus);
-        if ((mapped === 'camera' || mapped === 'microphone') && status === 'issue') {
-          outStatus = 'permission_required';
-        }
-        const value = status === 'working' ? 'verified' : status === 'issue' ? 'failed' : status === 'unsupported' ? 'unsupported' : null;
-        tests.push({ id: mapped, status: outStatus, value, unit: null, simulated: false, meta: { measured_at: now } });
-      }
-      // bluetooth/ports cannot be probed from a browser tab -> unsupported (not penalized)
-      for (const extra of ['bluetooth', 'ports']) {
-        if (!tests.some((t) => t.id === extra)) {
-          tests.push({ id: extra, status: 'unsupported', value: 'unsupported', unit: null, simulated: false, meta: { reason: 'not testable from browser' } });
-        }
-      }
+      const tests = prepareTestsPayload();
+      const res = await submitResults(tests);
+      setSyncResult({ score: res.score });
+      confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
+    } catch (err: any) {
+      setSyncError(err?.message ?? 'Sync failed');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const syncLegacy = async () => {
+    if (!listingId) { setSyncError('Enter listing ID first (from seller draft)'); return; }
+    const apiBase = getApiBase();
+    setSyncing(true);
+    setSyncError(null);
+    setSyncResult(null);
+    try {
+      const tests = prepareTestsPayload();
       const body = {
         device: { model: navigator.userAgent.slice(0, 60), os_version: navigator.platform, sdk: 0 },
         category: 'laptop',
@@ -122,8 +148,10 @@ export function ResultsSummary() {
       });
       if (!res.ok) { setSyncError(`Server ${res.status}: ${res.statusText}`); return; }
       const j = await res.json();
-      setSyncResult({ score: Math.round(j.diagnostic_score ?? j.scored?.score ?? 0) });
+      const s = Math.round(j.diagnostic_score ?? j.scored?.score ?? 0);
+      setSyncResult({ score: s });
       localStorage.setItem('saferesale-listing-id', listingId);
+      confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
     } catch (err: any) {
       setSyncError(err?.message ?? 'Sync failed');
     } finally {
@@ -218,29 +246,80 @@ export function ResultsSummary() {
         </div>
       </motion.div>
 
-      <div className="rounded-lg border border-border bg-card p-5 mt-4 max-w-4xl mx-auto w-full">
-        <h2 className="panel-label mb-3">Sync to SafeResale</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
-          <div className="flex flex-col gap-1.5">
-            <label className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">Listing ID</label>
-            <Input value={listingId} onChange={(e) => setListingId(e.target.value)} placeholder="From seller draft" />
+      {/* Sync section */}
+      <div className="rounded-lg border border-border bg-card p-6 mt-6 max-w-4xl mx-auto w-full">
+        {isPaired && sessionId ? (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between pb-3 border-b border-border">
+              <div className="flex items-center gap-2.5">
+                <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                <div>
+                  <h2 className="text-base font-bold text-foreground">Sync to SafeResale Listing</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Connected to Listing {listingId ? ` #${listingId.slice(-6)}` : ''} via pairing token.
+                  </p>
+                </div>
+              </div>
+              <span className="font-mono text-xs bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 px-2.5 py-1 rounded-full font-semibold">
+                Session Active
+              </span>
+            </div>
+
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Click below to sync your verified laptop diagnostic report directly to your SafeResale listing.
+              Your mobile app will instantly detect the test results and advance to the final score screen.
+            </p>
+
+            <div className="flex items-center gap-3 pt-2">
+              <Button onClick={syncViaPairing} disabled={syncing} size="lg" className="h-11 px-6 font-semibold gap-2">
+                <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+                {syncing ? 'Syncing to SafeResale…' : 'Sync Diagnostic Score'}
+              </Button>
+            </div>
+
+            {syncError && <p className="font-mono text-xs text-destructive mt-1">{syncError}</p>}
+
+            {syncResult && (
+              <div className="mt-2 flex items-start gap-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 p-4">
+                <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-bold text-sm text-emerald-600">
+                    Diagnostic Score Synced: {syncResult.score}/100
+                  </h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Your listing is now updated! You can return to your SafeResale mobile app to finalize your listing.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">Access Token</label>
-            <Input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Bearer token" />
-          </div>
-          <Button onClick={sync} disabled={syncing} className="h-10 gap-2 font-semibold">
-            <RefreshCw className="h-4 w-4 shrink-0" /> {syncing ? 'Syncing…' : 'Sync Report'}
-          </Button>
-        </div>
-        {syncError && <p className="mt-3 font-mono text-xs text-status-fail">{syncError}</p>}
-        {syncResult && (
-          <div className="mt-3 flex items-center gap-2 rounded-md border border-status-pass/25 bg-status-pass/10 px-3 py-2">
-            <span className="font-mono text-sm font-bold text-status-pass">Diagnostic score: {syncResult.score}/100</span>
-            <span className="text-xs text-muted-foreground">Badge updates on compute-risk</span>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <h2 className="panel-label">Sync to SafeResale (Manual Entry)</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+              <div className="flex flex-col gap-1.5">
+                <label className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">Listing ID</label>
+                <Input value={listingId} onChange={(e) => setListingId(e.target.value)} placeholder="From seller draft" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">Access Token / Bearer</label>
+                <Input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Bearer token" />
+              </div>
+              <Button onClick={syncLegacy} disabled={syncing} className="h-10 gap-2 font-semibold">
+                <RefreshCw className="h-4 w-4 shrink-0" /> {syncing ? 'Syncing…' : 'Sync Report'}
+              </Button>
+            </div>
+            {syncError && <p className="mt-2 font-mono text-xs text-destructive">{syncError}</p>}
+            {syncResult && (
+              <div className="mt-2 flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+                <span className="font-mono text-sm font-bold text-emerald-600">Diagnostic score: {syncResult.score}/100</span>
+                <span className="text-xs text-muted-foreground">Badge updates on compute-risk</span>
+              </div>
+            )}
           </div>
         )}
-        <p className="mt-3 font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+
+        <p className="mt-4 font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
           Streams never leave this tab. No upload of screenshots, camera, or mic data.
         </p>
       </div>

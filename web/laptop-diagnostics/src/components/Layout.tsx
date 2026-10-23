@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useLocation } from 'wouter';
 import { useTestContext } from '@/context/TestContext';
 import { AppTopbar, type AppTopbarBreadcrumb } from '@/components/AppTopbar';
+import { PairingBanner } from '@/components/PairingBanner';
 import { Progress } from '@/components/ui/progress';
 
 const testNames: Record<string, string> = {
@@ -52,6 +53,7 @@ export function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-[100dvh] flex-col font-sans selection:bg-primary/15 selection:text-primary">
       <AppTopbar contentWidth={topbarWidth} breadcrumbs={breadcrumbs} actions={progressReadout} />
+      <PairingBanner />
 
       <main className={`container mx-auto flex flex-1 flex-col px-6 py-8 ${contentWidth}`}>
         {children}

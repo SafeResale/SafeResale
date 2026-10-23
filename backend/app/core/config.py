@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     google_client_secret: str = ""
     public_base_url: str = "http://localhost:8000"
     log_level: str = "info"
+    mobileapi_key: str = "569d50153457a9f98575e86ce73b6ce36f516bf0"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

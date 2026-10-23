@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import {
@@ -14,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useTestContext, TestId, TestStatus } from "@/context/TestContext";
+import { usePairing } from "@/context/PairingContext";
 
 const tests = [
   { id: 'keyboard',   num: 'T-01', label: 'KEYBOARD',  title: 'Keyboard',        description: 'Layouts, keys, modifiers',       icon: Keyboard,     path: '/test/keyboard' },
@@ -74,6 +76,13 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 
 export function Dashboard() {
   const { results, resetAll } = useTestContext();
+  const { reportProgress, isPaired } = usePairing();
+
+  useEffect(() => {
+    if (isPaired) {
+      reportProgress();
+    }
+  }, [isPaired, reportProgress]);
 
   const completedTests = Object.values(results).filter(s => s !== 'untested').length;
   const totalTests = Object.keys(results).length;

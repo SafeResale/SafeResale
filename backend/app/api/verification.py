@@ -229,17 +229,74 @@ async def latest_scores(listing_id: str, user=Depends(get_current_user)):
     images = await db.listing_images.find({"listing_id": oid}).to_list(100)
     angles = sorted({img.get("angle") for img in images if img.get("angle")})
     from app.services.ml_report import models_report
+    from app.services.ai_reconciliation import reconcile_assessment
+    dets = await db.detections.find({"listing_id": oid}).to_list(100)
+    auths = await db.authenticity.find({"listing_id": oid}).to_list(100)
+    assessment = reconcile_assessment(
+        listing=listing,
+        images=images,
+        detections=dets,
+        condition=cond,
+        authenticity=auths,
+        diagnostic=diag,
+    )
+    decision_dict = _oid_str(decision) or {}
+    if decision_dict:
+        # Dynamically ensure review_reasons, actionable_tips, and device mismatch are present
+        from app.services.decision import decide_with_stops
+        flat_dets = []
+        for doc in dets:
+            if "class" in doc:
+                flat_dets.append(doc)
+            else:
+                flat_dets.extend(doc.get("detections", []))
+        synth = decide_with_stops(risk or {}, listing or {}, images, flat_dets, diagnostic=diag)
+        if synth.get("review_reasons"):
+            decision_dict["review_reasons"] = synth["review_reasons"]
+            decision_dict["actionable_tips"] = synth.get("actionable_tips", [])
+            decision_dict["reasons"] = synth.get("reasons", decision_dict.get("reasons", []))
+        if synth.get("status") == "review":
+            decision_dict["status"] = "review"
+            decision_dict["reason_code"] = synth.get("reason_code", decision_dict.get("reason_code"))
+
     out = {
         "listing_id": listing_id,
         "diagnostics": _oid_str(diag),
         "diagnostic_score": (diag or {}).get("score"),
         "risk": _oid_str(risk),
-        "decision": _oid_str(decision),
+        "decision": decision_dict or None,
         "condition": _oid_str(cond),
         "images": {"count": len(images), "angles": angles, "required": 6, "optional": ["front_45", "back_45"]},
         "ml_models": await models_report(listing_id),
+        "assessment": assessment,
     }
     return out
+
+@router.get("/{listing_id}/assessment")
+async def get_assessment(listing_id: str, user=Depends(get_current_user)):
+    db = get_db()
+    try:
+        oid = ObjectId(listing_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail={"code": "bad_id", "message": "Invalid listing id"})
+    listing = await db.listings.find_one({"_id": oid})
+    if not listing:
+        raise HTTPException(status_code=404, detail={"code": "not_found", "message": "Listing not found"})
+    diag = await db.diagnostics.find_one({"listing_id": oid}, sort=[("created_at", -1)])
+    cond = await db.condition_predictions.find_one({"listing_id": oid}, sort=[("created_at", -1)])
+    images = await db.listing_images.find({"listing_id": oid}).to_list(100)
+    dets = await db.detections.find({"listing_id": oid}).to_list(100)
+    auths = await db.authenticity.find({"listing_id": oid}).to_list(100)
+    from app.services.ai_reconciliation import reconcile_assessment
+    assessment = reconcile_assessment(
+        listing=listing,
+        images=images,
+        detections=dets,
+        condition=cond,
+        authenticity=auths,
+        diagnostic=diag,
+    )
+    return {"listing_id": listing_id, "assessment": assessment}
 
 @router.post("/{listing_id}/run-anomaly")
 async def run_anomaly(listing_id: str, request: Request, user=Depends(get_current_user)):
@@ -293,7 +350,7 @@ async def score_listing(listing_id: str):
     diagnostic = risk_svc.diagnostic_risk(diag)
     behavioral = risk_svc.behavioral_risk(signals, await price_anomaly(listing) if listing else None)
     risk = risk_svc.compute_risk(physical, diagnostic, behavioral)
-    decision = decide_with_stops(risk, listing or {}, images, flat_dets)
+    decision = decide_with_stops(risk, listing or {}, images, flat_dets, diagnostic=diag)
     # badge
     listing_status = listing.get("status", "verifying") if listing else "verifying"
     badge = badge_for(decision["status"], listing_status)
@@ -330,6 +387,9 @@ async def score_listing(listing_id: str):
             upsert["status"] = "blocked"
         elif decision_status == "review" and listing.get("status") in ("draft", "capturing", "submitted", "verifying"):
             upsert["status"] = "review"
+        if decision.get("review_reasons"):
+            upsert["review_reasons"] = decision["review_reasons"]
+            upsert["actionable_tips"] = decision.get("actionable_tips", [])
         await db.listings.update_one({"_id": oid}, {"$set": upsert})
     return {**risk, "decision": decision, "badge": badge}, listing
 

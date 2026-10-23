@@ -55,6 +55,9 @@ android-app/app/build/
 android-app/build/
 android-app/*.hprof
 android-app/local.properties
+android-app/*.jks
+android-app/*.keystore
+android-app/saferesale
 
 # Web build output
 web/*/dist/

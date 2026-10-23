@@ -28,6 +28,8 @@ data class MarketListing(
     val created_at: Double? = null,
     val trust: TrustRating? = null,
     val ml_models: MlModelsReport? = null,
+    val review_reasons: List<String>? = null,
+    val actionable_tips: List<String>? = null,
 )
 
 /** What each of SafeResale's 4 ML models concluded (backend-computed,

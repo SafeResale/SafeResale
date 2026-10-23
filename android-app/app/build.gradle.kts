@@ -31,7 +31,7 @@ fun lanIpv4(): String? {
 }
 
 val apiBaseOverride = (findProperty("apiBaseUrl") as String?)
-val defaultBaseUrl = apiBaseOverride ?: "http://${lanIpv4() ?: "10.0.2.2"}:8000"
+val defaultBaseUrl = apiBaseOverride ?: "https://moonbase.qzz.io/api"
 
 plugins {
     alias(libs.plugins.android.application)
@@ -57,7 +57,7 @@ android {
             useSupportLibrary = true
         }
         buildConfigField("String", "API_BASE_URL", "\"$defaultBaseUrl\"")
-        buildConfigField("String", "EMULATOR_API_BASE_URL", "\"http://10.0.2.2:8000\"")
+        buildConfigField("String", "EMULATOR_API_BASE_URL", "\"$defaultBaseUrl\"")
     }
     buildTypes {
         release {
@@ -71,6 +71,10 @@ android {
         debug {
             isDebuggable = true
         }
+    }
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

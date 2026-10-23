@@ -27,6 +27,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { AppTopbar } from '@/components/AppTopbar';
+import { PairingBanner } from '@/components/PairingBanner';
 import { CreatorCredit } from '@/components/CreatorCredit';
 import { Button } from '@/components/ui/button';
 import diagnosticHero from '@/assets/diagnostic-hero-light-devices-v1.png';
@@ -529,7 +530,8 @@ export function LandingPage() {
             <Link href="/dashboard">Open Diagnostics</Link>
           </Button>
         )}
-      />
+      />
+      <PairingBanner />
 
       <main className="flex-1">
         {/* ── Hero ─────────────────────────────── */}

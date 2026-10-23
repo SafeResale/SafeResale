@@ -40,6 +40,17 @@ async def get_current_user(creds: HTTPAuthorizationCredentials | None = Depends(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail={"code": "invalid_token", "message": "Not an access token"})
     return payload
 
+async def get_optional_user(creds: HTTPAuthorizationCredentials | None = Depends(bearer)) -> dict | None:
+    if creds is None:
+        return None
+    try:
+        payload = decode_access_token(creds.credentials)
+        if payload.get("type") != "access":
+            return None
+        return payload
+    except Exception:
+        return None
+
 def require_role(*roles: str):
     async def _check(user=Depends(get_current_user)):
         if user.get("role") not in roles:

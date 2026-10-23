@@ -1,12 +1,18 @@
 package com.saferesale.app.ui
 
 import android.content.Intent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +27,9 @@ import com.saferesale.app.data.ApiClient
 import com.saferesale.app.data.marketplace.MarketplaceRepository
 import com.saferesale.app.diagnostics.BenchScore
 import com.saferesale.app.diagnostics.CoreVScoreReport
+import com.saferesale.app.diagnostics.DeviceInfo
+import com.saferesale.app.diagnostics.DiagTest
+import com.saferesale.app.diagnostics.DiagnosticsReport
 import com.saferesale.app.diagnostics.ModuleScore
 import com.saferesale.app.ui.market.ApiState
 import com.saferesale.app.ui.market.rememberApi
@@ -64,17 +73,37 @@ fun ScoreScreen(token: String?, listingId: String?, category: String = "mobile",
                 // categories (books, furniture, sports…) are scored on photos,
                 // vision and risk alone.
                 if (category in DIAGNOSTIC_CATEGORIES) {
-                    phase = "4/4 Grading hardware modules…"
-                    // Touch count comes from the synced CoreV inspection report.
-                    val diag = (scores?.get("diagnostics") as? Map<*, *>)?.get("tests") as? List<*>
-                    val touchCovered = ((diag?.firstOrNull {
-                        (it as? Map<*, *>)?.get("id") == "touch"
-                    } as? Map<*, *>)?.get("meta") as? Map<*, *>)?.get("covered_cells")
-                        .let { (it as? Number)?.toInt() ?: 0 }
-                    val report = CoreVScoreReport.build(ctx, category, touchCovered)
-                    bench = BenchScore.grade(report)
+                    phase = "4/4 Grading verified hardware diagnostics…"
+                    val diagMap = scores?.get("diagnostics") as? Map<*, *>
+                    val diagScore = (scores?.get("diagnostic_score") as? Number)?.toInt()
+                    if (diagMap != null && diagScore != null) {
+                        val tests = diagMap["tests"] as? List<*>
+                        val diagTests = (tests ?: emptyList<Any>()).mapNotNull { t ->
+                            val tm = t as? Map<*, *> ?: return@mapNotNull null
+                            @Suppress("UNCHECKED_CAST")
+                            DiagTest(
+                                id = tm["id"]?.toString() ?: "",
+                                status = tm["status"]?.toString() ?: "passed",
+                                value = tm["value"],
+                                unit = tm["unit"]?.toString(),
+                                simulated = tm["simulated"] as? Boolean ?: false,
+                                meta = tm["meta"] as? Map<String, Any?>
+                            )
+                        }
+                        val devMap = diagMap["device"] as? Map<*, *>
+                        val report = DiagnosticsReport(
+                            device = DeviceInfo(model = devMap?.get("model")?.toString() ?: "Verified Device"),
+                            category = category,
+                            skipped = diagMap["skipped"] as? Boolean ?: false,
+                            tests = diagTests
+                        )
+                        bench = BenchScore.grade(report)
+                    } else {
+                        bench = null
+                    }
                 } else {
                     phase = "4/4 Finalizing…"
+                    bench = null
                 }
                 phase = "Done"
             } catch (e: Exception) {
@@ -128,6 +157,23 @@ fun ScoreScreen(token: String?, listingId: String?, category: String = "mobile",
             }
         }
 
+        if (bench == null && category in DIAGNOSTIC_CATEGORIES) {
+            Card(
+                Modifier.fillMaxWidth().padding(top = 12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Device Health", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Device has not been tested. Hardware and internal components have not been independently verified.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
         val images = strMap(scores?.get("images"))
         val condition = strMap(scores?.get("condition") ?: vision?.get("condition"))
         val decision = strMap(scores?.get("decision") ?: risk?.get("decision"))
@@ -139,6 +185,45 @@ fun ScoreScreen(token: String?, listingId: String?, category: String = "mobile",
                 Text("Photos & vision", style = MaterialTheme.typography.titleMedium)
                 Text("Photos: ${images["count"] ?: 0}/8 angles (${((images["angles"] as? List<*>) ?: emptyList<Any>()).size} covered — 6 required, 45° optional)")
                 Text("Condition: ${condition["class"] ?: condition["label"] ?: "…"}")
+            }
+        }
+
+        val assessment = scores?.get("assessment") as? Map<*, *>
+        if (assessment != null) {
+            val identity = assessment["product_identity"] as? Map<*, *>
+            val overall = assessment["overall_assessment"]?.toString()
+            val unverified = assessment["unverified_claims"] as? List<*>
+            val discrepancies = assessment["discrepancies"] as? List<*>
+
+            Card(
+                Modifier.fillMaxWidth().padding(top = 12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f))
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("AI Verification & Reconciliation", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(6.dp))
+                    if (identity != null) {
+                        Text(
+                            "Identity: ${identity["brand"] ?: "Unknown"} ${identity["model"] ?: "Unknown"} (${identity["verification_status"]})",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    if (!overall.isNullOrBlank()) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(overall, style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (!discrepancies.isNullOrEmpty()) {
+                        Spacer(Modifier.height(6.dp))
+                        discrepancies.forEach { disc ->
+                            Text("⚠️ $disc", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    if (!unverified.isNullOrEmpty()) {
+                        Spacer(Modifier.height(6.dp))
+                        Text("Unverified: ${unverified.joinToString(", ")}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             }
         }
 
@@ -161,12 +246,100 @@ fun ScoreScreen(token: String?, listingId: String?, category: String = "mobile",
                 "blocked" -> MaterialTheme.colorScheme.error
                 else -> MaterialTheme.colorScheme.tertiary
             }
-            Card(Modifier.fillMaxWidth().padding(top = 12.dp), colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.15f))) {
+            val reviewReasons = (decision["review_reasons"] as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
+            val actionableTips = (decision["actionable_tips"] as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
+            val hasMismatch = reviewReasons.any { it.contains("Device mismatch", ignoreCase = true) } || decision["reason_code"] == "REVIEW_DEVICE_MISMATCH"
+
+            Card(
+                Modifier.fillMaxWidth().padding(top = 12.dp),
+                colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.12f)),
+                border = BorderStroke(1.5.dp, color.copy(alpha = 0.5f))
+            ) {
                 Column(Modifier.padding(16.dp)) {
-                    Text("Decision: $status", style = MaterialTheme.typography.titleMedium, color = color)
-                    Text("Reason: ${decision["reason_code"]}")
-                    badge?.let { Text("Badge: $it") }
-                    hardStops.forEach { Text("⛔ $it", color = MaterialTheme.colorScheme.error) }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = when (status) {
+                                "approved" -> Icons.Default.CheckCircle
+                                "blocked" -> Icons.Default.Cancel
+                                else -> Icons.Default.Warning
+                            },
+                            contentDescription = null,
+                            tint = color,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = when (status) {
+                                "approved" -> "Verification Decision: Approved"
+                                "blocked" -> "Verification Decision: In Review"
+                                else -> "Verification Decision: In Review"
+                            },
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = color
+                        )
+                    }
+
+                    if (badge != null) {
+                        Spacer(Modifier.height(4.dp))
+                        Text("Trust Badge: $badge", style = MaterialTheme.typography.labelMedium)
+                    }
+
+                    if (hardStops.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        hardStops.forEach { Text("⛔ $it", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                    }
+
+                    // Prominent Device Hardware Mismatch Warning Banner
+                    if (hasMismatch) {
+                        Spacer(Modifier.height(10.dp))
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+                        ) {
+                            Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.PhoneAndroid, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Device Hardware Mismatch", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                                }
+                                Spacer(Modifier.height(6.dp))
+                                val mismatchMsg = reviewReasons.firstOrNull { it.contains("Device mismatch", ignoreCase = true) }
+                                    ?: "The physical hardware tested does not match the device specified in the listing."
+                                Text(mismatchMsg, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer, fontWeight = FontWeight.Medium)
+                            }
+                        }
+                    }
+
+                    // Reasons why the listing is under review
+                    if (reviewReasons.isNotEmpty()) {
+                        Spacer(Modifier.height(12.dp))
+                        Text("Why is this listing in review?", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(6.dp))
+                        reviewReasons.forEach { reason ->
+                            Row(Modifier.padding(vertical = 3.dp)) {
+                                Text("• ", fontWeight = FontWeight.Bold, color = color)
+                                Text(reason, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    } else if (decision["reason_code"] != null) {
+                        Spacer(Modifier.height(6.dp))
+                        Text("Reason: ${decision["reason_code"]}", style = MaterialTheme.typography.bodySmall)
+                    }
+
+                    // Actionable steps for seller to get listing approved
+                    if (actionableTips.isNotEmpty()) {
+                        Spacer(Modifier.height(12.dp))
+                        Text("What you can do to resolve this:", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(6.dp))
+                        actionableTips.forEachIndexed { idx, tip ->
+                            Row(Modifier.padding(vertical = 2.dp)) {
+                                Text("${idx + 1}. ", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Text(tip, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
                 }
             }
         }

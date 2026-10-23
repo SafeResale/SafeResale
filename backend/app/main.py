@@ -105,3 +105,13 @@ try:
     app.include_router(chat_router)
 except Exception:
     pass
+try:
+    from app.api.diagnosis import router as diagnosis_router  # type: ignore
+    app.include_router(diagnosis_router)
+except Exception:
+    pass
+try:
+    from app.api.catalog import router as catalog_router  # type: ignore
+    app.include_router(catalog_router)
+except Exception:
+    pass

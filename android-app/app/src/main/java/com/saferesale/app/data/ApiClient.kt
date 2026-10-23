@@ -76,6 +76,17 @@ interface ApiService {
     @POST("listings/{id}/run-vision") suspend fun runVision(@Path("id") id: String, @Header("Authorization") auth: String): Map<String, Any>
     @POST("listings/{id}/compute-risk") suspend fun computeRisk(@Path("id") id: String, @Header("Authorization") auth: String): Map<String, Any>
     @POST("listings/{id}/run-diagnostics") suspend fun runDiagnostics(@Path("id") id: String, @Body body: DiagReportReq, @Header("Authorization") auth: String): Map<String, Any>
+    @POST("diagnosis/sessions") suspend fun createDiagnosisSession(@Body b: Map<String, Any?>, @Header("Authorization") auth: String): Map<String, Any>
+    @POST("diagnosis/pair") suspend fun pairDiagnosis(@Body b: Map<String, Any?>): Map<String, Any>
+    @POST("diagnosis/sessions/{id}/progress") suspend fun reportDiagnosisProgress(@Path("id") id: String, @Body b: Map<String, Any?>): Map<String, Any>
+    @POST("diagnosis/sessions/{id}/results") suspend fun submitDiagnosisResults(@Path("id") id: String, @Body b: Map<String, Any?>): Map<String, Any>
+    @GET("diagnosis/sessions/{id}") suspend fun diagnosisSession(@Path("id") id: String, @Query("token") token: String?, @Header("Authorization") auth: String): Map<String, Any>
+    @POST("diagnosis/sessions/{id}/regenerate-token") suspend fun regenerateDiagnosisToken(@Path("id") id: String, @Header("Authorization") auth: String): Map<String, Any>
+    @POST("diagnosis/sessions/{id}/verify") suspend fun verifyDiagnosisSession(@Path("id") id: String, @Header("Authorization") auth: String): Map<String, Any>
+    @GET("diagnosis/listings/{id}/status") suspend fun diagnosisStatus(@Path("id") id: String, @Header("Authorization") auth: String): Map<String, Any>
+    @GET("catalog/search") suspend fun searchCatalog(@Query("q") q: String, @Query("category") category: String? = null, @Query("limit") limit: Int = 15): Map<String, Any>
+    @GET("catalog/{category}/brands") suspend fun catalogBrands(@Path("category") category: String): Map<String, Any>
+    @GET("catalog/{category}/brands/{brand}/models") suspend fun catalogModels(@Path("category") category: String, @Path("brand") brand: String): Map<String, Any>
     @GET("listings") suspend fun listings(@Query("category") category: String?, @Query("page") page: Int, @Query("page_size") pageSize: Int, @Header("Authorization") auth: String): ListingsResponse
     @GET("listings/my") suspend fun myListings(@Header("Authorization") auth: String): ListingsResponse
     @GET("listings/categories") suspend fun categories(): List<MarketCategory>

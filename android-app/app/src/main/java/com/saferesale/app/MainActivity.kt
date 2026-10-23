@@ -45,6 +45,8 @@ import com.saferesale.app.ui.CaptureScreen
 import com.saferesale.app.ui.SellerKycScreen
 import com.saferesale.app.ui.InspectionRequestScreen
 import com.saferesale.app.ui.NewCheckScreen
+import com.saferesale.app.ui.screens.diagnose.DiagnoseFlowScreen
+import com.saferesale.app.ui.screens.diagnose.DiagnosisPairScreen
 import com.saferesale.app.ui.ScoreScreen
 import com.saferesale.app.ui.market.ChatThreadScreen
 import com.saferesale.app.ui.market.ContactScreen
@@ -129,6 +131,7 @@ class MainActivity : ComponentActivity() {
                             },
                             initialCategory = null,
                             onOpenThread = { id -> nav.navigate("chat/$id") },
+                            onDiagnoseDevice = { nav.navigate("diagnose_pair") },
                         )
                     }
                     // ── Seller KYC — shown once before the first listing ──
@@ -220,9 +223,7 @@ class MainActivity : ComponentActivity() {
                         val lid = back.arguments?.getString("lid")
                         val category = back.arguments?.getString("category").orEmpty()
                         CaptureScreen(token = token, listingId = lid, onDone = {
-                            // Device categories run the CoreV hardware bench; the rest
-                            // go straight from photos to scoring.
-                            if (category in DIAGNOSTIC_CATEGORIES) nav.navigate("inspect/$lid/$category")
+                            if (category in DIAGNOSTIC_CATEGORIES) nav.navigate("diagnose/$lid/$category")
                             else nav.navigate("score/$lid/$category")
                         })
                     }
@@ -245,6 +246,45 @@ class MainActivity : ComponentActivity() {
                             flowToken = token,
                             flowCategory = category,
                             onFlowScore = { id -> nav.navigate("score/$id/$category") }
+                        )
+                    }
+                    composable(
+                        "diagnose/{lid}/{category}",
+                        arguments = listOf(
+                            navArgument("lid") { type = NavType.StringType },
+                            navArgument("category") { type = NavType.StringType },
+                        )
+                    ) { back ->
+                        val lid = back.arguments?.getString("lid").orEmpty()
+                        val category = back.arguments?.getString("category").orEmpty()
+                        DiagnoseFlowScreen(
+                            token = token ?: "",
+                            listingId = lid,
+                            category = category,
+                            onBack = { nav.popBackStack() },
+                            onSkip = { nav.navigate("score/$lid/$category") },
+                            onDone = { nav.navigate("score/$lid/$category") },
+                            onDiagnoseThisDevice = { pToken -> nav.navigate("diagnose_pair?pToken=$pToken") },
+                        )
+                    }
+                    composable(
+                        "diagnose_pair?pToken={pToken}",
+                        arguments = listOf(
+                            navArgument("pToken") { type = NavType.StringType; defaultValue = "" }
+                        )
+                    ) { back ->
+                        val pToken = back.arguments?.getString("pToken").orEmpty()
+                        DiagnosisPairScreen(
+                            initialToken = pToken,
+                            onBack = { nav.popBackStack() },
+                            onComplete = { nav.popBackStack() }
+                        )
+                    }
+                    composable("diagnose_pair") {
+                        DiagnosisPairScreen(
+                            initialToken = "",
+                            onBack = { nav.popBackStack() },
+                            onComplete = { nav.popBackStack() }
                         )
                     }
                     composable(

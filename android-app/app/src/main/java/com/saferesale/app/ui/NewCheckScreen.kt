@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -97,6 +98,57 @@ fun NewCheckScreen(
     var msg by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+
+    var brandSuggestions by remember { mutableStateOf<List<String>>(emptyList()) }
+    var modelSuggestions by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
+    var showBrandBottomSheet by remember { mutableStateOf(false) }
+    var showModelBottomSheet by remember { mutableStateOf(false) }
+    var selectedItemDetails by remember { mutableStateOf<Map<String, Any>?>(null) }
+
+    val topBrandsForCategory = remember(category) {
+        when (category) {
+            "mobile" -> listOf("Apple", "Samsung", "Google", "OnePlus", "Xiaomi", "Realme", "Vivo", "Motorola")
+            "laptop" -> listOf("Apple", "Dell", "HP", "Lenovo", "Asus", "Acer")
+            "car" -> listOf("Maruti Suzuki", "Hyundai", "Tata", "Mahindra", "Toyota", "Honda", "Kia")
+            "bike" -> listOf("Royal Enfield", "Honda", "Yamaha", "Bajaj", "TVS", "KTM", "Hero")
+            "camera" -> listOf("Sony", "Canon", "Nikon", "Fujifilm")
+            "gaming" -> listOf("Sony", "Microsoft", "Nintendo")
+            else -> emptyList()
+        }
+    }
+
+    LaunchedEffect(brand, category) {
+        if (brand.length >= 2) {
+            try {
+                val res = ApiClient.service.searchCatalog(q = brand, category = category, limit = 10)
+                val items = (res["items"] as? List<*>)?.filterIsInstance<Map<String, Any>>() ?: emptyList()
+                val brands = items.mapNotNull { it["brand"]?.toString() }.distinct()
+                brandSuggestions = if (brands.isNotEmpty()) brands else topBrandsForCategory.filter { it.contains(brand, ignoreCase = true) }
+            } catch (_: Exception) {
+                brandSuggestions = topBrandsForCategory.filter { it.contains(brand, ignoreCase = true) }
+            }
+        } else {
+            brandSuggestions = topBrandsForCategory
+        }
+    }
+
+    LaunchedEffect(model, brand, category) {
+        if (model.length >= 2 || (brand.isNotEmpty() && model.isEmpty())) {
+            try {
+                val res = if (model.length >= 2) {
+                    ApiClient.service.searchCatalog(q = "$brand $model".trim(), category = category, limit = 15)
+                } else {
+                    ApiClient.service.catalogModels(category = category, brand = brand)
+                }
+                val items = (res["items"] as? List<*>)?.filterIsInstance<Map<String, Any>>()
+                    ?: (res["models"] as? List<*>)?.filterIsInstance<Map<String, Any>>()
+                    ?: emptyList()
+                modelSuggestions = items
+            } catch (_: Exception) {
+                modelSuggestions = emptyList()
+            }
+        }
+    }
 
     fun onLocation(latitude: Double, longitude: Double) {
         lat = latitude
@@ -474,7 +526,42 @@ fun NewCheckScreen(
                         shape = RoundedCornerShape(12.dp)
                     )
 
-                    // Price & Brand
+                    // Quick Brand Recommendation Chips for Selected Category
+                    if (topBrandsForCategory.isNotEmpty()) {
+                        Column {
+                            Text(
+                                "Popular Brands in ${formatCategory(category)}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(topBrandsForCategory) { b ->
+                                    val isSel = brand.equals(b, ignoreCase = true)
+                                    Surface(
+                                        shape = RoundedCornerShape(20.dp),
+                                        color = if (isSel) TerritoryAccent else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                        border = BorderStroke(1.dp, if (isSel) TerritoryAccent else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                                        modifier = Modifier.clickable {
+                                            brand = b
+                                            model = ""
+                                            showModelBottomSheet = true
+                                        }
+                                    ) {
+                                        Text(
+                                            b,
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = if (isSel) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isSel) Color.White else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Price & Brand with Searchable BottomSheet
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -502,23 +589,71 @@ fun NewCheckScreen(
                             value = brand,
                             onValueChange = { brand = it },
                             label = { Text("Brand") },
-                            placeholder = { Text("e.g. Apple") },
+                            placeholder = { Text("Tap to select") },
+                            trailingIcon = {
+                                IconButton(onClick = { showBrandBottomSheet = true }) {
+                                    Icon(Icons.Default.Search, contentDescription = "Search Brand", tint = TerritoryAccent)
+                                }
+                            },
                             singleLine = true,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { showBrandBottomSheet = true },
                             shape = RoundedCornerShape(12.dp)
                         )
                     }
 
-                    // Model
+                    // Model with Searchable Catalog BottomSheet
                     OutlinedTextField(
                         value = model,
                         onValueChange = { model = it },
-                        label = { Text("Model / Variant") },
-                        placeholder = { Text("e.g. 14 Pro / 2022") },
+                        label = { Text("Model / Variant (Catalog)") },
+                        placeholder = { Text(if (brand.isNotEmpty()) "Search $brand models..." else "Tap search for catalog...") },
+                        trailingIcon = {
+                            IconButton(onClick = { showModelBottomSheet = true }) {
+                                Icon(Icons.Default.Search, contentDescription = "Search Catalog", tint = TerritoryAccent)
+                            }
+                        },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showModelBottomSheet = true },
                         shape = RoundedCornerShape(12.dp)
                     )
+
+                    // Verified Catalog Badge Card
+                    if (selectedItemDetails != null) {
+                        val priceMap = selectedItemDetails!!["typical_resale_price"] as? Map<*, *>
+                        val minP = (priceMap?.get("min") as? Number)?.toInt()
+                        val maxP = (priceMap?.get("max") as? Number)?.toInt()
+                        val specs = selectedItemDetails!!["specs"] as? Map<*, *>
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(Modifier.padding(12.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Verified SafeResale Catalog Model", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                }
+                                Spacer(Modifier.height(4.dp))
+                                Text("${selectedItemDetails!!["brand"]} ${selectedItemDetails!!["model"]}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                if (minP != null && maxP != null) {
+                                    Spacer(Modifier.height(2.dp))
+                                    Text("Market benchmark: ₹${minP} - ₹${maxP}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                if (specs != null && specs.isNotEmpty()) {
+                                    Spacer(Modifier.height(2.dp))
+                                    val specSummary = specs.entries.joinToString(" • ") { "${it.key}: ${it.value}" }
+                                    Text(specSummary, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
 
                     // Condition Selector
                     Column {
@@ -726,6 +861,401 @@ fun NewCheckScreen(
             }
 
             Spacer(Modifier.height(16.dp))
+        }
+    }
+
+    if (showBrandBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showBrandBottomSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+            containerColor = MaterialTheme.colorScheme.surface,
+        ) {
+            var brandQuery by remember { mutableStateOf(brand) }
+            val filteredBrands = remember(brandQuery, topBrandsForCategory, brandSuggestions) {
+                val pool = (topBrandsForCategory + brandSuggestions).distinct()
+                if (brandQuery.isBlank()) pool
+                else pool.filter { it.contains(brandQuery.trim(), ignoreCase = true) }
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 32.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            "Select Brand",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            "Category: ${formatCategory(category)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(onClick = { showBrandBottomSheet = false }) {
+                        Icon(Icons.Default.Close, contentDescription = "Close")
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                OutlinedTextField(
+                    value = brandQuery,
+                    onValueChange = { brandQuery = it },
+                    placeholder = { Text("Search brand (e.g. Apple, Samsung, Dell...)") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (brandQuery.isNotEmpty()) {
+                            IconButton(onClick = { brandQuery = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Clear")
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                if (topBrandsForCategory.isNotEmpty()) {
+                    Text(
+                        "POPULAR IN ${formatCategory(category).uppercase()}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(topBrandsForCategory) { b ->
+                            val isSel = brand.equals(b, ignoreCase = true)
+                            FilterChip(
+                                selected = isSel,
+                                onClick = {
+                                    brand = b
+                                    model = ""
+                                    showBrandBottomSheet = false
+                                    showModelBottomSheet = true
+                                },
+                                label = { Text(b) },
+                                leadingIcon = if (isSel) {
+                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                                } else null
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(14.dp))
+                }
+
+                Text(
+                    "ALL BRANDS",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+                Spacer(Modifier.height(8.dp))
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false)
+                        .heightIn(max = 340.dp)
+                ) {
+                    if (brandQuery.isNotBlank() && !filteredBrands.any { it.equals(brandQuery.trim(), ignoreCase = true) }) {
+                        item {
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        brand = brandQuery.trim()
+                                        showBrandBottomSheet = false
+                                        showModelBottomSheet = true
+                                    }
+                                    .padding(vertical = 4.dp)
+                            ) {
+                                Row(
+                                    Modifier.padding(14.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    Spacer(Modifier.width(10.dp))
+                                    Text(
+                                        "Use custom brand \"${brandQuery.trim()}\"",
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(4.dp))
+                        }
+                    }
+
+                    items(filteredBrands) { b ->
+                        val isSel = brand.equals(b, ignoreCase = true)
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (isSel) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    brand = b
+                                    model = ""
+                                    showBrandBottomSheet = false
+                                    showModelBottomSheet = true
+                                }
+                        ) {
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    b,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = if (isSel) FontWeight.Bold else FontWeight.Medium
+                                )
+                                if (isSel) {
+                                    Icon(Icons.Default.Check, contentDescription = null, tint = TerritoryAccent)
+                                }
+                            }
+                        }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                    }
+                }
+            }
+        }
+    }
+
+    if (showModelBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showModelBottomSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+            containerColor = MaterialTheme.colorScheme.surface,
+        ) {
+            var modelQuery by remember { mutableStateOf(model) }
+            var isSearching by remember { mutableStateOf(false) }
+            var searchResults by remember { mutableStateOf<List<Map<String, Any>>>(modelSuggestions) }
+
+            LaunchedEffect(modelQuery, brand, category) {
+                isSearching = true
+                try {
+                    val q = if (brand.isNotBlank()) "$brand $modelQuery".trim() else modelQuery.trim()
+                    val res = if (q.isNotBlank()) {
+                        ApiClient.service.searchCatalog(q = q, category = category, limit = 20)
+                    } else if (brand.isNotBlank()) {
+                        ApiClient.service.catalogModels(category = category, brand = brand)
+                    } else {
+                        ApiClient.service.searchCatalog(q = "", category = category, limit = 20)
+                    }
+                    val items = (res["items"] as? List<*>)?.filterIsInstance<Map<String, Any>>()
+                        ?: (res["models"] as? List<*>)?.filterIsInstance<Map<String, Any>>()
+                        ?: emptyList()
+                    searchResults = items
+                } catch (_: Exception) {
+                    searchResults = modelSuggestions
+                } finally {
+                    isSearching = false
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 32.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            if (brand.isNotBlank()) "$brand Models" else "Search Model / Variant",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            "Verified SafeResale catalog benchmark & specs",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(onClick = { showModelBottomSheet = false }) {
+                        Icon(Icons.Default.Close, contentDescription = "Close")
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                OutlinedTextField(
+                    value = modelQuery,
+                    onValueChange = { modelQuery = it },
+                    placeholder = { Text(if (brand.isNotBlank()) "Search $brand models (e.g. S23, M2, Swift)..." else "Search model...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (modelQuery.isNotEmpty()) {
+                            IconButton(onClick = { modelQuery = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Clear")
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                if (isSearching) {
+                    LinearProgressIndicator(Modifier.fillMaxWidth(), color = TerritoryAccent)
+                    Spacer(Modifier.height(8.dp))
+                }
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false)
+                        .heightIn(max = 420.dp)
+                ) {
+                    if (modelQuery.isNotBlank()) {
+                        item {
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        model = modelQuery.trim()
+                                        showModelBottomSheet = false
+                                        if (title.isBlank()) {
+                                            title = if (brand.isNotBlank()) "$brand $model".trim() else model
+                                        }
+                                    }
+                                    .padding(vertical = 4.dp)
+                            ) {
+                                Row(
+                                    Modifier.padding(14.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    Spacer(Modifier.width(10.dp))
+                                    Text("Use custom: \"$modelQuery\"", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                            Spacer(Modifier.height(6.dp))
+                        }
+                    }
+
+                    if (searchResults.isEmpty() && !isSearching) {
+                        item {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "No matching catalog models. Tap \"Use custom\" above to enter your exact model.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+
+                    items(searchResults) { item ->
+                        val mName = item["model"]?.toString() ?: ""
+                        val bName = item["brand"]?.toString() ?: brand
+                        val priceMap = item["typical_resale_price"] as? Map<*, *>
+                        val minP = (priceMap?.get("min") as? Number)?.toInt()
+                        val maxP = (priceMap?.get("max") as? Number)?.toInt()
+                        val specs = item["specs"] as? Map<*, *>
+                        val isSel = model.equals(mName, ignoreCase = true)
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSel) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
+                            border = BorderStroke(1.dp, if (isSel) TerritoryAccent else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clickable {
+                                    brand = bName
+                                    model = mName
+                                    selectedItemDetails = item
+                                    showModelBottomSheet = false
+                                    if (title.isBlank()) {
+                                        title = "$bName $mName".trim()
+                                    }
+                                }
+                        ) {
+                            Column(Modifier.padding(14.dp)) {
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        mName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = MaterialTheme.colorScheme.primaryContainer
+                                    ) {
+                                        Text(
+                                            bName,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+
+                                if (minP != null && maxP != null) {
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        "Typical resale: ₹$minP - ₹$maxP",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = TerritoryAccent
+                                    )
+                                }
+
+                                if (specs != null && specs.isNotEmpty()) {
+                                    Spacer(Modifier.height(4.dp))
+                                    val specSummary = specs.entries.take(4).joinToString(" • ") { "${it.key}: ${it.value}" }
+                                    Text(
+                                        specSummary,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

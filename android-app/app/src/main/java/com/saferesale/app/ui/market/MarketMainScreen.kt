@@ -39,6 +39,7 @@ fun MarketMainScreen(
     onLogout: () -> Unit,
     initialCategory: String?,
     onOpenThread: (String) -> Unit = onOpenListing,
+    onDiagnoseDevice: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val marketNav = rememberNavController()
@@ -95,6 +96,7 @@ fun MarketMainScreen(
                     onNewCheck = onStartCheck,
                     onMyAds = { go("myads") },
                     onLogout = onLogout,
+                    onDiagnoseDevice = onDiagnoseDevice,
                 )
             }
         }

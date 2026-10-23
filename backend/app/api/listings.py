@@ -187,7 +187,36 @@ async def get_listing(listing_id: str, user=Depends(get_current_user)):
     doc["seller_id"] = str(doc["seller_id"])
     doc["trust"] = _trust_rating(doc)
     from app.services.ml_report import models_report
+    from app.services.ai_reconciliation import reconcile_assessment
     doc["ml_models"] = await models_report(listing_id)
+    try:
+        diag = await db.diagnostics.find_one({"listing_id": ObjectId(listing_id)}, sort=[("created_at", -1)])
+        cond = await db.condition_predictions.find_one({"listing_id": ObjectId(listing_id)}, sort=[("created_at", -1)])
+        images = await db.listing_images.find({"listing_id": ObjectId(listing_id)}).to_list(100)
+        dets = await db.detections.find({"listing_id": ObjectId(listing_id)}).to_list(100)
+        auths = await db.authenticity.find({"listing_id": ObjectId(listing_id)}).to_list(100)
+        risk = await db.risk_scores.find_one({"listing_id": ObjectId(listing_id)}, sort=[("created_at", -1)])
+        from app.services.decision import decide_with_stops
+        flat_dets = []
+        for d in dets:
+            if "class" in d:
+                flat_dets.append(d)
+            else:
+                flat_dets.extend(d.get("detections", []))
+        synth = decide_with_stops(risk or {}, doc, images, flat_dets, diagnostic=diag)
+        if synth.get("review_reasons"):
+            doc["review_reasons"] = synth["review_reasons"]
+            doc["actionable_tips"] = synth.get("actionable_tips", [])
+        doc["assessment"] = reconcile_assessment(
+            listing=doc,
+            images=images,
+            detections=dets,
+            condition=cond,
+            authenticity=auths,
+            diagnostic=diag,
+        )
+    except Exception:
+        doc["assessment"] = None
     return {"listing": doc}
 
 @router.get("")

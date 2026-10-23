@@ -33,6 +33,8 @@ import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
@@ -79,6 +81,8 @@ fun ListingDetailScreen(
     }
 
     val currentUserId = remember(token) { extractUserId(token) }
+    val currentListing = (listingState as? ApiState.Success)?.data
+    val isOwnListing = currentUserId != null && currentListing != null && currentUserId == currentListing.seller_id
     val inspectionState = rememberApi("inspection-$listingId") { MarketplaceRepository.inspections(token) }
     val activeInspection = (inspectionState as? ApiState.Success)?.data?.firstOrNull { it["listing_id"] == listingId }
     val hasInspection = activeInspection != null
@@ -189,6 +193,7 @@ fun ListingDetailScreen(
 
             is ApiState.Success -> {
                 val listing = s.data
+                val isOwnListing = currentUserId != null && currentUserId == listing.seller_id
                 val scoresData = (scoresState as? ApiState.Success)?.data
                 val riskScore = scoresData?.risk?.adjusted_score
                 val (trustScoreNr, trustLabel) = trustVerdict(listing)
@@ -272,6 +277,24 @@ fun ListingDetailScreen(
                         conditionLabel = conditionLabel,
                         decisionStatus = decisionStatus,
                     )
+
+                    val decisionMap = scoresData?.decision
+                    val reviewReasons = (decisionMap?.get("review_reasons") as? List<*>)?.mapNotNull { it?.toString() }
+                        ?: listing.review_reasons.orEmpty()
+                    val actionableTips = (decisionMap?.get("actionable_tips") as? List<*>)?.mapNotNull { it?.toString() }
+                        ?: listing.actionable_tips.orEmpty()
+                    val hasMismatch = reviewReasons.any { it.contains("Device mismatch", ignoreCase = true) } ||
+                        decisionMap?.get("reason_code") == "REVIEW_DEVICE_MISMATCH"
+
+                    if (decisionStatus == "review" || listing.status == "review" || reviewReasons.isNotEmpty()) {
+                        Spacer(Modifier.height(14.dp))
+                        ListingReviewStatusCard(
+                            isOwnListing = isOwnListing,
+                            reviewReasons = reviewReasons,
+                            actionableTips = actionableTips,
+                            hasMismatch = hasMismatch,
+                        )
+                    }
 
                     Spacer(Modifier.height(14.dp))
                     InspectionStatusCard(token, listingId, onTrack = { onBookInspection(listingId) })
@@ -767,6 +790,116 @@ private fun ScoresCard(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+    }
+}
+
+@Composable
+private fun ListingReviewStatusCard(
+    isOwnListing: Boolean,
+    reviewReasons: List<String>,
+    actionableTips: List<String>,
+    hasMismatch: Boolean,
+) {
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = Color(0xFFFFF8E1),
+        border = BorderStroke(1.dp, Color(0xFFFFB300)),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = Color(0xFFE65100),
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "Listing In Review",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFE65100),
+                    modifier = Modifier.weight(1f),
+                )
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = Color(0xFFFFE082),
+                ) {
+                    Text(
+                        "MODERATION",
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF5D4037),
+                    )
+                }
+            }
+
+            if (hasMismatch) {
+                Spacer(Modifier.height(10.dp))
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFFFFEBEE),
+                    border = BorderStroke(1.dp, Color(0xFFEF5350)),
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.PhoneAndroid, contentDescription = null, tint = Color(0xFFC62828), modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                "Device Hardware Mismatch",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFC62828),
+                            )
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        val mismatchMsg = reviewReasons.firstOrNull { it.contains("Device mismatch", ignoreCase = true) }
+                            ?: "Diagnostic results were submitted from a different physical device model than what is listed."
+                        Text(
+                            mismatchMsg,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFFB71C1C),
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
+                }
+            }
+
+            if (reviewReasons.isNotEmpty()) {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "Why this listing was flagged:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF3E2723),
+                )
+                Spacer(Modifier.height(4.dp))
+                reviewReasons.forEach { r ->
+                    Row(Modifier.padding(vertical = 2.dp)) {
+                        Text("• ", fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
+                        Text(r, style = MaterialTheme.typography.bodySmall, color = Color(0xFF4E342E))
+                    }
+                }
+            }
+
+            if (isOwnListing && actionableTips.isNotEmpty()) {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "Action steps to get approved:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1B5E20),
+                )
+                Spacer(Modifier.height(4.dp))
+                actionableTips.forEachIndexed { i, tip ->
+                    Row(Modifier.padding(vertical = 2.dp)) {
+                        Text("${i + 1}. ", fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
+                        Text(tip, style = MaterialTheme.typography.bodySmall, color = Color(0xFF1B5E20))
+                    }
+                }
+            }
         }
     }
 }

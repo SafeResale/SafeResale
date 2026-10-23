@@ -4,6 +4,7 @@ import NotFound from '@/pages/not-found';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
 import { ThemeProvider } from '@/components/theme-provider';
 import { TestProvider } from '@/context/TestContext';
+import { PairingProvider } from '@/context/PairingContext';
 import { Layout } from '@/components/Layout';
 
 // Pages
@@ -19,6 +20,14 @@ import { DisplayTest } from '@/pages/tests/DisplayTest';
 import { BatteryTest } from '@/pages/tests/BatteryTest';
 import { NetworkTest } from '@/pages/tests/NetworkTest';
 import { SensorsTest } from '@/pages/tests/SensorsTest';
+
+function getBase(): string {
+  if (typeof window === 'undefined') return '';
+  const p = window.location.pathname;
+  if (p.startsWith('/laptopdiagnosis')) return '/laptopdiagnosis';
+  if (p.startsWith('/laptopdiagonsis')) return '/laptopdiagonsis';
+  return (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+}
 
 function Router() {
   return (
@@ -53,12 +62,14 @@ function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
       <TestProvider>
-        <TooltipProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-            <Router />
-          </WouterRouter>
-          <Toaster />
-        </TooltipProvider>
+        <PairingProvider>
+          <TooltipProvider>
+            <WouterRouter base={getBase()}>
+              <Router />
+            </WouterRouter>
+            <Toaster />
+          </TooltipProvider>
+        </PairingProvider>
       </TestProvider>
     </ThemeProvider>
   );

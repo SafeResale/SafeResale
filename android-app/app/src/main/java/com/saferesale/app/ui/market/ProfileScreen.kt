@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Info
@@ -51,6 +52,7 @@ fun ProfileScreen(
     onNewCheck: () -> Unit,
     onMyAds: () -> Unit,
     onLogout: () -> Unit,
+    onDiagnoseDevice: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
@@ -178,6 +180,16 @@ fun ProfileScreen(
                         tint = TerritoryAccent,
                         onClick = onMyAds
                     )
+                    if (onDiagnoseDevice != null) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+                        ModernMenuTile(
+                            icon = Icons.Default.Devices,
+                            title = "Diagnose This Device",
+                            subtitle = "Enter pairing token to run hardware diagnostics",
+                            tint = TerritoryAccent,
+                            onClick = onDiagnoseDevice
+                        )
+                    }
                 }
             }
 
