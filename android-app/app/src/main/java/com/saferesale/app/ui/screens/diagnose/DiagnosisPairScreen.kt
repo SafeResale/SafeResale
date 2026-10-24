@@ -41,7 +41,7 @@ fun DiagnosisPairScreen(
     val scope = rememberCoroutineScope()
 
     var tokenInput by remember { mutableStateOf(initialToken) }
-    var stage by remember { mutableStateOf("input") } // input | pairing | testing | submitting | complete | error
+    var stage by remember { mutableStateOf(if (hasDiagnosisRights(context)) "input" else "rights") } // rights | input | pairing | testing | submitting | complete | error
     var sessionId by remember { mutableStateOf<String?>(null) }
     var listingId by remember { mutableStateOf<String?>(null) }
     var category by remember { mutableStateOf("mobile") }
@@ -130,6 +130,11 @@ fun DiagnosisPairScreen(
                 stage = "error"
             }
         }
+    }
+
+    if (stage == "rights") {
+        DiagnosisRightsScreen(onGranted = { stage = "input" }, onBack = onBack)
+        return
     }
 
     Scaffold(
